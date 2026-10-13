@@ -1,11 +1,14 @@
+import { TrustedBand } from './TrustedBand';
 import {useState, useSyncExternalStore} from 'react';
-import {AccessibilityInfo, Keyboard, Modal, Pressable, FlatList, StyleSheet, Text, TextInput, View} from 'react-native';
+import {AccessibilityInfo, Keyboard, Modal, FlatList, StyleSheet, Text, View} from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
+import { ShellTextInput as TextInput } from './ShellTextInput';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {ConfigBroker, ConfigReview} from '../presentation/config-broker';
 import {CONFIG_LIMITS, configSecretFields, type ConfigSchema, type ConfigValue} from '../presentation/config-schema';
 import {ShellStorageError} from '../storage/ports';
 import {formatNpub} from '../security/identity-crypto';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 type Field = {path: readonly string[]; schema: ConfigSchema; section: string};
 const fieldKey = (path: readonly string[]) => JSON.stringify(path);
 const fieldId = (path: readonly string[]) => path.map(encodeURIComponent).join('.');
@@ -25,9 +28,11 @@ function fields(schema: ConfigSchema, path: readonly string[] = [], section = ''
   return Object.entries(schema.properties!).flatMap(([key, child]) => fields(child, [...path, key], group));
 }
 function Action({label, id, onPress, disabled = false}: {label: string; id: string; onPress(): void; disabled?: boolean}) {
+  const { styles } = useShellStyles(createStyles);
   return <Pressable accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} testID={id} onPress={onPress} style={styles.button}><Text style={styles.action}>{label}</Text></Pressable>;
 }
 function Editor({service, review}: {service: ConfigBroker; review: ConfigReview}) {
+  const { styles } = useShellStyles(createStyles);
   const insets = useSafeAreaInsets(), secretFields = configSecretFields(review.schema), secretPaths = new Set(secretFields.map(field => fieldKey(field.path)));
   const rows = fields(review.schema).sort((left, right) => {
     const group = (left.section === review.section ? '' : left.section).localeCompare(right.section === review.section ? '' : right.section);
@@ -75,7 +80,7 @@ function Editor({service, review}: {service: ConfigBroker; review: ConfigReview}
         {!secret && <Action id={'config-reset-' + id} label="Reset to declared default" onPress={() => setDraft(old => {const next = {...old}; delete next[key]; return next;})}/>}
       </View>;
   };
-  return <Modal visible transparent animationType="fade" onRequestClose={() => service.closeReview(review.id)}><View style={[styles.shade, {paddingTop: insets.top}]}><FlatList testID="configuration-settings" keyboardShouldPersistTaps="handled" data={rows} keyExtractor={field => fieldKey(field.path)} renderItem={renderField} initialNumToRender={8} windowSize={5} removeClippedSubviews={false} contentContainerStyle={[styles.sheet, {paddingBottom: Math.max(insets.bottom, 24)}]} ListHeaderComponent={<View style={styles.group}>
+  return <Modal visible transparent animationType="fade" onRequestClose={() => service.closeReview(review.id)}><View style={[styles.shade, {paddingTop: insets.top}]}><TrustedBand label="Napplet settings" /><FlatList automaticallyAdjustKeyboardInsets testID="configuration-settings" keyboardShouldPersistTaps="handled" data={rows} keyExtractor={field => fieldKey(field.path)} renderItem={renderField} initialNumToRender={8} windowSize={5} removeClippedSubviews={false} contentContainerStyle={[styles.sheet, {paddingBottom: Math.max(insets.bottom, 24)}]} ListHeaderComponent={<View style={styles.group}>
     <Text accessibilityRole="header" style={styles.heading}>Napplet configuration</Text>
     <Text style={styles.title}>{review.origin.appId}</Text><Text selectable style={styles.detail}>{formatNpub(review.origin.publisher)}</Text>
     <Text style={styles.detail}>Selected identity: {formatNpub(review.origin.user)}</Text><Text selectable style={styles.detail}>Version: {review.origin.version}</Text>
@@ -90,8 +95,8 @@ export function Configuration({service, blocked}: {service: ConfigBroker; blocke
   const {review} = useSyncExternalStore(service.subscribe, service.getSnapshot);
   return !blocked && review ? <Editor key={review.id} service={service} review={review}/> : null;
 }
-const styles = StyleSheet.create({
-  group: {gap: 12}, shade: {flex: 1, backgroundColor: '#0009'}, sheet: {backgroundColor: colors.background, padding: 24, gap: 12}, field: {gap: 8, paddingVertical: 8},
-  heading: {color: colors.text, fontSize: 24, fontWeight: '600'}, title: {color: colors.text, fontSize: 18, fontWeight: '600'}, detail: {color: colors.muted, fontSize: 14, lineHeight: 21},
-  input: {borderColor: colors.border, borderWidth: 1, borderRadius: 8, minHeight: 44, padding: 12, color: colors.text, fontSize: 16}, button: {backgroundColor: colors.surface, minHeight: 44, padding: 12, borderRadius: 8}, action: {color: colors.accent, fontSize: 16},
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
+  group: {gap: 12}, shade: {flex: 1, backgroundColor: colors.shade}, sheet: {backgroundColor: colors.background, padding: 24, gap: 12}, field: {gap: 8, paddingVertical: 8},
+  heading: { fontFamily: fonts.display,color: colors.text, fontSize: 28, }, title: { fontFamily: fonts.strong,color: colors.text, fontSize: 18, }, detail: { fontFamily: fonts.body,color: colors.muted, fontSize: 14, lineHeight: 21},
+  input: { fontFamily: fonts.body,borderColor: colors.border, borderWidth: 1, borderRadius: 0, minHeight: 44, padding: 12, color: colors.text, fontSize: 16}, button: {backgroundColor: colors.surface, minHeight: 44, padding: 12, borderRadius: 0}, action: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,color: colors.accent, fontSize: 14},
 });

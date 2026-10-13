@@ -3,7 +3,7 @@ gsd_state_version: "1.0"
 current_phase: "2.11"
 current_phase_name: Complete published MVP acceptance
 status: executing
-stopped_at: Owner selected simulator-first build testing; physical checks only for behavior unavailable there. Full E2E deferred until feature complete. Resume device-input proof deferred; close-check and verified published Outbox admission implemented with focused development verification.
+stopped_at: Glass shell appearance implemented and verified on emulator/Simulator in dark, light and large text. Full E2E remains deferred until feature complete; physical checks only where simulated devices cannot establish behavior. Source push stays owner-controlled.
 last_updated: "2026-10-13"
 last_activity: 2026-10-13
 state_head: 3eab11e07f625fba5ebe249db73ccaa4df8d24cd
@@ -78,6 +78,7 @@ See `docs/phase-zero.md` for actual checks and artifacts.
 | 261012-td2 | Simulator-first development testing; final E2E deferred until feature complete | 2026-10-12 | See task summary | [261012-td2-record-simulator-first-development-testi](./quick/261012-td2-record-simulator-first-development-testi/) |
 | 261012-u4l | Selected optional close-check implementation and simulator-first verification | 2026-10-12 | See task summary | [261012-u4l-implement-the-selected-optional-hypergol](./quick/261012-u4l-implement-the-selected-optional-hypergol/) |
 | 261013-pr7 | Verified published Outbox admission with fresh consent and Relay dependency | 2026-10-13 | See task summary | [261013-pr7](./quick/261013-pr7-complete-verified-published-outbox-admis/) |
+| 261013-udj | Glass appearance, grouped Settings and native UI verification | 2026-10-13 | See task summary | [261013-udj](./quick/261013-udj-adapt-and-implement-the-hypergolic-glass/) |
 
 Targeted follow-up: iOS native erase/transport failures remain READBACK_FAILED even when subsequent reads return absence. Four new regressions pass; security is 295/295, bootstrap 13/13, storage 80/80, TypeScript and iOS export pass. Aislop remains 100/100 and local React Doctor has no findings.
 
@@ -3446,3 +3447,17 @@ and the existing Outbox-plus-Relay operation dependency. Signed consent/host,
 original-SDK and production WK component regressions cover the new admission path.
 Final physical published signing/network/update/restart parity remains deferred to
 feature-complete E2E; no acceptance row is closed and no manifest is published.
+
+
+## Glass appearance checkpoint — 13 October 2026
+
+Quick task 261013-udj implements the revised native shell style and related UX,
+including system appearance, shared napplet colors, grouped Settings and visible
+workspace controls. Native public-identity UI scenarios pass on Android emulator
+and iOS Simulator in dark/light and large text, with actual guest counter input.
+TypeScript, 47 shell tests, 294 runtime tests, native builds/exports and notice
+regressions pass. React Doctor is 100 with no findings; aislop is 98 with only the
+existing two dependency exceptions. Normal gates remain unchanged and nonzero.
+The provided handoff and native evidence are retained privately in Notes.
+Protected identity, physical security and full published MVP acceptance retain
+their separate evidence requirements. Source was not pushed.

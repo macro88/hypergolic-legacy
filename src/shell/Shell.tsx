@@ -1,17 +1,21 @@
+import { WorkspaceHeader } from './WorkspaceHeader';
+import { publishedSettingsActions } from './published-settings-actions';
+import { ShellBackdrop } from './ShellBackdrop';
 import {useCloseChecks} from './useCloseChecks';
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { AccessibilityInfo, BackHandler, Keyboard, Modal, Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, BackHandler, Keyboard, Modal, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import { cancelAnimation, Easing, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import type { HostEvent } from '../runtime/NappletHost';
 import { ClosePrompt } from './ClosePrompt';
-import { Header, type ShellIdentity } from './Header';
+import { type ShellIdentity } from './Header';
 import type { OverviewHandle } from './Overview';
 import { WorkspaceStage } from './WorkspaceStage';
 import { directionForHandle, type HandleSide } from './motion';
-import { adjacentNapplet, closeNapplet, focusNapplet, openNapplet, replacePublishedNapplet, showOverview, type NappletDescriptor, type Workspace } from './workspace';
-import { colors } from './theme';
+import { adjacentNapplet, closeNapplet, focusNapplet, openNapplet, showOverview, type NappletDescriptor, type Workspace } from './workspace';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { RuntimeContext } from '../runtime/RuntimeContext';
 import { ReviewFocus } from './ReviewFocus';
 import type { NappletConsentReview } from '../napplets/first-open-consent';
@@ -56,6 +60,7 @@ function useReducedMotion(): boolean {
 }
 
 export function Shell({ blocked = false, initialWorkspace, workspace: controlledWorkspace, onWorkspaceChange, identity, pendingApprovals, canCloseWithoutWarning, onBeforeClose, onHostEvent, footer, settingsComponent: SettingsContent }: ShellProps) {
+  const { styles } = useShellStyles(createStyles);
   const runtime = useContext(RuntimeContext);
   const [localWorkspace, setLocalWorkspace] = useState(() => initialWorkspace ?? initialTestWorkspace());
   const workspace = controlledWorkspace ?? localWorkspace;
@@ -179,39 +184,18 @@ export function Shell({ blocked = false, initialWorkspace, workspace: controlled
     setSettings(false);
   };
   const openBundledTest = () => openFixture('ux-lab');
-  const openPublished = async (link: string, signal: AbortSignal, review: (request: NappletConsentReview) => Promise<boolean>) => {
-    if (!runtime || blocked || signal.aborted || current.current.sessions.length >= 64) throw new Error('Published napplet unavailable');
-    const descriptor = await runtime.openPublishedLink(link, signal, review);
-    if (signal.aborted || blocked) { runtime.discardPublished(descriptor.id); throw new Error('Published napplet cancelled'); }
-    const next = openNapplet(current.current, descriptor);
-    position.set(next.sessions.length - 1);
-    progress.set(0);
-    change(next);
-    setSettings(false);
-  };
-  const checkPublishedUpdate: SettingsActions['checkPublishedUpdate'] = async (session, signal, reviewUpdate, reviewConsent) => {
-    if (!runtime || blocked || signal.aborted) throw new Error('Published update unavailable');
-    const descriptor = await runtime.preparePublishedUpdate(session, signal, reviewUpdate, reviewConsent);
-    if (!descriptor) return false;
-    if (signal.aborted || blocked) { runtime.discardPublished(descriptor.id); throw new Error('Published update cancelled'); }
-    let next: Workspace;
-    try { next = replacePublishedNapplet(current.current, session.id, descriptor); }
-    catch (error) { runtime.discardPublished(descriptor.id); throw error; }
-    try { onBeforeClose?.(session); }
-    catch (error) { runtime.discardPublished(descriptor.id); throw error; }
-    runtime.discardPublished(session.id);
-    position.set(next.sessions.findIndex(item => item.id === descriptor.id));
-    progress.set(0);
-    change(next);
-    setSettings(false);
-    return true;
-  };
+  const publishedActions = () => publishedSettingsActions({
+    runtime, blocked, getWorkspace: () => current.current, position, progress, change, setSettings, onBeforeClose,
+  });
+  const openPublished: SettingsActions['openPublished'] = (...args) => publishedActions().openPublished(...args);
+  const checkPublishedUpdate: SettingsActions['checkPublishedUpdate'] = (...args) => publishedActions().checkPublishedUpdate(...args);
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'right', 'bottom', 'left']}>
+      <ShellBackdrop mood={workspace.overview ? 'shelf' : 'running'} />
       <ReviewFocus sessionId={workspace.focusedId} overview={workspace.overview} busy={busy} dragging={handleDragging} blocked={blocked} settings={settings} closing={closingId !== null} />
-      <StatusBar barStyle="light-content" />
-      <View accessibilityElementsHidden={settings || closingId !== null} importantForAccessibility={settings || closingId ? 'no-hide-descendants' : 'auto'} style={styles.screen}>
-        <Header title={focused?.title ?? 'Hypergolic'} identity={identity} onSettings={openSettings} />
+      <View accessibilityElementsHidden={settings || closingId !== null} importantForAccessibility={settings || closingId ? 'no-hide-descendants' : 'auto'} style={styles.content}>
+        <WorkspaceHeader overview={workspace.overview} focused={focused} identity={identity} disabled={blocked || busy}
+          onSettings={openSettings} onOverview={openOverview} onClose={requestClose} />
         <WorkspaceStage closeCheck={closeCheck} workspace={workspace} progress={progress} position={position} scrollY={scrollY} swipeY={swipeY} swipeId={swipeId} busy={busy} blocked={blocked || settings || closingId !== null || closeCheck !== null} interactive={!handleDragging}
           pending={pendingApprovals ?? noPending} ref={overview} onHostEvent={receiveHostEvent} onFocus={focusSession} onClose={requestClose} onOpen={openSettings}
           onDragEnd={(id, close) => { runAnimation(swipeY, 0, () => { swipeId.set(null); if (close) requestClose(id); }, 140); }}
@@ -285,13 +269,14 @@ function confirmWorkspaceNappletClose({ closingId, current, onBeforeClose, runti
 }
 
 function ShellSettings({ settings, blocked, identity, SettingsContent, publishedSessions, openSettings, openBundledTest, openFixture, openPublished, checkPublishedUpdate }: ShellSettingsProps) {
+  const { styles } = useShellStyles(createStyles);
   const settingsClose = useRef<View>(null);
   return (
     <Modal visible={settings} animationType="none" onRequestClose={() => { if (!blocked) openSettings(); }} onShow={() => {
       settingsClose.current?.focus();
       if (settingsClose.current) AccessibilityInfo.sendAccessibilityEvent(settingsClose.current, 'focus');
     }}>
-      <SafeAreaProvider><SafeAreaView style={styles.settingsScreen}>
+      <SafeAreaProvider><SafeAreaView style={styles.settingsScreen}><ShellBackdrop mood="quiet" />
         <View style={styles.settingsHeader}><Text accessibilityRole="header" style={styles.settingsTitle}>Settings</Text><Pressable ref={settingsClose} disabled={blocked} accessibilityState={{ disabled: blocked }} accessibilityRole="button" testID="settings-done" onPress={openSettings} style={styles.done}><Text style={styles.doneText}>Done</Text></Pressable></View>
         {settings && (SettingsContent ? <SettingsContent closeSettings={openSettings} openBundledTest={openBundledTest} openStateLab={openFixture} openPublished={openPublished}
           publishedSessions={publishedSessions} checkPublishedUpdate={checkPublishedUpdate} /> : <View style={styles.settingsBody}>
@@ -304,17 +289,18 @@ function ShellSettings({ settings, blocked, identity, SettingsContent, published
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
+  content: { flex: 1 },
   settingsScreen: { flex: 1, backgroundColor: colors.background },
   settingsHeader: { minHeight: 72, paddingHorizontal: 24, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  settingsTitle: { fontSize: 26, fontWeight: '600', color: colors.text },
+  settingsTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.text },
   done: { minWidth: 48, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
-  doneText: { fontSize: 16, color: colors.accent },
+  doneText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, fontSize: 14, color: colors.accent },
   settingsBody: { padding: 24, gap: 24 },
-  settingsText: { color: colors.muted, fontSize: 15, lineHeight: 23 },
-  settingsSection: { color: colors.text, fontSize: 17, fontWeight: '600', marginTop: 16 },
-  openTest: { padding: 18, minHeight: 60, borderRadius: 16, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  openTestText: { color: colors.text, fontSize: 16 },
-  addMark: { color: colors.accent, fontSize: 26 },
+  settingsText: { fontFamily: fonts.body, color: colors.muted, fontSize: 15, lineHeight: 23 },
+  settingsSection: { fontFamily: fonts.strong, color: colors.text, fontSize: 17, marginTop: 16 },
+  openTest: { padding: 18, minHeight: 60, borderRadius: 0, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  openTestText: { fontFamily: fonts.body, color: colors.text, fontSize: 16 },
+  addMark: { fontFamily: fonts.body, color: colors.accent, fontSize: 26 },
 });

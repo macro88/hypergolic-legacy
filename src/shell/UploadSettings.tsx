@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
+import { ShellTextInput as TextInput } from './ShellTextInput';
 import type { UploadSettings as SettingsPort } from '../uploads/upload-settings.ts';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 export function UploadSettings({service}: {service: SettingsPort | null}) {
+  const { styles } = useShellStyles(createStyles);
   const [input, setInput] = useState(() => service?.server() ?? '');
   const [busy, setBusy] = useState(false), [status, setStatus] = useState('');
   const save = async (defaults: boolean) => {
@@ -26,6 +29,6 @@ export function UploadSettings({service}: {service: SettingsPort | null}) {
     </> : <Text style={styles.detail}>Upload settings are unavailable.</Text>}
   </View>;
 }
-const styles = StyleSheet.create({section: {gap: 14}, heading: {color: colors.text, fontSize: 20, fontWeight: '600'},
-  detail: {color: colors.muted, fontSize: 15, lineHeight: 22}, input: {color: colors.text, borderWidth: 1, borderColor: colors.border, borderRadius: 14, minHeight: 52, padding: 14, fontSize: 14},
-  button: {minHeight: 52, padding: 15, borderRadius: 14, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}, label: {color: colors.text, fontSize: 15, fontWeight: '600'}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({section: {gap: 14}, heading: { fontFamily: fonts.display,color: colors.text, fontSize: 28, },
+  detail: { fontFamily: fonts.body,color: colors.muted, fontSize: 15, lineHeight: 22}, input: { fontFamily: fonts.body,color: colors.text, borderWidth: 1, borderColor: colors.border, borderRadius: 0, minHeight: 52, padding: 14, fontSize: 14},
+  button: {minHeight: 52, padding: 15, borderRadius: 0, alignItems: 'center', backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}, label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,color: colors.text, fontSize: 12, }});

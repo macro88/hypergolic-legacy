@@ -21,6 +21,7 @@ EXPECTED_CHECKS = {
     "native-text-input", "typed-rendered-mirror",
 }
 SCENARIOS = {
+    "ui-style": {"checks": {"empty-shelf", "address-validation", "grouped-identity-settings", "workspace-navigation", "close-protection", "trusted-review"}, "kind": "hypergolic-ios-workspace-v1", "test": "WorkspaceTests/testUIStyle"},
     "identity-delete-unavailable": {"checks": {"delete-exact-target", "unavailable-has-no-confirm", "cancel-keeps-workspace"}, "kind": "hypergolic-ios-workspace-v1", "test": "WorkspaceTests/testIdentityDeleteUnavailable"},
     "state-close": {"checks": {"state-close-warning", "state-reopen-shared", "state-reopen-instance"}, "kind": "hypergolic-ios-workspace-v1", "test": "WorkspaceTests/testStateClose"},
     "state-storage": {"checks": {"state-identity", "state-storage-operations", "state-restart", "state-instance-scope", "state-owner-isolation", "state-identity-isolation"}, "kind": "hypergolic-ios-workspace-v1", "test": "WorkspaceTests/testStateStorage"},
@@ -149,7 +150,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--expected-title", default="UX Lab 1")
     parser.add_argument("--expected-session", default="ux-lab-1")
     parser.add_argument("--timeout", type=float, default=30)
-    parser.add_argument("scenario", choices=["identity-delete-unavailable", "state-close", "state-storage", "identity-switch", "workspace-restart", "card-cancel", "trace-host", "switch-state", "gestures", "closing", "approval-review", "published-host", "live-published", "published-update", "live-update-v1", "live-update-v2", "changed-access", "identity", "host-boundary", "renderer-loss"])
+    parser.add_argument("scenario", choices=["ui-style", "identity-delete-unavailable", "state-close", "state-storage", "identity-switch", "workspace-restart", "card-cancel", "trace-host", "switch-state", "gestures", "closing", "approval-review", "published-host", "live-published", "published-update", "live-update-v1", "live-update-v2", "changed-access", "identity", "host-boundary", "renderer-loss"])
     parser.add_argument("--output", type=Path, required=True, help="New private evidence directory, never overwritten")
     args = parser.parse_args(argv)
     if args.scenario not in SCENARIOS:

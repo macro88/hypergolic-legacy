@@ -648,3 +648,14 @@ parsers accept its exact bounded shape, discard the challenge and continue norma
 verification/EOSE handling. No client AUTH, signer or guest challenge authority is
 provided; required-authentication responses remain denied. See
 [the implementation and verification boundary](relay-subscriptions.md#optional-relay-authentication-announcements--12-october-2026).
+
+
+## Shell appearance and navigation
+
+The native shell follows system appearance using shared contrast-tested colors,
+locally bundled Barlow and JetBrains Mono, an orbital backdrop and square frames.
+Settings is grouped, focused sessions expose overview/close actions, and trusted
+requests use scrollable sheets. The existing theme service carries the shared
+colors to participating napplets and updates them on appearance changes. See
+[shell appearance](shell-style.md) for the visual decisions, fixture boundaries
+and asset provenance.

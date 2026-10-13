@@ -1,12 +1,15 @@
+import { TrustedBand } from './TrustedBand';
 import {useEffect, useSyncExternalStore} from 'react';
-import {AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {AppState, Modal, ScrollView, StyleSheet, Text, View} from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {IdentityListAccess, IdentityListAccessSnapshot} from '../identity/identity-permissions';
 import {formatNpub} from '../security/identity-crypto';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 const empty: IdentityListAccessSnapshot = Object.freeze({grants: [], denied: [], review: null, busy: false, error: null});
 const subscribe = () => () => {}, getEmpty = () => empty;
 export function IdentityListReview({service, blocked = false}: {service: IdentityListAccess | null; blocked?: boolean}) {
+  const { styles } = useShellStyles(createStyles);
   const state = useSyncExternalStore(service?.subscribe ?? subscribe, service?.getSnapshot ?? getEmpty);
   const insets = useSafeAreaInsets();
   useEffect(() => {
@@ -19,6 +22,7 @@ export function IdentityListReview({service, blocked = false}: {service: Identit
   const decide = (allow: boolean) => {void service.decide(review.id, allow).catch(() => { /* Service publishes the current failure. */ });};
   return <Modal visible transparent animationType="none" onRequestClose={() => {if (!disabled) decide(false);}}>
     <View style={styles.backdrop}><View testID="identity-list-review" accessibilityViewIsModal style={[styles.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
+      <TrustedBand />
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>Allow public list access?</Text>
         <Text style={styles.text}>This napplet wants to read your public mutes, bookmarks, pins and interests. These signed lists are already public on relays.</Text>
@@ -36,4 +40,4 @@ export function IdentityListReview({service, blocked = false}: {service: Identit
     </View></View>
   </Modal>;
 }
-const styles = StyleSheet.create({backdrop: {flex: 1, backgroundColor: '#000000b3', justifyContent: 'flex-end'}, sheet: {maxHeight: '90%', paddingTop: 24, backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border}, content: {gap: 12, padding: 24}, title: {color: colors.text, fontSize: 24, fontWeight: '600'}, text: {color: colors.text, fontSize: 16, lineHeight: 24}, mono: {color: colors.text, fontSize: 13, lineHeight: 20}, label: {color: colors.muted, fontSize: 14}, actions: {paddingHorizontal: 24, gap: 8}, button: {minHeight: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border}, action: {color: colors.accent, fontSize: 16}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({backdrop: {flex: 1, backgroundColor: colors.shade, justifyContent: 'flex-end'}, sheet: {maxHeight: '90%', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border}, content: {gap: 12, padding: 24}, title: { fontFamily: fonts.display,color: colors.text, fontSize: 28, }, text: { fontFamily: fonts.body,color: colors.text, fontSize: 16, lineHeight: 24}, mono: { fontFamily: fonts.mono,color: colors.text, fontSize: 13, lineHeight: 20}, label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,color: colors.muted, fontSize: 12}, actions: {paddingHorizontal: 24, gap: 8}, button: {minHeight: 48, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: colors.border}, action: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,color: colors.accent, fontSize: 14}});

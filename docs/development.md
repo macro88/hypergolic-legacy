@@ -1215,3 +1215,23 @@ Inline GSD execution records these scoped checks without a separate-agent audit.
 Private originals: relay-upgrade-metadata01 and iphone-relay-upgrade01.
 Doctor100 and aislop98 retain exactly the existing two owner-approved advisory
 exceptions; the normal quality gate still exits nonzero and is not suppressed.
+
+
+## Glass shell UI checkpoint — 13 October 2026
+
+The [shell appearance implementation](shell-style.md) passes TypeScript, 47 shell
+tests, 294 runtime browser tests, both production Expo exports, Android Debug
+compilation and iOS Simulator Release compilation. Native UI tests exercise dark
+and light appearance, larger text, Settings/input, overview, close protection and
+sample request review. The actual bundled UX Lab renders and accepts counter
+input. Android uses API 36; iOS uses iPhone 17 Pro / iOS 26.5. Larger-text checks
+use Android font scale 1.5 and iOS accessibility-medium. Original device text
+settings are restored. Native tests use the isolated public-identity UI fixture;
+protected identity and signing are outside this presentation evidence.
+
+React Doctor reports 100/100 with no source findings. Aislop completes all five
+engines at 98/100, reporting only the existing node-forge/braces advisory
+exceptions. The ordinary `check` gate remains nonzero at Expo Doctor's patch
+recommendations. Font and System UI are pinned at 57.0.3, alongside the selected
+Expo 57.0.20 tree; no ignore rule, scanner threshold or advisory suppression is
+added. Native notice packaging regressions pass.

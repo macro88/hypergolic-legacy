@@ -1,11 +1,13 @@
+import { FrameCorners } from './FrameCorners';
 import { useCallback } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import { Gesture, GestureDetector, type NativeGesture, type GestureTouchEvent, type GestureStateManager } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { clamp, shouldCloseCard, wantsCardClose, type Drag, type Rect, type CardMeasurement } from './motion';
 import type { NappletDescriptor } from './workspace';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { cardDragFromTouch, releasedCardTouch, isCardTapRelease, type CardTouchOrigin, type CardTouchPoint } from './cardTouch';
 
 interface Props {
@@ -26,6 +28,7 @@ interface Props {
 }
 
 export function OverviewCard({ session, rect, captionHeight, busy, selected, pending, swipeId, swipeY, scrollGesture, onFocus, onClose, onDragEnd, onMeasure, setRef }: Props) {
+  const { styles } = useShellStyles(createStyles);
   const { id, title } = session;
   const tapOrigin = useSharedValue<CardTouchPoint | null>(null);
   const tapAccepted = useSharedValue(false);
@@ -119,7 +122,7 @@ export function OverviewCard({ session, rect, captionHeight, busy, selected, pen
           if (nativeEvent.actionName === 'close') onClose(id);
           else if (nativeEvent.actionName === 'activate') onFocus(id);
         }}
-        style={[styles.previewTarget, { height: rect.height }, selected && styles.selected]} /></GestureDetector>
+        style={[styles.previewTarget, { height: rect.height }, selected && styles.selected]}><FrameCorners /></View></GestureDetector>
       <View style={[styles.caption, { height: captionHeight }]}>
         <View style={styles.label} pointerEvents="none">
           <Text numberOfLines={1} style={styles.cardTitle}>{title}</Text>
@@ -132,13 +135,13 @@ export function OverviewCard({ session, rect, captionHeight, busy, selected, pen
     </Animated.View>
   </GestureDetector>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   card: { marginBottom: 20 },
-  previewTarget: { width: '100%', borderRadius: 10, borderWidth: 1, borderColor: colors.border },
-  selected: { borderWidth: 2, borderColor: colors.accent },
+  previewTarget: { width: '100%', borderRadius: 0, borderWidth: 1, borderColor: colors.border },
+  selected: { borderWidth: 1, borderColor: colors.text },
   caption: { flexDirection: 'row', alignItems: 'center', paddingLeft: 2 },
-  label: { flex: 1 }, cardTitle: { fontSize: 13, fontWeight: '500', color: colors.text },
-  pending: { color: colors.accent, fontSize: 11, marginTop: 2 },
+  label: { flex: 1 }, cardTitle: { fontFamily: fonts.medium, fontSize: 15, color: colors.text },
+  pending: { fontFamily: fonts.body, color: colors.accent, fontSize: 11, marginTop: 2 },
   close: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  closeMark: { fontSize: 25, color: colors.muted },
+  closeMark: { fontFamily: fonts.body, fontSize: 25, color: colors.muted },
 });

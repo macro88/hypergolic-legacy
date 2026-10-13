@@ -1,12 +1,15 @@
 import {useState, useSyncExternalStore} from 'react';
-import {Pressable, StyleSheet, Text, View} from 'react-native';
+import { StyleSheet, Text, View} from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type {IdentityListAccess} from '../identity/identity-permissions';
 import {formatNpub} from '../security/identity-crypto';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 export function IdentityListSettings({service, user}: {service: IdentityListAccess | null; user: string}) {
+  const { styles } = useShellStyles(createStyles);
   return service ? <Available service={service} user={user} /> : <Text style={styles.text}>Public list permissions are unavailable.</Text>;
 }
 function Available({service, user}: {service: IdentityListAccess; user: string}) {
+  const { styles } = useShellStyles(createStyles);
   const state = useSyncExternalStore(service.subscribe, service.getSnapshot), [failure, setFailure] = useState('');
   const grants = state.grants.filter(value => value.user === user);
   return <View style={styles.section}>
@@ -23,4 +26,4 @@ function Available({service, user}: {service: IdentityListAccess; user: string})
     {(state.error || failure) && <Text accessibilityLiveRegion="polite" style={styles.text}>{state.error ?? failure}</Text>}
   </View>;
 }
-const styles = StyleSheet.create({section: {gap: 12}, row: {gap: 8, borderWidth: 1, borderColor: colors.border, padding: 12}, title: {color: colors.text, fontSize: 20, fontWeight: '600'}, text: {color: colors.muted, fontSize: 15, lineHeight: 22}, mono: {color: colors.text, fontSize: 12}, button: {minHeight: 48, justifyContent: 'center', alignItems: 'center'}, action: {color: colors.accent, fontSize: 16}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({section: {gap: 12}, row: {gap: 8, borderWidth: 1, borderColor: colors.border, padding: 12}, title: { fontFamily: fonts.display,color: colors.text, fontSize: 28, }, text: { fontFamily: fonts.body,color: colors.muted, fontSize: 15, lineHeight: 22}, mono: { fontFamily: fonts.mono,color: colors.text, fontSize: 12}, button: {minHeight: 48, justifyContent: 'center', alignItems: 'center'}, action: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,color: colors.accent, fontSize: 14}});

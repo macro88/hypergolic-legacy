@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { requireNativeModule, requireNativeView } from 'expo';
-import { ActivityIndicator, AppState, Platform, Pressable, StyleSheet, Text, View,
+import { ActivityIndicator, AppState, Platform, StyleSheet, Text, View,
   type NativeSyntheticEvent, type ViewProps } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type { VerifiedNappletArtifact, VerifiedNappletManifest } from '../napplets/verified-artifact.ts';
 import { EmbeddedTestFixtureError, loadEmbeddedTestArtifact } from '../napplets/embedded-test-fixture.ts';
 import { stageVerifiedArtifact, type NativePublishedTransferPort } from '../napplets/native-transfer.ts';
 import { loadNativePublishedTransferPort } from '../napplets/native-transfer-port';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 type HostEvent = { type: 'ready' | 'error'; sessionId: string; code?: string };
 type HostProps = ViewProps & { publishedArtifact: string; active: boolean;
@@ -21,6 +22,7 @@ export function PublishedHostLab({ onClose, sessionAuthority }: {
   onClose: () => void;
   sessionAuthority: () => { assertActive(): void };
 }) {
+  const { styles, colors } = useShellStyles(createStyles);
   const [phase, setPhase] = useState<Phase>('checking');
   const [manifest, setManifest] = useState<VerifiedNappletManifest | null>(null);
   const [hostInput, setHostInput] = useState<string | null>(null);
@@ -134,15 +136,15 @@ export function PublishedHostLab({ onClose, sessionAuthority }: {
   </View>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   container: { gap: 12 },
-  title: { fontSize: 22, fontWeight: '600', color: colors.text },
-  detail: { color: colors.muted, fontSize: 16, lineHeight: 24 },
-  label: { color: colors.muted, fontSize: 13, marginTop: 6 },
-  value: { color: colors.text, fontSize: 13, fontFamily: 'monospace' },
-  action: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 16, backgroundColor: colors.accent, marginTop: 12 },
-  actionText: { color: colors.background, fontWeight: '600', fontSize: 16 },
-  close: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 16, borderWidth: 1, borderColor: colors.border },
-  closeText: { color: colors.text, fontSize: 16 },
+  title: { fontFamily: fonts.display, fontSize: 28, color: colors.text },
+  detail: { fontFamily: fonts.body, color: colors.muted, fontSize: 16, lineHeight: 24 },
+  label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono, color: colors.muted, fontSize: 12, marginTop: 6 },
+  value: { fontFamily: fonts.mono, color: colors.text, fontSize: 13, },
+  action: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 0, backgroundColor: colors.primary, marginTop: 12 },
+  actionText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.onPrimary, fontSize: 14 },
+  close: { minHeight: 56, alignItems: 'center', justifyContent: 'center', borderRadius: 0, borderWidth: 1, borderColor: colors.border },
+  closeText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.text, fontSize: 14 },
   host: { minHeight: 420, backgroundColor: colors.background },
 });

@@ -1,6 +1,6 @@
 import {StyleSheet,Text,View} from 'react-native';
 import type {OutboxPublicationPlan,OutboxDestinationSource} from '../outbox/publication-plan';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function sourceLabel(source:OutboxDestinationSource):string {
   if(source.kind==='own')return 'Your write relays';
   if(source.kind==='network-fallback')return 'Your Network fallback';
@@ -9,6 +9,7 @@ function sourceLabel(source:OutboxDestinationSource):string {
 }
 /** Exact destinations and the existing signed list are part of the same one-time review. */
 export function OutboxReview({plan}:{plan:OutboxPublicationPlan}){
+  const { styles } = useShellStyles(createStyles);
  return <View style={styles.group} testID="outbox-approval-routing">
   <Text accessibilityRole="header" style={styles.heading}>Publication destinations</Text>
   {plan.destinations.map(row=><View key={row.relay} style={styles.group}><Text selectable style={styles.mono}>{row.relay}</Text><Text style={styles.label}>{row.sources.map(sourceLabel).join(' · ')}</Text></View>)}
@@ -19,4 +20,4 @@ export function OutboxReview({plan}:{plan:OutboxPublicationPlan}){
   </View>}
  </View>;
 }
-const styles=StyleSheet.create({group:{gap:8},heading:{color:colors.text,fontSize:17,fontWeight:'700',marginTop:12},label:{color:colors.muted,fontSize:14,lineHeight:21},mono:{color:colors.text,fontFamily:'monospace',fontSize:12,lineHeight:19}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({group:{gap:8},heading:{ fontFamily: fonts.strong,color:colors.text,fontSize:17,marginTop:12},label:{ textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,color:colors.muted,fontSize: 12,lineHeight:21},mono:{ fontFamily: fonts.mono,color:colors.text,fontSize:12,lineHeight:19}});

@@ -1,11 +1,14 @@
 import {useEffect, useState, useSyncExternalStore} from 'react';
-import {ActivityIndicator, AppState, Pressable, StyleSheet, Text, TextInput, View} from 'react-native';
+import {ActivityIndicator, AppState, StyleSheet, Text, View} from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
+import { ShellTextInput as TextInput } from './ShellTextInput';
 import type {FixturePublisher} from '../fixture-release/publisher';
 import {BUNDLED_FIXTURES} from '../runtime/bundled-catalog';
 import destinations from '../config/fixture-release.json';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 export function FixturePublisherLab({service,format}: {service: FixturePublisher;format(pubkey:string):string}) {
+  const { styles, colors } = useShellStyles(createStyles);
   const state=useSyncExternalStore(service.subscribe,service.getSnapshot);
   const [server,setServer]=useState(destinations.server);
   const [relays,setRelays]=useState(()=>destinations.relays.join('\n'));
@@ -44,6 +47,6 @@ export function FixturePublisherLab({service,format}: {service: FixturePublisher
       <Text style={styles.actionText}>{busy?'Cancel':'Close release review'}</Text></Pressable>}
   </View>;
 }
-const styles=StyleSheet.create({group:{gap:16},title:{color:colors.text,fontSize:20,fontWeight:'600'},detail:{color:colors.muted,fontSize:16,lineHeight:24},
-  mono:{color:colors.text,fontFamily:'monospace',fontSize:13,lineHeight:20},input:{color:colors.text,borderWidth:1,borderColor:colors.border,borderRadius:14,padding:16,minHeight:56},
-  action:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:16,padding:18,minHeight:56},actionText:{color:colors.text,fontSize:16}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({group:{gap:16},title:{ fontFamily: fonts.display,color:colors.text,fontSize: 28,},detail:{ fontFamily: fonts.body,color:colors.muted,fontSize:16,lineHeight:24},
+  mono:{ fontFamily: fonts.mono,color:colors.text,fontSize:13,lineHeight:20},input:{color:colors.text,borderWidth:1,borderColor:colors.border,borderRadius:0,padding:16,minHeight:56},
+  action:{backgroundColor:colors.surface,borderWidth:1,borderColor:colors.border,borderRadius:0,padding:18,minHeight:56},actionText:{ textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,color:colors.text,fontSize: 14}});

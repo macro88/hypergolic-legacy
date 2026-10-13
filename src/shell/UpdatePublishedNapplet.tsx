@@ -1,16 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type { SettingsActions } from './Shell';
 import type { NappletDescriptor } from './workspace';
 import type { NappletConsentReview } from '../napplets/first-open-consent';
 import type { PublishedUpdateReview } from '../napplets/published-session';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { capabilityCompatibility } from '../runtime/support-report';
-import { useIdentityOwner } from './IdentityShell';
+import { useIdentityOwner } from './IdentityOwnerContext';
 
 type Review = { kind: 'update'; request: PublishedUpdateReview } | { kind: 'access'; request: NappletConsentReview };
 
 function PublishedCapabilityDetails({session}: {session: NappletDescriptor}) {
+  const { styles } = useShellStyles(createStyles);
   const {runtime} = useIdentityOwner();
   let requested: readonly string[] | null = null;
   try { requested = runtime?.publishedCapabilities(session) ?? null; } catch { /* Closed or stale sessions have no live claims. */ }
@@ -22,6 +24,7 @@ function PublishedCapabilityDetails({session}: {session: NappletDescriptor}) {
 export function UpdatePublishedNapplet({ session, check }: {
   session: NappletDescriptor; check: SettingsActions['checkPublishedUpdate'];
 }) {
+  const { styles, colors } = useShellStyles(createStyles);
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState<Review | null>(null);
   const [status, setStatus] = useState('');
@@ -87,14 +90,14 @@ export function UpdatePublishedNapplet({ session, check }: {
   </View>;
 }
 
-const styles = StyleSheet.create({
-  card: { gap: 12, padding: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 16, backgroundColor: colors.surface },
-  title: { color: colors.text, fontSize: 18, fontWeight: '600' },
-  detail: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  claim: { color: colors.text, fontFamily: 'monospace', fontSize: 12 },
-  warning: { color: colors.text, fontSize: 15, lineHeight: 22 },
-  action: { padding: 18, minHeight: 56, borderRadius: 16, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  actionText: { color: colors.background, fontSize: 16, fontWeight: '600' },
-  secondary: { padding: 18, minHeight: 56, borderRadius: 16, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { color: colors.text, fontSize: 16 },
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
+  card: { gap: 12, padding: 18, borderWidth: 1, borderColor: colors.border, borderRadius: 0, backgroundColor: colors.surface },
+  title: { fontFamily: fonts.strong, color: colors.text, fontSize: 18, },
+  detail: { fontFamily: fonts.body, color: colors.muted, fontSize: 15, lineHeight: 22 },
+  claim: { fontFamily: fonts.mono, color: colors.text, fontSize: 12 },
+  warning: { fontFamily: fonts.body, color: colors.text, fontSize: 15, lineHeight: 22 },
+  action: { padding: 18, minHeight: 56, borderRadius: 0, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  actionText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.onPrimary, fontSize: 14, },
+  secondary: { padding: 18, minHeight: 56, borderRadius: 0, borderColor: colors.border, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.text, fontSize: 14 },
 });

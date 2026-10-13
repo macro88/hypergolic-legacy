@@ -1,15 +1,18 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {AppState, FlatList, Modal, Pressable, StyleSheet, Text, View} from 'react-native';
+import {AppState, FlatList, Modal, StyleSheet, Text, View} from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type {NotificationSettingsService} from '../presentation/notify-settings';
 import type {NotifyPermission} from '../presentation/notify-permissions';
 import {formatNpub} from '../security/identity-crypto';
-import {colors} from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function PermissionRow({permission, busy, revoke}: {permission: NotifyPermission; busy: boolean; revoke(permission: NotifyPermission): void}) {
+  const { styles } = useShellStyles(createStyles);
   const press = useCallback(() => revoke(permission), [permission, revoke]);
   return <View style={styles.permission}><Text style={styles.title}>{permission.appId}</Text><Text selectable style={styles.publisher}>{formatNpub(permission.publisher)}</Text><Text style={styles.detail}>{permission.channel || 'General notifications'}</Text>
     <Pressable testID={'notify-revoke-' + permission.appId + '-' + (permission.channel || 'general')} accessibilityRole="button" disabled={busy} accessibilityState={{disabled: busy}} onPress={press} style={styles.button}><Text style={styles.action}>Revoke notification permission</Text></Pressable></View>;
 }
 export function NotificationSettings({service}: {service: NotificationSettingsService}) {
+  const { styles } = useShellStyles(createStyles);
   const [state, setState] = useState<{rows: readonly NotifyPermission[]; busy: boolean; status: string}>({rows: [], busy: true, status: ''});
   const pending = useRef<AbortController | null>(null), [opened, setOpened] = useState(false);
   useEffect(() => {
@@ -40,4 +43,4 @@ export function NotificationSettings({service}: {service: NotificationSettingsSe
     </View></Modal>
   </View>;
 }
-const styles = StyleSheet.create({backdrop: {flex: 1, paddingTop: 64, backgroundColor: '#0009'}, sheet: {padding: 24, gap: 14, backgroundColor: colors.background}, group: {gap: 14}, heading: {fontSize: 20, fontWeight: '600', color: colors.text}, title: {fontSize: 17, fontWeight: '600', color: colors.text}, detail: {fontSize: 15, lineHeight: 22, color: colors.muted}, publisher: {fontSize: 13, color: colors.muted}, permission: {gap: 12, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 16}, button: {minHeight: 48, padding: 14, backgroundColor: colors.surface, borderRadius: 12}, action: {fontSize: 15, color: colors.accent}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({backdrop: {flex: 1, paddingTop: 64, backgroundColor: colors.shade}, sheet: {padding: 24, gap: 14, backgroundColor: colors.background}, group: {gap: 14}, heading: { fontFamily: fonts.display,fontSize: 28, color: colors.text}, title: { fontFamily: fonts.strong,fontSize: 17, color: colors.text}, detail: { fontFamily: fonts.body,fontSize: 15, lineHeight: 22, color: colors.muted}, publisher: { fontFamily: fonts.mono,fontSize: 13, color: colors.muted}, permission: {gap: 12, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 0}, button: {minHeight: 48, padding: 14, backgroundColor: colors.surface, borderRadius: 0}, action: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,fontSize: 14, color: colors.accent}});

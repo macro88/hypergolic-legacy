@@ -1,13 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type { CatalogHandler, CatalogSnapshot } from '../routing/routing-catalog';
 import type { RoutingSettingsService } from '../routing/routing-settings';
 import { formatNpub } from '../security/identity-crypto';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function Action({id, title, disabled, onPress}: {id: string; title: string; disabled: boolean; onPress(): void}) {
+  const { styles } = useShellStyles(createStyles);
   return <Pressable testID={id} accessibilityRole="button" accessibilityState={{disabled}} disabled={disabled} onPress={onPress} style={[styles.button, disabled && styles.disabled]}><Text style={styles.label}>{title}</Text></Pressable>;
 }
 function Handler({handler, snapshot, busy, prefer, remove}: {handler: CatalogHandler; snapshot: CatalogSnapshot; busy: boolean; prefer(role: string, handler: CatalogHandler | null): void; remove(handler: CatalogHandler): void}) {
+  const { styles } = useShellStyles(createStyles);
   const key = handler.publisher + '-' + handler.appId;
   return <View testID={'routing-handler-' + key} style={styles.handler}>
     <Text style={styles.title}>{handler.title}</Text><Text selectable style={styles.mono}>{formatNpub(handler.publisher)}</Text>
@@ -22,6 +25,7 @@ function Handler({handler, snapshot, busy, prefer, remove}: {handler: CatalogHan
   </View>;
 }
 export function RoutingSettings({service}: {service: RoutingSettingsService}) {
+  const { styles } = useShellStyles(createStyles);
   const [state, setState] = useState<{snapshot: CatalogSnapshot | null; busy: boolean; status: string}>({snapshot: null, busy: true, status: ''});
   const pending = useRef<AbortController | null>(null);
   useEffect(() => {
@@ -48,4 +52,4 @@ export function RoutingSettings({service}: {service: RoutingSettingsService}) {
     {state.status !== '' && <Text testID="routing-settings-status" accessibilityLiveRegion="polite" style={styles.detail}>{state.status}</Text>}
   </View>;
 }
-const styles = StyleSheet.create({group: {gap: 14}, heading: {fontSize: 20, fontWeight: '600', color: colors.text}, title: {fontSize: 17, fontWeight: '600', color: colors.text}, detail: {color: colors.muted, fontSize: 15, lineHeight: 22}, mono: {color: colors.text, fontSize: 13, lineHeight: 20, fontFamily: 'monospace'}, handler: {gap: 12, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border}, button: {minHeight: 52, padding: 14, borderRadius: 14, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}, label: {color: colors.text, fontSize: 15}, disabled: {opacity: 0.5}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({group: {gap: 14}, heading: { fontFamily: fonts.display,fontSize: 28, color: colors.text}, title: { fontFamily: fonts.strong,fontSize: 17, color: colors.text}, detail: { fontFamily: fonts.body,color: colors.muted, fontSize: 15, lineHeight: 22}, mono: { fontFamily: fonts.mono,color: colors.text, fontSize: 13, lineHeight: 20, }, handler: {gap: 12, padding: 16, borderRadius: 0, borderWidth: 1, borderColor: colors.border}, button: {minHeight: 52, padding: 14, borderRadius: 0, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border}, label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,color: colors.text, fontSize: 12}, disabled: {opacity: 0.5}});

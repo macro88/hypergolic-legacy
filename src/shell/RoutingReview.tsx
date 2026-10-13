@@ -1,10 +1,12 @@
+import { TrustedBand } from './TrustedBand';
 import { useEffect, useState, useSyncExternalStore } from 'react';
-import { AppState, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { AppState, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CatalogHandler } from '../routing/routing-catalog';
 import type { RoutingReviewItem, RoutingReviewService, RoutingReviewRequest } from '../routing/routing-review';
 import { formatNpub } from '../security/identity-crypto';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 const subscribe = () => () => {}, empty = () => null;
 export function RoutingReview({service, blocked = false}: {service: RoutingReviewService | null; blocked?: boolean}) {
   const item = useSyncExternalStore(service?.subscribe ?? subscribe, service?.getSnapshot ?? empty);
@@ -19,6 +21,7 @@ export function RoutingReview({service, blocked = false}: {service: RoutingRevie
 }
 type IntentReviewRequest = Extract<RoutingReviewRequest, {kind: 'intent'}>;
 function NappletIdentity({appId, publisher, fixture}: {appId: string; publisher: string; fixture: string}) {
+  const { styles } = useShellStyles(createStyles);
   return <View style={styles.group}><Text selectable style={styles.text}>{appId}</Text><Text selectable style={styles.mono}>{formatNpub(publisher)}</Text>{fixture !== 'published' && <Text style={styles.detail}>Unsigned embedded test napplet</Text>}</View>;
 }
 function reviewTitle(request: RoutingReviewRequest): string {
@@ -30,6 +33,7 @@ function reviewTitle(request: RoutingReviewRequest): string {
   }
 }
 function IntentReviewDetails({request, selected, onSelect, remember, onRemember}: {request: IntentReviewRequest; selected: CatalogHandler | null; onSelect(value: CatalogHandler): void; remember: boolean; onRemember(): void}) {
+  const { styles } = useShellStyles(createStyles);
   const handlers = request.selected ? [request.selected] : request.candidates;
   const payload = Object.prototype.hasOwnProperty.call(request.request, 'payload') ? JSON.stringify(request.request.payload, null, 2) : 'No payload supplied';
   return <>
@@ -46,12 +50,15 @@ function IntentReviewDetails({request, selected, onSelect, remember, onRemember}
   </>;
 }
 function TopicReviewDetails({request}: {request: Extract<RoutingReviewRequest, {kind: 'topic'}>}) {
+  const { styles } = useShellStyles(createStyles);
   return <><Text style={styles.label}>Exact topic</Text><Text selectable style={styles.mono}>{request.topic}</Text><Text style={styles.text}>Allow messages on this topic for this loaded session. Messages arrive only while Hypergolic is in the foreground. There is no background backlog.</Text></>;
 }
 function ChannelReviewDetails({request}: {request: Extract<RoutingReviewRequest, {kind: 'channel'}>}) {
+  const { styles } = useShellStyles(createStyles);
   return <><Text style={styles.label}>Channel peer</Text><NappletIdentity {...request.peer}/><Text style={styles.text}>These two loaded views can exchange messages until the channel closes. Backgrounding, closing a view or changing identity closes the channel. Every new channel needs approval.</Text></>;
 }
 function PermissionReviewDetails({request}: {request: Extract<RoutingReviewRequest, {kind: 'permissions'}>}) {
+  const { styles } = useShellStyles(createStyles);
   return <><Text style={styles.label}>Handler</Text><NappletIdentity appId={request.consent.appId} publisher={request.consent.publisher} fixture="published"/><Text style={styles.label}>Required capabilities</Text><Text selectable style={styles.text}>{request.consent.domains.join(', ')}</Text><Text style={styles.detail}>These capabilities are remembered for this identity, publisher and app. Uploads, intent dispatch and new communication permissions still need their own approval.</Text></>;
 }
 function ReviewDetails({request, selected, onSelect, remember, onRemember}: {request: RoutingReviewRequest; selected: CatalogHandler | null; onSelect(value: CatalogHandler): void; remember: boolean; onRemember(): void}) {
@@ -64,6 +71,7 @@ function ReviewDetails({request, selected, onSelect, remember, onRemember}: {req
 }
 const reviewActions = {intent: 'Approve dispatch', channel: 'Open channel once', permissions: 'Allow capabilities', topic: 'Allow this topic'} as const;
 function RoutingReviewSheet({service, item}: {service: RoutingReviewService; item: RoutingReviewItem}) {
+  const { styles } = useShellStyles(createStyles);
   const request = item.request, insets = useSafeAreaInsets();
   const [selected, setSelected] = useState<CatalogHandler | null>(request.kind === 'intent' ? request.selected : null);
   const [remember, setRemember] = useState(false);
@@ -72,6 +80,7 @@ function RoutingReviewSheet({service, item}: {service: RoutingReviewService; ite
   const disabled = request.kind === 'intent' && selected === null;
   return <Modal visible transparent animationType="none" onRequestClose={cancel}>
     <View style={styles.backdrop}><View accessibilityViewIsModal testID="routing-review" style={[styles.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
+      <TrustedBand />
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>{reviewTitle(request)}</Text>
         <Text style={styles.label}>Requesting napplet</Text><NappletIdentity {...request.origin}/>
@@ -82,4 +91,4 @@ function RoutingReviewSheet({service, item}: {service: RoutingReviewService; ite
     </View></View>
   </Modal>;
 }
-const styles = StyleSheet.create({backdrop: {flex: 1, backgroundColor: '#000000b3', justifyContent: 'flex-end'}, sheet: {maxHeight: '90%', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border, paddingTop: 16}, content: {gap: 12, padding: 24}, group: {gap: 6}, title: {fontSize: 24, fontWeight: '600', color: colors.text}, label: {fontSize: 14, color: colors.muted}, text: {fontSize: 16, lineHeight: 24, color: colors.text}, mono: {fontSize: 13, lineHeight: 20, color: colors.text}, detail: {fontSize: 14, lineHeight: 21, color: colors.muted}, choice: {padding: 16, gap: 6, borderWidth: 1, borderColor: colors.border}, chosen: {borderColor: colors.accent}, actions: {paddingHorizontal: 24, gap: 8}, button: {minHeight: 48, padding: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center'}, action: {fontSize: 16, color: colors.accent}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({backdrop: {flex: 1, backgroundColor: colors.shade, justifyContent: 'flex-end'}, sheet: {maxHeight: '90%', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border, paddingTop: 0}, content: {gap: 12, padding: 24}, group: {gap: 6}, title: { fontFamily: fonts.display,fontSize: 28, color: colors.text}, label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,fontSize: 12, color: colors.muted}, text: { fontFamily: fonts.body,fontSize: 16, lineHeight: 24, color: colors.text}, mono: { fontFamily: fonts.mono,fontSize: 13, lineHeight: 20, color: colors.text}, detail: { fontFamily: fonts.body,fontSize: 14, lineHeight: 21, color: colors.muted}, choice: {padding: 16, gap: 6, borderWidth: 1, borderColor: colors.border}, chosen: {borderColor: colors.accent}, actions: {paddingHorizontal: 24, gap: 8}, button: {minHeight: 48, padding: 12, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center'}, action: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,fontSize: 14, color: colors.accent}});

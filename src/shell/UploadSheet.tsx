@@ -1,10 +1,12 @@
+import { TrustedBand } from './TrustedBand';
 import { useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { UploadItem } from '../uploads/upload-service.ts';
 import { formatNpub } from '../security/identity-crypto.ts';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 interface Props {item: UploadItem | null; title: string; onApprove(id: string): void; onReject(id: string): void}
 function preview(item: UploadItem): string | null {
   const bytes = item.copyPreview(); if (!bytes || item.review.mimeType !== 'image/png') return null;
@@ -32,12 +34,14 @@ function inspection(item: UploadItem): string | null {
   } finally {bytes.fill(0);}
 }
 function Review({item, title, onApprove, onReject}: Omit<Props, 'item'> & {item: UploadItem}) {
+  const { styles } = useShellStyles(createStyles);
   const insets = useSafeAreaInsets(), [decoded, setDecoded] = useState(false);
   const uri = useMemo(() => item.previewReady ? preview(item) : null, [item]);
   const header = useMemo(() => item.previewReady && item.review.metadataPolicy === 'attachment-unchanged' ? inspection(item) : null, [item]);
   const canApprove = item.previewReady && (item.review.metadataPolicy === 'attachment-unchanged' ? header !== null : decoded);
   return <Modal transparent animationType="none" visible onRequestClose={() => onReject(item.id)}>
     <View style={styles.backdrop}><View testID="upload-sheet" accessibilityViewIsModal style={[styles.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
+      <TrustedBand />
       <ScrollView contentContainerStyle={styles.content}>
         <Text accessibilityRole="header" style={styles.title}>Approve file upload</Text>
         {uri ? <Image testID="upload-preview" accessibilityLabel="Exact photo selected for upload" source={{uri}} contentFit="contain" cachePolicy="none" recyclingKey={item.id} style={styles.preview}
@@ -64,9 +68,9 @@ function Review({item, title, onApprove, onReject}: Omit<Props, 'item'> & {item:
   </Modal>;
 }
 export function UploadSheet(props: Props) {return props.item ? <Review key={props.item.id} {...props} item={props.item} /> : null;}
-const styles = StyleSheet.create({backdrop: {flex: 1, backgroundColor: '#000000b3', justifyContent: 'flex-end'},
-  sheet: {maxHeight: '92%', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border, borderTopLeftRadius: 28, borderTopRightRadius: 28},
-  content: {padding: 24, gap: 10}, title: {color: colors.text, fontSize: 26, fontWeight: '600'}, preview: {width: '100%', height: 220, backgroundColor: colors.background},
-  label: {color: colors.muted, fontSize: 14, fontWeight: '700', marginTop: 8}, detail: {color: colors.text, fontSize: 15, lineHeight: 22}, mono: {color: colors.text, fontFamily: 'monospace', fontSize: 12, lineHeight: 19},
-  actions: {padding: 24, gap: 10, borderTopWidth: 1, borderColor: colors.border}, approve: {minHeight: 52, borderRadius: 14, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center'}, approveText: {color: colors.background, fontSize: 17, fontWeight: '700'},
-  reject: {minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 14}, disabled: {opacity: 0.5}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({backdrop: {flex: 1, backgroundColor: colors.shade, justifyContent: 'flex-end'},
+  sheet: {maxHeight: '92%', backgroundColor: colors.surface, borderTopWidth: 1, borderColor: colors.border, borderTopLeftRadius: 0, borderTopRightRadius: 0},
+  content: {padding: 24, gap: 10}, title: { fontFamily: fonts.display,color: colors.text, fontSize: 28, }, preview: {width: '100%', height: 220, backgroundColor: colors.background},
+  label: { textTransform: 'uppercase', letterSpacing: 1.2, fontFamily: fonts.mono,color: colors.muted, fontSize: 12, marginTop: 8}, detail: { fontFamily: fonts.body,color: colors.text, fontSize: 15, lineHeight: 22}, mono: { fontFamily: fonts.mono,color: colors.text, fontSize: 12, lineHeight: 19},
+  actions: {padding: 24, gap: 10, borderTopWidth: 1, borderColor: colors.border}, approve: {minHeight: 52, borderRadius: 0, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center'}, approveText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong,color: colors.onPrimary, fontSize: 14, },
+  reject: {minHeight: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 0}, disabled: {opacity: 0.5}});

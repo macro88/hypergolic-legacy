@@ -13,6 +13,7 @@ final class WorkspaceTests: XCTestCase {
   private var nonce = ""
   private let placeholder = "Something you will recognise…"
   private let expected: [String: Set<String>] = [
+    "ui-style": ["empty-shelf", "address-validation", "grouped-identity-settings", "workspace-navigation", "close-protection", "trusted-review"],
     "identity-delete-unavailable": ["delete-exact-target", "unavailable-has-no-confirm", "cancel-keeps-workspace"],
     "state-close": ["state-close-warning", "state-reopen-shared", "state-reopen-instance"],
     "state-storage": ["state-identity", "state-storage-operations", "state-restart", "state-instance-scope", "state-owner-isolation", "state-identity-isolation"],
@@ -60,6 +61,73 @@ final class WorkspaceTests: XCTestCase {
       "allChecksPassed": allPassed, "checks": checks, "observations": observations, "gestures": gestures,
       "proofScope": "Public native XCTest gestures and accessibility. Temporary fixture values/scroll positions only; native generation identity and transition frame pacing are not directly observed."
     ], "workspace-report")
+  }
+
+  func testUIStyle() throws {
+    guard ProcessInfo.processInfo.environment["HG_TARGET_BUNDLE_ID"] == "org.nostrocket.hypergolic.uistyle" else { throw Failure.invalid("Requires isolated UI style fixture") }
+    func tap(_ identifier: String) throws {
+      let button = app.buttons.matching(identifier: identifier).firstMatch
+      for _ in 0..<6 where !button.isHittable { app.swipeUp() }
+      try until(identifier + " reachable") { button.exists && button.isHittable }
+      button.tap()
+    }
+    try tap("ui-fixture-empty")
+    let empty = app.buttons.matching(identifier: "empty-open-napplet").firstMatch
+    for _ in 0..<6 where !empty.isHittable { app.swipeUp() }
+    try until("Empty shelf has its opening action") { empty.exists && empty.isHittable }
+    record("empty-shelf", true, ["actionFrame": NSCoder.string(for: empty.frame)])
+    capture("glass-empty")
+    try tap("empty-open-napplet")
+    let address = app.textFields.matching(identifier: "settings-napplet-address").firstMatch
+    try until("Address input visible") { address.exists && address.isHittable }
+    capture("glass-settings")
+    address.tap()
+    address.typeText("not-a-napplet\n")
+    let error = app.staticTexts.matching(identifier: "settings-napplet-error").firstMatch
+    try until("Invalid address reports correction") { error.exists && error.label.contains("naddr1") }
+    record("address-validation", !app.otherElements.matching(identifier: "settings-napplet-review").firstMatch.exists, ["error": error.label])
+    capture("glass-address-error")
+    try tap("settings-section-identity")
+    let importButton = app.buttons.matching(identifier: "settings-import-identity").firstMatch
+    for _ in 0..<4 where !importButton.isHittable { app.swipeUp() }
+    try tap("settings-import-identity")
+    let secret = app.secureTextFields.matching(identifier: "identity-import-input").firstMatch
+    try until("Private key field remains masked") { secret.exists && secret.isHittable }
+    record("grouped-identity-settings", true, ["maskedInput": secret.exists])
+    capture("glass-import")
+    try tap("identity-import-cancel")
+    try tap("settings-done")
+    try tap("ui-fixture-workspace")
+    let overview = app.buttons.matching(identifier: "shell-overview").firstMatch
+    try until("Visible workspace navigation") { overview.exists && overview.isHittable }
+    let guestReady = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Ready ·")).firstMatch
+    try until("Actual napplet rendered") { guestReady.exists }
+    let increment = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Add one")).firstMatch
+    try until("Guest counter accepts input") { increment.exists && increment.isHittable }
+    increment.tap()
+    capture("glass-active")
+    try tap("shell-overview")
+    let card = app.buttons.matching(identifier: "overview-card-ux-lab-1").firstMatch
+    try until("Live overview has first card") { card.exists && card.isHittable }
+    capture("glass-overview")
+    card.tap()
+    try until("Overview returns to focused napplet") { overview.exists && overview.isHittable }
+    record("workspace-navigation", currentTitle() == "UX Lab 1", ["title": currentTitle()])
+    try tap("shell-close")
+    let keep = app.buttons.matching(identifier: "close-keep-open").firstMatch
+    try until("Unknown dirty state still asks") { keep.exists && keep.isHittable }
+    capture("glass-close")
+    keep.tap()
+    record("close-protection", app.buttons.matching(identifier: "shell-close").firstMatch.exists, [:])
+    try tap("ui-fixture-review")
+    let content = app.staticTexts.matching(identifier: "approval-sheet-content").firstMatch
+    try until("Exact request body remains visible") { content.exists && content.label == "A note from my own corner of the network." }
+    let approve = app.buttons.matching(identifier: "approval-sheet-approve").firstMatch
+    let reject = app.buttons.matching(identifier: "approval-sheet-reject").firstMatch
+    record("trusted-review", approve.isHittable && reject.isHittable, ["content": content.label, "scope": "Presentation only; no signer or network effect"])
+    capture("glass-review")
+    try tap("approval-sheet-reject")
+    complete = true
   }
 
   func testIdentityDeleteUnavailable() throws {

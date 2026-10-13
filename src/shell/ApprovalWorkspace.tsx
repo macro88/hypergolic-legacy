@@ -4,13 +4,14 @@ import type { UploadService } from '../uploads/upload-service.ts';
 import { UploadProvider } from './UploadContext';
 import { UploadWorkspace, useUploadPresentation } from './UploadWorkspace';
 import { useCallback, useEffect, useSyncExternalStore } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type { ApprovalService, ApprovalSnapshot } from '../security/approval-service.ts';
 import { ApprovalSheet } from './ApprovalSheet';
 import { updateApprovalAppState } from './approval-lifecycle.ts';
 import { ApprovalProvider } from './ApprovalContext';
 import { Shell, type ShellProps } from './Shell';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 type Props = Omit<ShellProps, 'pendingApprovals' | 'onBeforeClose'> & { service: ApprovalService; uploads?: UploadService; epoch: number };
 
@@ -53,21 +54,23 @@ export function ApprovalWorkspace({ service, uploads, epoch, workspace, footer, 
 
 /** Normal footer flow keeps trusted Resume outside every guest input surface. */
 function ApprovalResume({snapshot,service}:{snapshot:ApprovalSnapshot;service:ApprovalService}) {
+  const { styles } = useShellStyles(createStyles);
   if (!snapshot.reviewPaused || snapshot.pending === 0 || snapshot.focusedSessionId === null) return null;
   return <View style={styles.resumeArea}><Pressable testID="approval-resume" accessibilityRole="button" onPress={() => service.resume()} style={styles.resume}><Text style={styles.resumeText}>Resume approvals</Text></Pressable></View>;
 }
 
 function ApprovalResults({snapshot,presentation,shown}:{snapshot:ApprovalSnapshot;presentation:ReturnType<typeof useApprovalPresentation>;shown:boolean}){
+  const { styles } = useShellStyles(createStyles);
  return <>
     {presentation.outcome && !presentation.receipt && !shown && snapshot.focusedSessionId !== null && <Pressable testID="approval-outcome" accessibilityRole="button" accessibilityLabel={`${presentation.outcome} Dismiss status`} onPress={presentation.dismissOutcome} style={styles.outcome}><Text accessibilityLiveRegion="polite" style={styles.outcomeText}>{presentation.outcome}</Text></Pressable>}
     {presentation.receipt&&!shown&&<PublicationReceiptSheet receipt={presentation.receipt} onDismiss={presentation.dismissReceipt}/>}
  </>;
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   resumeArea: { alignItems: 'center', paddingHorizontal: 12, paddingTop: 8, paddingBottom: 12 },
-  resume: { minHeight: 52, borderRadius: 26, justifyContent: 'center', paddingHorizontal: 24, backgroundColor: colors.accent },
-  resumeText: { color: colors.background, fontSize: 16, fontWeight: '700' },
+  resume: { minHeight: 52, borderRadius: 0, justifyContent: 'center', paddingHorizontal: 24, backgroundColor: colors.primary },
+  resumeText: { fontFamily: fonts.strong, color: colors.onPrimary, fontSize: 16, },
   outcome: { position: 'absolute', left: 24, right: 24, bottom: 96, alignItems: 'center' },
-  outcomeText: { color: colors.text, backgroundColor: colors.raised, borderColor: colors.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15 },
+  outcomeText: { fontFamily: fonts.body, color: colors.text, backgroundColor: colors.raised, borderColor: colors.border, borderWidth: 1, borderRadius: 0, paddingHorizontal: 16, paddingVertical: 12, fontSize: 15 },
 });

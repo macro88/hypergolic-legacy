@@ -1,9 +1,10 @@
 import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { FlatList, Modal, Pressable, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { FlatList, Modal, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import type { UploadService, UploadPresentation } from '../uploads/upload-service.ts';
 import type { UploadRecoveryService, UploadRecoveryRecord } from '../uploads/upload-recovery.ts';
 import type { Workspace } from './workspace.ts';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 function recoveryText(row: UploadRecoveryRecord, attempted: boolean): string {
   if (row.state === 'present') return 'A matching copy is present. This check does not prove which attempt stored it.';
@@ -13,6 +14,7 @@ function recoveryText(row: UploadRecoveryRecord, attempted: boolean): string {
 const RecoveryRow = memo(function RecoveryRow({row, checking, attempted, onCheck}: {
   row: UploadRecoveryRecord; checking: boolean; attempted: boolean; onCheck: (uploadId: string) => void;
 }) {
+  const { styles } = useShellStyles(createStyles);
   const check = useCallback(() => onCheck(row.uploadId), [onCheck, row.uploadId]);
   const accessibilityState = useMemo(() => ({disabled: checking}), [checking]);
   return <View testID="upload-recovery-record" style={styles.record}>
@@ -29,6 +31,7 @@ const RecoveryRow = memo(function RecoveryRow({row, checking, attempted, onCheck
 });
 const recoveryKey = (row: UploadRecoveryRecord): string => row.uploadId;
 function Recovery({service, blocked}: {service: UploadRecoveryService; blocked: boolean}) {
+  const { styles } = useShellStyles(createStyles);
   const snapshot = useSyncExternalStore(service.subscribe, service.getSnapshot);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -63,6 +66,7 @@ function outcomeText(item: UploadPresentation['outcomes'][number]): string {
 export function UploadProgress({service, snapshot, workspace, blocked, reviewing}: {
   service: UploadService | undefined; snapshot: UploadPresentation; workspace: Workspace | undefined; blocked: boolean; reviewing: boolean;
 }) {
+  const { styles } = useShellStyles(createStyles);
   const outcome = snapshot.outcomes.at(-1);
   return <View pointerEvents="box-none" style={styles.progress}>
     {snapshot.active.map(item => <View key={item.id} testID="upload-progress" style={styles.card}>
@@ -75,10 +79,10 @@ export function UploadProgress({service, snapshot, workspace, blocked, reviewing
     {service?.recovery && <Recovery service={service.recovery} blocked={blocked || reviewing} />}
   </View>;
 }
-const styles = StyleSheet.create({progress: {paddingHorizontal: 16, gap: 8}, card: {gap: 6},
-  text: {color: colors.text, backgroundColor: colors.raised, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 12, fontSize: 15},
-  cancel: {minHeight: 44, backgroundColor: colors.accent, borderRadius: 12, justifyContent: 'center', alignItems: 'center', padding: 12},
-  cancelText: {color: colors.background, fontSize: 16, fontWeight: '700'}, backdrop: {flex: 1, backgroundColor: '#000a', justifyContent: 'center', padding: 20},
-  sheet: {maxHeight: '85%', backgroundColor: colors.raised, borderRadius: 20, padding: 20, gap: 16}, heading: {color: colors.text, fontSize: 23, fontWeight: '600'},
-  detail: {color: colors.text, fontSize: 15, lineHeight: 21}, mono: {color: colors.text, fontFamily: 'monospace', fontSize: 12},
-  records: {gap: 16}, record: {gap: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 12}});
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({progress: {paddingHorizontal: 16, gap: 8}, card: {gap: 6},
+  text: { fontFamily: fonts.body,color: colors.text, backgroundColor: colors.raised, borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12, fontSize: 15},
+  cancel: {minHeight: 44, backgroundColor: colors.primary, borderRadius: 0, justifyContent: 'center', alignItems: 'center', padding: 12},
+  cancelText: { fontFamily: fonts.strong,color: colors.onPrimary, fontSize: 16, }, backdrop: {flex: 1, backgroundColor: '#000a', justifyContent: 'center', padding: 20},
+  sheet: {maxHeight: '85%', backgroundColor: colors.raised, borderRadius: 0, padding: 20, gap: 16}, heading: { fontFamily: fonts.display,color: colors.text, fontSize: 28, },
+  detail: { fontFamily: fonts.body,color: colors.text, fontSize: 15, lineHeight: 21}, mono: { fontFamily: fonts.mono,color: colors.text, fontSize: 12},
+  records: {gap: 16}, record: {gap: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 0, padding: 12}});

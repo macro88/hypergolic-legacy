@@ -2,25 +2,21 @@ import {Configuration} from './Configuration';
 import {Notifications} from './Notifications';
 import {RoutingReview} from './RoutingReview';
 import {IdentityListReview} from './IdentityListReview';
-import { createContext, useContext, useEffect, useSyncExternalStore } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
+import { OwnerContext } from './IdentityOwnerContext';
 import { AppState, StyleSheet, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { TrustedIdentityOwner } from '../security/trusted-identity-owner';
 import { IdentitySettings } from './IdentitySettings';
 import { WorkspaceEntry } from './WorkspaceEntry';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { RuntimeContext } from '../runtime/RuntimeContext';
 
 const noAvatar = () => null;
 // Fixture owners without an avatar store provide an inert subscription.
 const noAvatarSubscription = () => () => undefined;
-const OwnerContext = createContext<TrustedIdentityOwner | null>(null);
-export function useIdentityOwner(): TrustedIdentityOwner {
-  const owner = useContext(OwnerContext);
-  if (owner === null) throw new Error('Identity settings require the trusted owner');
-  return owner;
-}
 export function IdentityShell({ owner }: { owner: TrustedIdentityOwner }) {
+  const { styles } = useShellStyles(createStyles);
   const { transition, formatNpub } = owner;
   const state = useSyncExternalStore(transition.subscribe, transition.getSnapshot);
   const avatar = useSyncExternalStore(owner.profileAvatar?.subscribe ?? noAvatarSubscription, owner.profileAvatar?.getSnapshot ?? noAvatar);
@@ -48,8 +44,8 @@ export function IdentityShell({ owner }: { owner: TrustedIdentityOwner }) {
     <IdentityListReview service={owner.listAccess ?? null} blocked={state.phase !== 'ready'} />
   </RuntimeContext></OwnerContext>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   problem: { flex: 1, justifyContent: 'center', padding: 32, gap: 18, backgroundColor: colors.background },
-  heading: { color: colors.text, fontSize: 27, fontWeight: '600' },
-  detail: { color: colors.muted, fontSize: 16, lineHeight: 24 },
+  heading: { fontFamily: fonts.display, color: colors.text, fontSize: 28, },
+  detail: { fontFamily: fonts.body, color: colors.muted, fontSize: 16, lineHeight: 24 },
 });

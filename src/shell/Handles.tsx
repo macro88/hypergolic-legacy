@@ -3,7 +3,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { directionForHandle, handlePosition, handleRelease, absolutePointerDrag, type HandleSide } from './motion';
-import { colors, HANDLE_GUTTER } from './theme';
+import { useShellStyles, type ShellPalette, HANDLE_GUTTER } from './theme';
 
 interface Props {
   width: number;
@@ -19,6 +19,7 @@ interface Props {
 }
 
 function Handle({ side, width, top, index, count, position, disabled, canPrevious, canNext, onStart, onEnd }: Props & { side: HandleSide }) {
+  const { styles } = useShellStyles(createStyles);
   const multiTouch = useSharedValue(false);
   const panActive = useSharedValue(false);
   const origin = useSharedValue({ x: 0, y: 0 });
@@ -58,13 +59,14 @@ function Handle({ side, width, top, index, count, position, disabled, canPreviou
 }
 
 export function Handles(props: Props) {
+  const { styles } = useShellStyles(createStyles);
   return <View pointerEvents={props.disabled ? 'none' : 'box-none'} style={[StyleSheet.absoluteFill, styles.layer, props.disabled && styles.hidden]} accessibilityElementsHidden={props.disabled} importantForAccessibility={props.disabled ? 'no-hide-descendants' : 'auto'}><Handle {...props} side="left" /><Handle {...props} side="right" /></View>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette) => StyleSheet.create({
   layer: { zIndex: 20 }, hidden: { opacity: 0 },
   target: { position: 'absolute', width: 44, height: 88, justifyContent: 'center', alignItems: 'center' },
   left: { left: 0, alignItems: 'flex-start' }, right: { right: 0, alignItems: 'flex-end' },
-  pill: { width: HANDLE_GUTTER, height: 66, borderRadius: 12, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  line: { width: 3, height: 28, backgroundColor: colors.accent, borderRadius: 2 },
+  pill: { width: HANDLE_GUTTER, height: 66, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  line: { width: 3, height: 28, backgroundColor: colors.primary, borderRadius: 0 },
   end: { backgroundColor: colors.muted, height: 18 },
 });

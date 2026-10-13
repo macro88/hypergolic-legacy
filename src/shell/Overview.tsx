@@ -1,11 +1,12 @@
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef } from 'react';
-import { AccessibilityInfo, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { useAnimatedScrollHandler, useAnimatedStyle, type SharedValue } from 'react-native-reanimated';
 import { OverviewCard } from './OverviewCard';
 import type { OverviewGeometry, CardMeasurement, Size } from './motion';
 import type { NappletDescriptor } from './workspace';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 export interface OverviewHandle { focusCard: (id: string | null) => void; revealCard: (id: string | null) => void }
 interface Props {
@@ -35,6 +36,7 @@ const sessionKey = (session: NappletDescriptor): string => session.id;
 
 /** Only transparent controls virtualize; the live native views stay in WorkspaceStage. */
 export const Overview = forwardRef<OverviewHandle, Props>(function Overview({ sessions, geometry, size, visible, busy, focusedId, progress, scrollY, swipeId, swipeY, pending, onFocus, onClose, onOpen, onDragEnd, onMeasure }, ref) {
+  const { styles } = useShellStyles(createStyles);
   const scroll = useRef<FlatList<NappletDescriptor>>(null);
   const heading = useRef<Text>(null);
   const cardRefs = useRef(new Map<string, View>());
@@ -72,26 +74,29 @@ export const Overview = forwardRef<OverviewHandle, Props>(function Overview({ se
         onScroll={onScroll} scrollEventThrottle={16} bounces={false} overScrollMode="never" keyboardShouldPersistTaps="handled"
         columnWrapperStyle={styles.row} contentContainerStyle={{ minHeight: geometry.contentHeight, paddingHorizontal: 12, paddingBottom: 24 }}
         getItemLayout={(_data, row) => ({ index: row, length: stride, offset: headerHeight + row * stride })}
-        ListHeaderComponent={<View style={[styles.headingRow, { height: headerHeight }]}>
-          <Text ref={heading} accessibilityRole="header" style={styles.heading}>Loaded napplets</Text>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open napplet" testID="overview-open" onPress={onOpen} style={styles.open}><Text style={styles.openText}>Open</Text></Pressable>
-        </View>}
-        ListEmptyComponent={<View style={styles.empty}>
-          <Text style={styles.emptyTitle}>Nothing open</Text>
+        ListHeaderComponent={sessions.length > 0 ? <View style={[styles.headingRow, { height: headerHeight }]}>
+          <Text ref={heading} accessibilityRole="header" style={styles.heading}>Your napplets</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open napplet" testID="overview-open" onPress={onOpen} style={styles.open}><Text style={styles.openText}>+ Open</Text></Pressable>
+        </View> : null}
+        ListEmptyComponent={<View style={[styles.empty, { paddingTop: Math.min(size.height * 0.42, 260) }]}><Text style={styles.emptyLabel}>Your space</Text>
+          <Text accessibilityRole="header" style={styles.emptyTitle}>A place for{'\n'}your napplets.</Text>
+          <Text style={styles.emptyDetail}>Open a Nostr app with its address. Your identity stays with Hypergolic.</Text>
           <Pressable accessibilityRole="button" testID="empty-open-napplet" onPress={onOpen} style={styles.emptyButton}><Text style={styles.emptyButtonText}>Open napplet</Text></Pressable>
         </View>}
         renderItem={renderCard} />
     </GestureDetector>
   </Animated.View>;
 });
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   layer: { zIndex: 10 }, row: { gap: 16 },
   headingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  heading: { fontSize: 19, fontWeight: '600', color: colors.text, flexShrink: 1 },
+  heading: { fontFamily: fonts.strong, fontSize: 19, color: colors.text, flexShrink: 1 },
   open: { minWidth: 48, minHeight: 48, justifyContent: 'center', alignItems: 'center' },
-  openText: { color: colors.accent, fontSize: 15, fontWeight: '600' },
-  empty: { alignItems: 'center', padding: 24, paddingTop: 72, gap: 24 },
-  emptyTitle: { color: colors.muted, fontSize: 22, fontWeight: '500' },
-  emptyButton: { minHeight: 50, justifyContent: 'center', borderRadius: 26, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 24 },
-  emptyButtonText: { color: colors.text, fontSize: 16 },
+  openText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.accent, fontSize: 14, },
+  empty: { padding: 12, paddingBottom: 36, gap: 20 },
+  emptyTitle: { fontFamily: fonts.display, color: colors.text, fontSize: 46, lineHeight: 48 },
+  emptyLabel: { fontFamily: fonts.mono, fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', color: colors.accent },
+  emptyDetail: { fontFamily: fonts.body, fontSize: 17, lineHeight: 25, color: colors.muted, maxWidth: 340 },
+  emptyButton: { minHeight: 56, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.primary, paddingHorizontal: 20, paddingVertical: 14, marginTop: 12 },
+  emptyButtonText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.onPrimary, fontSize: 14 },
 });

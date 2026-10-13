@@ -2,7 +2,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type JSX } fr
 import { ActivityIndicator, AppState, Platform, Text, View, type AppStateStatus } from 'react-native';
 import type { IdentityActions } from '../security/identity-actions';
 import type { IdentitySession } from '../security/identity-transition';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 type ActionProps = Readonly<{ title: string; testID: string; onPress: () => void; subdued?: boolean }>;
 type BackupProps = Readonly<{
@@ -17,6 +17,7 @@ type BackupProps = Readonly<{
 
 /** A trusted-shell review. The native panel owns every secret value and reveal control. */
 export function IdentityBackup({ actions, session, npub, reviewing, onReview, onClose, Action }: BackupProps) {
+  const { styles, colors } = useShellStyles(createStyles);
   const [available, setAvailable] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
@@ -82,9 +83,9 @@ export function IdentityBackup({ actions, session, npub, reviewing, onReview, on
   </View>;
 }
 
-const styles = {
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => ({
   group: { gap: 20 },
-  title: { fontSize: 20, fontWeight: '600' as const, color: colors.text },
-  detail: { color: colors.muted, fontSize: 16, lineHeight: 24 },
-  npub: { color: colors.text, fontSize: 14, lineHeight: 22, fontFamily: 'monospace' },
-};
+  title: { fontSize: 28, fontFamily: fonts.display, color: colors.text },
+  detail: { color: colors.muted, fontFamily: fonts.body, fontSize: 16, lineHeight: 24 },
+  npub: { color: colors.text, fontSize: 13, lineHeight: 22, fontFamily: fonts.mono },
+});

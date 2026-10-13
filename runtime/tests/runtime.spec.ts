@@ -308,7 +308,7 @@ test('Kehto request IDs use secure random bytes when randomUUID is unavailable',
     return { theme, lengths };
   });
   expect(result.lengths).toEqual([16]);
-  expect(result.theme.colors.primary).toBe('#e8805d');
+  expect(['#F5A04B', '#983C08']).toContain(result.theme.colors.primary);
   const requests = await page.evaluate(() => (window as any).__received.filter((value: any) => value?.type === 'theme.get'));
   expect(requests.at(-1).id).toMatch(/^napplet-[0-9a-f]{32}$/);
 });
@@ -326,4 +326,23 @@ test('Kehto refuses to emit a request when secure randomness is unavailable', as
   });
   expect(result).toBe('Secure randomness unavailable');
   expect(await count()).toBe(before);
+});
+
+
+test('host theme follows system appearance and pushes the complete current palette', async ({ page }) => {
+  await page.emulateMedia({ colorScheme: 'dark' });
+  const frame = await open(page, 'shell-appearance');
+  const read = () => frame.evaluate(() => (window as any).napplet.theme.get());
+  expect((await read()).colors).toEqual({ background: '#080F17', text: '#EEF3F7', primary: '#F5A04B' });
+  await frame.evaluate(() => {
+    (window as any).__themeChanges = [];
+    (window as any).napplet.theme.onChanged((theme: unknown) => (window as any).__themeChanges.push(theme));
+  });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await expect.poll(() => frame.evaluate(() => (window as any).__themeChanges.at(-1)?.colors)).toEqual({
+    background: '#EEE6DA', text: '#2B211B', primary: '#983C08',
+  });
+  expect((await read()).colors).toEqual({ background: '#EEE6DA', text: '#2B211B', primary: '#983C08' });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await expect.poll(() => frame.evaluate(() => (window as any).__themeChanges.at(-1)?.colors.background)).toBe('#080F17');
 });

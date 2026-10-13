@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Keyboard, StyleSheet, Text, View } from 'react-native';
+import { ShellPressable as Pressable } from './ShellPressable';
+import { ShellTextInput as TextInput } from './ShellTextInput';
 import { RelaySettingsError, type RelayRole, type RelaySettingsService, type RelaySettingsSnapshot } from '../network/relay-settings.ts';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 function message(error: unknown): string {
   if (error instanceof RelaySettingsError) {
@@ -12,6 +14,7 @@ function message(error: unknown): string {
   return 'The app could not confirm this change. Reopen settings to check the saved relay list.';
 }
 export function RelaySettings({ service }: { service: RelaySettingsService | null }) {
+  const { styles, colors } = useShellStyles(createStyles);
   const [snapshot, setSnapshot] = useState<RelaySettingsSnapshot>(() => service?.getSettings() ?? { networkRelays: [], lookupRelays: [] });
   const [role, setRole] = useState<RelayRole>('network');
   const [input, setInput] = useState('');
@@ -62,15 +65,15 @@ export function RelaySettings({ service }: { service: RelaySettingsService | nul
     </>}
   </View>;
 }
-const styles = StyleSheet.create({
-  section: { gap: 14 }, heading: { color: colors.text, fontSize: 20, fontWeight: '600' },
-  detail: { color: colors.muted, fontSize: 15, lineHeight: 22 },
-  switches: { flexDirection: 'row', gap: 10 }, role: { flex: 1, alignItems: 'center', padding: 13, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
-  activeRole: { backgroundColor: colors.surface }, roleText: { color: colors.text, fontSize: 15, fontWeight: '600' },
-  relayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: 12, backgroundColor: colors.surface },
-  url: { flex: 1, color: colors.text, fontSize: 13, fontFamily: 'monospace' },
-  remove: { padding: 9 }, removeText: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  input: { color: colors.text, borderWidth: 1, borderColor: colors.border, borderRadius: 14, minHeight: 54, padding: 14, fontSize: 15 },
-  button: { padding: 15, minHeight: 52, borderRadius: 14, alignItems: 'center' }, subdued: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  buttonText: { color: colors.text, fontSize: 15, fontWeight: '600' }, error: { color: colors.accent, fontSize: 14, lineHeight: 21 },
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
+  section: { gap: 14 }, heading: { fontFamily: fonts.display, color: colors.text, fontSize: 28, },
+  detail: { fontFamily: fonts.body, color: colors.muted, fontSize: 15, lineHeight: 22 },
+  switches: { flexDirection: 'row', gap: 10 }, role: { flex: 1, alignItems: 'center', padding: 13, borderRadius: 0, borderWidth: 1, borderColor: colors.border },
+  activeRole: { backgroundColor: colors.surface }, roleText: { fontFamily: fonts.strong, color: colors.text, fontSize: 15, },
+  relayRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, borderRadius: 0, backgroundColor: colors.surface },
+  url: { fontFamily: fonts.mono, flex: 1, color: colors.text, fontSize: 13, },
+  remove: { padding: 9 }, removeText: { fontFamily: fonts.strong, color: colors.accent, fontSize: 14, },
+  input: { fontFamily: fonts.body, color: colors.text, borderWidth: 1, borderColor: colors.border, borderRadius: 0, minHeight: 54, padding: 14, fontSize: 15 },
+  button: { padding: 15, minHeight: 52, borderRadius: 0, alignItems: 'center' }, subdued: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  buttonText: { textTransform: 'uppercase', letterSpacing: 1.8, fontFamily: fonts.strong, color: colors.text, fontSize: 14, }, error: { fontFamily: fonts.body, color: colors.accent, fontSize: 14, lineHeight: 21 },
 });

@@ -1403,18 +1403,40 @@
           "bytes": 1485
         }
       ]
+    },
+    {
+      "name": "expo-font",
+      "version": "57.0.3",
+      "license": "MIT",
+      "repository": {
+        "type": "git",
+        "url": "https://github.com/expo/expo.git",
+        "directory": "packages/expo-font"
+      },
+      "packageJsonSha256": "fa80fa9fb3f338e70709b5f18aee3e67fefe444d5346c405b63fca0a5524984f",
+      "scope": "main iOS JavaScript source-map contributor",
+      "notices": [
+        {
+          "file": "js-expo-font-57.0.3-LICENSE.txt",
+          "sourcePath": "LICENSE",
+          "sourceCoordinate": "expo-font@57.0.3",
+          "sourceUrl": "https://www.npmjs.com/package/expo-font/v/57.0.3",
+          "sha256": "fb3ca4a837f5779e83cef89b78253a8949cfb9429c340309f62d0465ec6610b4",
+          "bytes": 1106
+        }
+      ]
     }
   ],
   "mainJavaScriptProfile": {
     "platform": "ios",
-    "reviewedNativeRawBundleSha256": "451235b44bd2c55f05f3935e88270a2b5937e61812e63f9ef5431b8671ffa42f",
-    "sourceMapSha256": "f4f98c8cdb632c19769b38b0f79e607a0a35a86b02a0027aed1864cd96fcf340",
-    "packageIdentityCount": 60,
-    "suppliedOriginalFileCount": 56,
+    "reviewedMetroBundleSha256": "638bac3703d3295c7fcc582a3b375d0846aa968a37e9bcd179dfacdbd38888e1",
+    "sourceMapSha256": "2d7fc018d6e6871b60bbed012d69eb8bbbe68b847ca71817bc4950f1558b6c92",
+    "packageIdentityCount": 61,
+    "suppliedOriginalFileCount": 57,
     "sharedOriginalPackageCount": 4,
     "dependencyInputs": {
-      "package.json": "970c573518bb3adb7b7efa2ee1d0861fac50ddff4c8e93fbf0120bc079754a4c",
-      "pnpm-lock.yaml": "37615c4bd65ba6f79cc5ae1f0ba92a3d4eb62127d139a0acdcd7ae87ffaede0f",
+      "package.json": "3ab28b6fcfd52e2e2a4b8adc5f2be7978f704d0e9e60fc42090fe6b31fe4d4cc",
+      "pnpm-lock.yaml": "f5d391a448b1be6e72c520932a48c3455b594324f8d894d81a792bf6991381a5",
       "node_modules/.pnpm/@expo+cli@57.0.22_@expo+dom-webview@57.0.1_expo-constants@57.0.17_expo@57.0.20_react-na_2f9321d7266b7ae9ed40aa5174b92870/node_modules/@expo/cli/package.json": "64ea2cea80acd1ef29e5408d53dc0d2664d28d9432e5cdefc8070d5a45b061de",
       "node_modules/.pnpm/@react-native+js-polyfills@0.86.3/node_modules/@react-native/js-polyfills/package.json": "86ff9ce670176a1f603e2b119f36893a7d824455f02ad639030ea05f8c6aaf33",
       "node_modules/.pnpm/expo@57.0.20_@babel+core@7.29.7_@expo+dom-webview@57.0.1_react-native-worklets@0.10.1_@_426e84b6b886bdaab62db11deb1806b6/node_modules/expo/package.json": "d97bc36cd82ac49740844e4f8d250f56df724e3cc6f9d415fb53664d0796f985",
@@ -1448,9 +1470,9 @@
       "node_modules/.pnpm/hoist-non-react-statics@3.3.2/node_modules/hoist-non-react-statics/package.json": "9ec927bd187e21a4b3a62e053101963ef8673fc4502282a7755f26a9df8db32e",
       "node_modules/.pnpm/react-is@16.13.1/node_modules/react-is/package.json": "06784c4340af9853928c519791684487b83076b3c84e8de6ba5f240e33700b71",
       "node_modules/.pnpm/react-native-safe-area-context@5.7.0_react-native@0.86.3_@babel+core@7.29.7_@react-nati_0422d4bfa5f0e6b300a3216f27be501c/node_modules/react-native-safe-area-context/package.json": "752ca40cc831855a26fb9eda18ff6bad54986835d9aa42bba1129d53857f6131",
+      "node_modules/.pnpm/expo-font@57.0.3_expo@57.0.20_react-native@0.86.3_@babel+core@7.29.7_@react-native+metr_97dd7f643027425e8fa4abece1bcb140/node_modules/expo-font/package.json": "fa80fa9fb3f338e70709b5f18aee3e67fefe444d5346c405b63fca0a5524984f",
       "node_modules/.pnpm/expo-image@57.0.4_expo@57.0.20_react-native@0.86.3_@babel+core@7.29.7_@react-native+met_e34e73534e039f3426f863cafa440cc0/node_modules/expo-image/package.json": "5d4b2a926dfe8955dd951bfb0b6e3cde453a0446f1610763a4081c531f0b2d06",
       "node_modules/.pnpm/expo-crypto@57.0.2_expo@57.0.20/node_modules/expo-crypto/package.json": "1f3b67e567033f3cb1451169437197df34185088fedc5e6520cd1beffd104d23",
-      "node_modules/expo/package.json": "d97bc36cd82ac49740844e4f8d250f56df724e3cc6f9d415fb53664d0796f985",
       "node_modules/.pnpm/nostr-tools@2.24.0_typescript@6.0.3/node_modules/nostr-tools/package.json": "7817e738fed149c64692941611c401f49d98aead0053978d14f3fd076ba5a227",
       "node_modules/.pnpm/@noble+curves@2.0.1/node_modules/@noble/curves/package.json": "588b510f1b8804bdf820acbd14065126286d92575c45811acef08fe480899469",
       "node_modules/.pnpm/@noble+hashes@2.0.1/node_modules/@noble/hashes/package.json": "ceb30ba96a14786c419db53f2b8d3d59ece7ac5221c198ac03def462cf96ef23",

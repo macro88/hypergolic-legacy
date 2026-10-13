@@ -7,10 +7,11 @@ import { Shell, type SettingsActions } from './Shell';
 import { ApprovalWorkspace } from './ApprovalWorkspace';
 import type { UploadService } from '../uploads/upload-service';
 import type { ApprovalService } from '../security/approval-service';
-import { colors } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 interface Props { identity: ShellIdentity; controller: WorkspaceController; blocked?: boolean; settingsComponent?: ComponentType<SettingsActions>; approvals?: ApprovalService; uploads?: UploadService; epoch: number; footer?: ReactNode }
 export function WorkspaceEntry({ identity, controller, blocked, settingsComponent, approvals, uploads, epoch, footer }: Props) {
+  const { styles } = useShellStyles(createStyles);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
   return <View style={styles.screen} collapsable={false} testID={state.saving ? 'workspace-saving' : 'workspace-saved'}>
     {approvals ? <ApprovalWorkspace service={approvals} uploads={uploads} epoch={epoch} identity={identity} footer={footer} blocked={blocked} settingsComponent={settingsComponent} workspace={state.workspace} onWorkspaceChange={controller.change} />
@@ -23,9 +24,9 @@ export function WorkspaceEntry({ identity, controller, blocked, settingsComponen
     </Modal>
   </View>;
 }
-const styles = StyleSheet.create({
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   problem: { flex: 1, justifyContent: 'center', padding: 32, gap: 18, backgroundColor: colors.background },
-  heading: { color: colors.text, fontSize: 27, fontWeight: '600' },
-  detail: { color: colors.muted, fontSize: 16, lineHeight: 24 },
+  heading: { fontFamily: fonts.display, color: colors.text, fontSize: 28, },
+  detail: { fontFamily: fonts.body, color: colors.muted, fontSize: 16, lineHeight: 24 },
 });

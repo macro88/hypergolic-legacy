@@ -19,7 +19,8 @@ import {
   createShellBridge, injectNappletNamespacePrelude, originRegistry,
   resolveShellEnvironment, type ShellAdapter,
 } from '@kehto/shell';
-import { createThemeService } from '@kehto/services';
+import type { ThemeService } from '@kehto/services';
+import { createShellTheme } from './shell-theme';
 import type { HostOperationContext, NappletMessage, ServiceRuntimeContext } from '@kehto/runtime';
 import { identityFailure, identityResult, parseCapabilityRequest } from '../../src/runtime/capability-protocol';
 import { createNativeClient, type NativeHost } from './native-client';
@@ -81,11 +82,8 @@ async function digest(value: string): Promise<string> {
 }
 
 function makeHooks(native: ReturnType<typeof createNativeClient>, captureRecipient: () => () => boolean,
-  artifact: RuntimeArtifact, registerRouting: (context: ServiceRuntimeContext | null) => void): ShellAdapter {
+  artifact: RuntimeArtifact, theme: ThemeService, registerRouting: (context: ServiceRuntimeContext | null) => void): ShellAdapter {
   const unavailable = (): never => { throw new Error('Capability unavailable'); };
-  const theme = createThemeService({ initialTheme: {
-    colors: { background: '#140f0b', text: '#f3efeb', primary: '#e8805d' },
-  } });
   const supported = new Set(artifact.domains);
   if (!supported.has('relay')) supported.delete('outbox');
   const routing = createRoutingAdapter(native, captureRecipient);
@@ -244,10 +242,11 @@ function mount(artifact: RuntimeArtifact): void {
         const domain = message.type.split('.')[0]!;
         if (artifact.domains.includes(domain)) routingContext?.sendToEligibleNapplet(sessionId, message);
       } });
+  const shellTheme = createShellTheme(theme => bridge.publishTheme(theme));
   const hooks = makeHooks(native, () => {
     const entry = bridge.runtime.sessionRegistry.getEntryByWindowId(sessionId);
     return () => !stopped && entry !== undefined && bridge.runtime.sessionRegistry.getEntryByWindowId(sessionId) === entry;
-  }, artifact, context => { routingContext = context; });
+  }, artifact, shellTheme.theme, context => { routingContext = context; });
   const bridge = createShellBridge(hooks);
   const identity = Object.freeze({ dTag: artifact.appId, aggregateHash: artifact.aggregateHash });
   const resolved = resolveShellEnvironment(hooks, identity);
@@ -295,6 +294,7 @@ function mount(artifact: RuntimeArtifact): void {
     if (frame.contentWindow !== source) fail('frame-navigation');
   };
   cleanup = (): void => {
+    shellTheme.close();
     closeCheck();
     media.close();
     window.clearTimeout(deadline);

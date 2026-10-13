@@ -14,7 +14,7 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/brand/app-icon-foreground.png",
         "monochromeImage": "./assets/brand/app-icon-monochrome.png",
-        "backgroundColor": "#140f0b"
+        "backgroundColor": "#080F17"
       },
       "blockedPermissions": [
         "android.permission.READ_EXTERNAL_STORAGE",
@@ -57,6 +57,7 @@
         }
       ],
       "./plugins/withNativeCodecPatches.cjs"
-    ]
+    ],
+    "userInterfaceStyle": "automatic"
   }
 }

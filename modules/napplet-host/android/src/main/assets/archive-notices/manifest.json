@@ -295,14 +295,14 @@
       "sha256": "1e343917ebf27ba96fe4dc52b1cad7fd32b738fbc6355bb6cd5b3b305d7212d0"
     },
     {
-      "component": "androidx.appcompat:appcompat-resources:1.7.0",
-      "filename": "appcompat-resources-1.7.0.aar",
-      "sha256": "55b6778602680f3c288ce350a2c2d3dd158d97dbffc63476275826655582c388"
+      "component": "androidx.appcompat:appcompat-resources:1.7.1",
+      "filename": "appcompat-resources-1.7.1.aar",
+      "sha256": "8e2db31224ca53b108c784da2b361959062716d416b210cfef3d5a3828306df0"
     },
     {
-      "component": "androidx.appcompat:appcompat:1.7.0",
-      "filename": "appcompat-1.7.0.aar",
-      "sha256": "67189713b30a3fab6971713cc5fab1cb7f022bcf648a257563715c91d719d584"
+      "component": "androidx.appcompat:appcompat:1.7.1",
+      "filename": "appcompat-1.7.1.aar",
+      "sha256": "2ad334a323b28046e89b738c77d184cb3dcca32a551ab048851b2fda23a3ba26"
     },
     {
       "component": "androidx.arch.core:core-common:2.2.0",
@@ -998,6 +998,11 @@
       "component": "org.jspecify:jspecify:1.0.0",
       "filename": "jspecify-1.0.0.jar",
       "sha256": "1fad6e6be7557781e4d33729d49ae1cdc8fdda6fe477bb0cc68ce351eafdfbab"
+    },
+    {
+      "component": "host.exp.exponent:expo.modules.systemui:57.0.3",
+      "filename": "expo.modules.systemui-57.0.3.aar",
+      "sha256": "d4cd090dce4ae451978bdf20adf73075775b048303f7ddf83c8a6d3844ec5dd0"
     }
   ],
   "prefabBindings": [

@@ -14,7 +14,8 @@
     "tests/native/upload/**/*.tsx",
     "tests/native/identity-data/**/*.tsx",
     "tests/native/links/**/*.tsx",
-    "tests/native/outbox/**/*.tsx"
+    "tests/native/outbox/**/*.tsx",
+    "tests/native/ui-style/**/*.tsx"
   ],
   "exclude": [
     "src/**/*.test.ts"

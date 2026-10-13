@@ -1,3 +1,4 @@
+import { FrameCorners } from './FrameCorners';
 import type { CloseCheckRequest } from './close-check';
 import { forwardRef, memo, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type NativeSyntheticEvent } from 'react-native';
@@ -7,7 +8,7 @@ import { Handles } from './Handles';
 import { Overview, type OverviewHandle } from './Overview';
 import { cardTransform, clamp, overviewGeometry, resolveCardRect, type HandleSide, type CardMeasurement, type Rect, type Size } from './motion';
 import { adjacentNapplet, type NappletDescriptor, type Workspace } from './workspace';
-import { colors, HANDLE_GUTTER } from './theme';
+import { useShellStyles, type ShellPalette, type ShellFonts, HANDLE_GUTTER } from './theme';
 import { runtimeStatus } from './runtime-status';
 
 interface LiveProps {
@@ -26,6 +27,7 @@ interface LiveProps {
   onHostEvent?: (event: HostEvent) => void;
 }
 const LiveSession = memo(function LiveSession({ session, closeCheck, index, size, rect, progress, position, scrollY, swipeY, swipeId, active, raised, onHostEvent }: LiveProps) {
+  const { styles } = useShellStyles(createStyles);
   // A keyed session starts when first focused and stays mounted until close or identity change.
   const [loaded, setLoaded] = useState(raised);
   if (raised && !loaded) setLoaded(true);
@@ -52,7 +54,8 @@ const LiveSession = memo(function LiveSession({ session, closeCheck, index, size
       style={[styles.live, { width, height, zIndex: raised ? 2 : 1 }, movement]}>
       {loaded ? <NappletHost closeCheck={closeCheck} active={active} session={session} onHostEvent={onNativeEvent} style={styles.host} />
         : <View style={styles.unloaded}><Text style={styles.reopen}>Open to load</Text></View>}
-      <Text testID={`runtime-status-${session.id}`} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} accessibilityElementsHidden={!active} accessibilityLiveRegion={active ? 'polite' : 'none'} style={styles.runtimeStatus}>{loaded ? status : 'Not loaded'}</Text>
+      {active && <FrameCorners />}
+      <Text testID={`runtime-status-${session.id}`} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} accessibilityElementsHidden={!active} accessibilityLiveRegion={active ? 'polite' : 'none'} style={[styles.runtimeStatus, loaded && status === 'Runtime connected' && styles.connected]}>{loaded ? status : 'Not loaded'}</Text>
     </Animated.View>
   );
 });
@@ -79,6 +82,7 @@ interface StageProps {
 }
 
 export const WorkspaceStage = forwardRef<OverviewHandle, StageProps>(function WorkspaceStage({ workspace, closeCheck, progress, position, scrollY, swipeY, swipeId, busy, blocked, interactive, pending, onHostEvent, onFocus, onClose, onOpen, onDragEnd, onHandleStart, onHandleEnd }, ref) {
+  const { styles } = useShellStyles(createStyles);
   const [size, setSize] = useState<Size>({ width: 0, height: 0 });
   const [measured, setMeasured] = useState<Record<string, CardMeasurement>>({});
   const { fontScale } = useWindowDimensions();
@@ -109,11 +113,12 @@ export const WorkspaceStage = forwardRef<OverviewHandle, StageProps>(function Wo
     </>}
   </View>;
 });
-const styles = StyleSheet.create({
-  stage: { flex: 1, marginHorizontal: 12, marginBottom: 8, borderRadius: 22, overflow: 'hidden', backgroundColor: colors.background },
-  live: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', borderRadius: 18, backgroundColor: colors.background },
+const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
+  stage: { flex: 1, marginHorizontal: 12, marginBottom: 8, borderRadius: 0, overflow: 'hidden' },
+  live: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
   host: { flex: 1, marginHorizontal: HANDLE_GUTTER },
   unloaded: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  reopen: { color: colors.muted, fontSize: 22 },
-  runtimeStatus: { color: colors.muted, fontSize: 10, textAlign: 'center', paddingVertical: 5, backgroundColor: colors.background },
+  reopen: { fontFamily: fonts.body, color: colors.muted, fontSize: 22 },
+  connected: { position: 'absolute', height: 0, width: 0, paddingVertical: 0, opacity: 0 },
+  runtimeStatus: { fontFamily: fonts.body, color: colors.muted, fontSize: 10, textAlign: 'center', paddingVertical: 5, backgroundColor: colors.background },
 });
