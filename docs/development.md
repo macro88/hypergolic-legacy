@@ -1235,3 +1235,54 @@ exceptions. The ordinary `check` gate remains nonzero at Expo Doctor's patch
 recommendations. Font and System UI are pinned at 57.0.3, alongside the selected
 Expo 57.0.20 tree; no ignore rule, scanner threshold or advisory suppression is
 added. Native notice packaging regressions pass.
+
+
+## Slim shell refinement — 14 October 2026
+
+The selected slim top bar and inset swipe tabs are implemented. A loaded napplet
+has no outer frame or corner brackets; the overview cards, menu and other shell
+surfaces keep them. The centered title opens the menu without a down arrow. White
+light surfaces replace the beige palette, while dark colors remain unchanged. See
+[shell appearance](shell-style.md) for the final dimensions and interaction rules.
+
+Native Android switching passes 13 checks across three retained UX Lab sessions,
+including independent counter/text/selection state, vertical and horizontal scroll
+positions, native target binding and two-column opening order. A separate five-check
+Android probe confirms that system Back is excluded only from the two active
+44-by-88-point handle targets, works elsewhere, dismisses the title menu, and
+returns from the overview. Menu/overview states clear the exclusions. The native
+region is registered alongside the existing host view; its default registration
+and privileged bridge are unchanged.
+
+The iOS native switch/state scenario passes seven checks and guest scrolling passes
+four. Both platforms' public UI fixture checks cover dark/light, larger text, title
+menu, settings, close protection and sample request review. Final title-only
+screenshots preserve the borderless loaded view and framed overview. Larger-text
+evidence uses Android font scale 1.5 and iOS accessibility-medium; the preceding
+large-text candidates differ only in the subsequently removed title arrow and
+Android gesture exclusion. These are simulated-device UI results, not protected
+identity/signing or complete published-MVP acceptance.
+
+The older workspace observers depended on a now-hidden connected-status label,
+an old overview heading and an unconfigured fixture URL. They now require the
+observed focused native view and actual existing child-context readiness, with
+causal counter input binding the native title to the exact target. The target
+allowlist accepts only the optional exact `fixture=ux-lab` parameter; unknown or
+duplicate parameters still reject. Android scrolling starts inside the visible
+guest area. Original failed observers remain separate from successful results.
+
+TypeScript, 47 shell tests, 294 Chromium/WebKit runtime tests, native notice
+regressions and both final production Expo exports pass. Observer regressions pass
+(12 observation, 8 workspace admission and 15 target-probe cases). The final source
+scan reports React Doctor 100/100, zero diagnostics, and aislop 98/100 with only the
+existing node-forge/braces advisory exceptions. The ordinary check still stops at
+eight Expo patch recommendations. No gate, ignore rule or notice guard was changed.
+Both export maps retain the same 61 package contributors and original notices.
+
+Ordinary standalone Android Release and signed iPhoneOS Release products compile
+and are installed in place on both retained test app IDs. Signing identities match
+the prior products; Android installed APK bytes match the prepared product. Both
+app inventories and launches are verified. iOS installation/launch receipts are
+available, but installed executable bytes were not read back. No app data was
+cleared or retained app uninstalled. These updates are ready for owner testing;
+full E2E remains deferred until feature complete. Source push stays owner-controlled.

@@ -1,9 +1,13 @@
 import { WorkspaceHeader } from './WorkspaceHeader';
+import { WorkspaceMenu } from './WorkspaceMenu';
+import { useWorkspaceMenu } from './useWorkspaceMenu';
+import { useWorkspaceBack } from './useWorkspaceBack';
+import { useBundledNapplets } from './useBundledNapplets';
 import { publishedSettingsActions } from './published-settings-actions';
 import { ShellBackdrop } from './ShellBackdrop';
 import {useCloseChecks} from './useCloseChecks';
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from 'react';
-import { AccessibilityInfo, BackHandler, Keyboard, Modal, StyleSheet, Text, View } from 'react-native';
+import { AccessibilityInfo, Keyboard, Modal, StyleSheet, Text, View } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import { cancelAnimation, Easing, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
@@ -14,14 +18,14 @@ import { type ShellIdentity } from './Header';
 import type { OverviewHandle } from './Overview';
 import { WorkspaceStage } from './WorkspaceStage';
 import { directionForHandle, type HandleSide } from './motion';
-import { adjacentNapplet, closeNapplet, focusNapplet, openNapplet, showOverview, type NappletDescriptor, type Workspace } from './workspace';
+import { adjacentNapplet, closeNapplet, focusNapplet, showOverview, type NappletDescriptor, type Workspace } from './workspace';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { RuntimeContext } from '../runtime/RuntimeContext';
 import { ReviewFocus } from './ReviewFocus';
 import type { NappletConsentReview } from '../napplets/first-open-consent';
 import type { PublishedUpdateReview } from '../napplets/published-session';
 
-import { bundledDescriptor, initialTestWorkspace, type BundledVariant } from './fixtures';
+import { initialTestWorkspace, type BundledVariant } from './fixtures';
 
 const noPending = new Set<string>();
 export interface SettingsActions {
@@ -84,7 +88,10 @@ export function Shell({ blocked = false, initialWorkspace, workspace: controlled
   });
   const focusedIndex = Math.max(0, workspace.sessions.findIndex(session => session.id === workspace.focusedId));
   const focused = workspace.sessions.find(session => session.id === workspace.focusedId);
-  const nextFixtureNumber = useRef(Math.max(3, ...workspace.sessions.map(session => Number(session.title.match(/ ([1-9][0-9]*)$/)?.[1] ?? 0))) + 1);
+  const { session: menuSession, visible: menuVisible, anchor: menuAnchor, dismiss: dismissMenu, open: openMenu, clear: clearMenu } =
+    useWorkspaceMenu(focused, workspace.overview, { blocked, busy: busyRef, dragging: handleDragging, closeChecks });
+  const obscured = settings || menuVisible || closingId !== null;
+  const navigationBlocked = blocked || busy || closeCheck !== null;
   const progress = useSharedValue(workspace.overview ? 1 : 0);
   const position = useSharedValue(focusedIndex);
   const scrollY = useSharedValue(0);
@@ -141,16 +148,8 @@ export function Shell({ blocked = false, initialWorkspace, workspace: controlled
     change(showOverview(current.current));
     runAnimation(progress, 1, () => overview.current?.focusCard(current.current.focusedId));
   }, [blocked, change, closeChecks, progress, runAnimation]);
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (keyboardVisible.current) { Keyboard.dismiss(); return true; }
-      if (blocked || busyRef.current || closeChecks.isPending()) return true;
-      if (!workspace.overview) { openOverview(); return true; }
-      if (workspace.focusedId) { focusSession(workspace.focusedId); return true; }
-      return false;
-    });
-    return () => subscription.remove();
-  }, [blocked, closeChecks, focusSession, openOverview, workspace.focusedId, workspace.overview]);
+  useWorkspaceBack({ workspace, blocked, menuVisible, busy: busyRef, keyboard: keyboardVisible,
+    closeChecks, dismissMenu, openOverview, focusSession });
   const onHandleEnd = (side: HandleSide, result: 'overview' | 'switch' | 'cancel') => handleWorkspaceGestureEnd({
     side, result, blocked, busyRef, focusedIndex, current, position, openOverview, runAnimation, change,
     setHandleDragging,
@@ -172,17 +171,7 @@ export function Shell({ blocked = false, initialWorkspace, workspace: controlled
   };
   const confirmClose = () => { if (closingId) closeSession(closingId); };
   const openSettings = () => { if (!blocked && !busyRef.current && !closeChecks.isPending()) { Keyboard.dismiss(); setSettings(true); } };
-  const openFixture = (variant: BundledVariant) => {
-    while (current.current.sessions.some(session => session.id === `${variant}-${nextFixtureNumber.current}`)) nextFixtureNumber.current++;
-    if (variant !== 'ux-lab' && !runtime) return;
-    const number = nextFixtureNumber.current++;
-    const descriptor = variant === 'ux-lab' ? bundledDescriptor(variant, number) : runtime!.descriptor(variant, number);
-    const next = openNapplet(current.current, descriptor);
-    position.set(next.sessions.length - 1);
-    progress.set(0);
-    change(next);
-    setSettings(false);
-  };
+  const openFixture = useBundledNapplets({ current, runtime, position, progress, change, setSettings });
   const openBundledTest = () => openFixture('ux-lab');
   const publishedActions = () => publishedSettingsActions({
     runtime, blocked, getWorkspace: () => current.current, position, progress, change, setSettings, onBeforeClose,
@@ -192,17 +181,20 @@ export function Shell({ blocked = false, initialWorkspace, workspace: controlled
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'right', 'bottom', 'left']}>
       <ShellBackdrop mood={workspace.overview ? 'shelf' : 'running'} />
-      <ReviewFocus sessionId={workspace.focusedId} overview={workspace.overview} busy={busy} dragging={handleDragging} blocked={blocked} settings={settings} closing={closingId !== null} />
-      <View accessibilityElementsHidden={settings || closingId !== null} importantForAccessibility={settings || closingId ? 'no-hide-descendants' : 'auto'} style={styles.content}>
-        <WorkspaceHeader overview={workspace.overview} focused={focused} identity={identity} disabled={blocked || busy}
-          onSettings={openSettings} onOverview={openOverview} onClose={requestClose} />
-        <WorkspaceStage closeCheck={closeCheck} workspace={workspace} progress={progress} position={position} scrollY={scrollY} swipeY={swipeY} swipeId={swipeId} busy={busy} blocked={blocked || settings || closingId !== null || closeCheck !== null} interactive={!handleDragging}
+      <ReviewFocus sessionId={workspace.focusedId} overview={workspace.overview} busy={busy} dragging={handleDragging} blocked={blocked} settings={settings || menuVisible} closing={closingId !== null} />
+      <View accessibilityElementsHidden={obscured} importantForAccessibility={obscured ? 'no-hide-descendants' : 'auto'} style={styles.content}>
+        <WorkspaceHeader overview={workspace.overview} focused={focused} identity={identity} disabled={navigationBlocked || handleDragging}
+          menuAnchor={menuAnchor} onSettings={openSettings} onOverview={openOverview} onMenu={openMenu} />
+        <WorkspaceStage closeCheck={closeCheck} workspace={workspace} progress={progress} position={position} scrollY={scrollY} swipeY={swipeY} swipeId={swipeId} busy={busy} blocked={navigationBlocked || obscured} interactive={!handleDragging}
           pending={pendingApprovals ?? noPending} ref={overview} onHostEvent={receiveHostEvent} onFocus={focusSession} onClose={requestClose} onOpen={openSettings}
           onDragEnd={(id, close) => { runAnimation(swipeY, 0, () => { swipeId.set(null); if (close) requestClose(id); }, 140); }}
           onHandleStart={() => { setHandleDragging(true); Keyboard.dismiss(); cancelAnimation(position); }}
           onHandleEnd={onHandleEnd} />
       </View>
       {footer}
+      {menuSession && <WorkspaceMenu title={menuSession.title} disabled={navigationBlocked}
+        onDismiss={dismissMenu} onOverview={() => { clearMenu(); openOverview(); }}
+        onSettings={() => { clearMenu(); openSettings(); }} onClose={() => { clearMenu(); requestClose(menuSession.id); }} />}
       <ClosePrompt title={workspace.sessions.find(session => session.id === closingId)?.title ?? null} onKeepOpen={keepOpen} onClose={confirmClose} onDismiss={() => overview.current?.focusCard(lastCloseId.current)} />
       <ShellSettings settings={settings} blocked={blocked} identity={identity} SettingsContent={SettingsContent}
         publishedSessions={workspace.sessions.filter(session => session.source === 'published')}

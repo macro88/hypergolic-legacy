@@ -29,7 +29,7 @@ def render(output):
     output.mkdir(parents=True, exist_ok=True)
     for name, void, sky, rim, core, ignition in [
         ('dark', (8, 15, 23), (24, 42, 60), (37, 56, 74), (255, 243, 220), (245, 160, 75)),
-        ('light', (238, 230, 218), (250, 246, 239), (188, 154, 126), (255, 247, 227), (180, 77, 18)),
+        ('light', (255, 255, 255), (247, 248, 250), (213, 221, 229), (255, 255, 255), (170, 71, 8)),
     ]:
         def sky_pixel(x, y):
             t = min(1, math.hypot((x - .5) * 1.1, y * 1.45))
@@ -39,7 +39,7 @@ def render(output):
             distance = math.hypot(x - .5, y - .5)
             alpha = round(max(0, min(1, (.5 - distance) * 900)) * 255)
             shade = mix(rim, void, min(1, y * 5.5))
-            shade = mix(shade, (159, 186, 208) if name == 'dark' else (250, 242, 230), math.exp(-max(0, .5 - distance) * 1400) * .35)
+            shade = mix(shade, (159, 186, 208) if name == 'dark' else (247, 250, 253), math.exp(-max(0, .5 - distance) * 1400) * .35)
             return (*shade, alpha)
 
         def beam_pixel(x, y):

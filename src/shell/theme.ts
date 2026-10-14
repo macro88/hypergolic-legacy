@@ -26,4 +26,4 @@ export function useShellStyles<T>(createStyles: (colors: ShellPalette, fonts: Sh
 }
 
 /** Keeps visible grips beside the guest viewport while touch targets remain larger. */
-export const HANDLE_GUTTER = 12;
+export const HANDLE_GUTTER = 14;

@@ -11,10 +11,18 @@ test('admits exact targets and rewrites transport only to caller-owned localhost
   assert.deepEqual(rows.map(r=>r.id), ['A','B']);
   assert.equal(rows[0].ws,'ws://127.0.0.1:3210/devtools/page/A');
 });
+test('admits the configured UX fixture while preserving its exact native URL', () => {
+  const value = row(); value.url += '&fixture=ux-lab';
+  assert.equal(admitTargets([value], 3210)[0].url, value.url);
+});
 for (const [name, edit] of [
   ['wrong origin',r=>r.url=r.url.replace('appassets.androidplatform.net','example.invalid')],
   ['wrong path',r=>r.url=r.url.replace('index.html','other.html')],
   ['missing generation',r=>r.url=r.url.split('?')[0]],
+  ['other fixture',r=>r.url+='&fixture=state-lab'],
+  ['empty fixture',r=>r.url+='&fixture='],
+  ['duplicate fixture',r=>r.url+='&fixture=ux-lab&fixture=ux-lab'],
+  ['unknown query',r=>r.url+='&unexpected=true'],
   ['duplicate query',r=>r.url+='&sessionId=other'],
   ['non-native generation',r=>r.url=r.url.replace('00000000-0000-4000-8000-000000000001','ux-lab-1')],
   ['different websocket target',r=>r.webSocketDebuggerUrl='ws://localhost/devtools/page/B'],

@@ -83,4 +83,18 @@ class ObservationTests(unittest.TestCase):
         self.assertEqual(observed['sessionId'],'ux-lab-1')
         self.assertEqual(len(observed['nonvisibleStatusesInFullDump']),1)
 
+    def test_glass_opt_in_requires_one_visible_native_surface(self):
+        nodes=[{'resource-id':'focused-napplet-name','text':'UX Lab 1','bounds':'[0,0][50,50]'},
+          {'class':'android.webkit.WebView','_webview-depth':0,'bounds':'[0,50][100,700]'}]
+        with self.assertRaises(CheckFailed): native_focus(nodes)
+        self.assertEqual(native_focus(nodes, require_status=False)['sessionId'], 'ux-lab-1')
+        nodes.append({'class':'android.webkit.WebView','_webview-depth':0,'bounds':'[100,50][200,700]'})
+        with self.assertRaises(CheckFailed): native_focus(nodes, require_status=False)
+
+    def test_glass_opt_in_still_rejects_conflicting_status(self):
+        nodes=[{'resource-id':'focused-napplet-name','text':'UX Lab 1','bounds':'[0,0][50,50]'},
+          {'class':'android.webkit.WebView','_webview-depth':0,'bounds':'[0,50][100,700]'},
+          {'resource-id':'runtime-status-ux-lab-2','text':'Runtime connected','bounds':'[0,700][100,720]'}]
+        with self.assertRaises(CheckFailed): native_focus(nodes, require_status=False)
+
 if __name__=='__main__':unittest.main()

@@ -1,6 +1,7 @@
+import { HandleGestureRegion } from './HandleGestureRegion';
 import { StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { useSharedValue, type SharedValue } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
 import { directionForHandle, handlePosition, handleRelease, absolutePointerDrag, type HandleSide } from './motion';
 import { useShellStyles, type ShellPalette, HANDLE_GUTTER } from './theme';
@@ -19,14 +20,17 @@ interface Props {
 }
 
 function Handle({ side, width, top, index, count, position, disabled, canPrevious, canNext, onStart, onEnd }: Props & { side: HandleSide }) {
-  const { styles } = useShellStyles(createStyles);
+  const { styles, colors } = useShellStyles(createStyles);
+  const engaged = useSharedValue(false);
   const multiTouch = useSharedValue(false);
   const panActive = useSharedValue(false);
   const origin = useSharedValue({ x: 0, y: 0 });
   const canMove = side === 'left' ? canPrevious : canNext;
+  const plateFeedback = useAnimatedStyle(() => ({ borderColor: engaged.get() ? colors.accent : colors.border }));
+  const lineFeedback = useAnimatedStyle(() => ({ backgroundColor: engaged.get() ? colors.accent : colors.muted }));
   const moveLabel = directionForHandle(side) === -1 ? 'Previous napplet' : 'Next napplet';
   const pan = Gesture.Pan().enabled(!disabled).minDistance(8).maxPointers(1).shouldCancelWhenOutside(false)
-    .onBegin(event => { multiTouch.set(false); panActive.set(false); origin.set({ x: event.absoluteX, y: event.absoluteY }); })
+    .onBegin(event => { engaged.set(true); multiTouch.set(false); panActive.set(false); origin.set({ x: event.absoluteX, y: event.absoluteY }); })
     .onStart(() => { panActive.set(true); scheduleOnRN(onStart, side); })
     .onTouchesDown((event, manager) => { if (event.numberOfTouches > 1) { multiTouch.set(true); manager.fail(); } })
     .onUpdate(event => {
@@ -34,6 +38,7 @@ function Handle({ side, width, top, index, count, position, disabled, canPreviou
       if (!multiTouch.get()) position.set(handlePosition(index, count, side, event.absoluteX - origin.get().x, width));
     })
     .onFinalize((event, success) => {
+      engaged.set(false);
       // A failed, inactive pan must not cancel the tap that won this gesture.
       if (!panActive.get()) return;
       panActive.set(false);
@@ -41,8 +46,10 @@ function Handle({ side, width, top, index, count, position, disabled, canPreviou
       scheduleOnRN(onEnd, side, result);
     });
   const tap = Gesture.Tap().enabled(!disabled).maxDistance(8)
+    .onBegin(() => engaged.set(true))
     .onTouchesDown((event, manager) => { if (event.numberOfTouches > 1) manager.fail(); })
-    .onEnd((_event, success) => { if (success) scheduleOnRN(onEnd, side, 'overview'); });
+    .onEnd((_event, success) => { if (success) scheduleOnRN(onEnd, side, 'overview'); })
+    .onFinalize(() => { if (!panActive.get()) engaged.set(false); });
   return <GestureDetector gesture={Gesture.Race(pan, tap)}>
     <View testID={`handle-${side}`} accessible accessibilityRole="button" focusable
       accessibilityLabel={`${side === 'left' ? 'Left' : 'Right'} napplet handle`}
@@ -53,7 +60,8 @@ function Handle({ side, width, top, index, count, position, disabled, canPreviou
         if (!disabled) onEnd(side, nativeEvent.actionName === 'move' && canMove ? 'switch' : 'overview');
       }}
       style={[styles.target, side === 'left' ? styles.left : styles.right, { top }]}>
-      <View style={styles.pill}><View style={[styles.line, !canMove && styles.end]} /></View>
+      <HandleGestureRegion active={!disabled} />
+      <Animated.View style={[styles.pill, plateFeedback]}><Animated.View style={[styles.line, !canMove && styles.end, lineFeedback]} /></Animated.View>
     </View>
   </GestureDetector>;
 }
@@ -66,7 +74,7 @@ const createStyles = (colors: ShellPalette) => StyleSheet.create({
   layer: { zIndex: 20 }, hidden: { opacity: 0 },
   target: { position: 'absolute', width: 44, height: 88, justifyContent: 'center', alignItems: 'center' },
   left: { left: 0, alignItems: 'flex-start' }, right: { right: 0, alignItems: 'flex-end' },
-  pill: { width: HANDLE_GUTTER, height: 66, borderRadius: 0, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  line: { width: 3, height: 28, backgroundColor: colors.primary, borderRadius: 0 },
-  end: { backgroundColor: colors.muted, height: 18 },
+  pill: { width: HANDLE_GUTTER, height: 64, borderRadius: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  line: { width: 3, height: 28, backgroundColor: colors.muted, borderRadius: 2 },
+  end: { opacity: 0.55, height: 18 },
 });

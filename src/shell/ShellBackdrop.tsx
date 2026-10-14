@@ -15,9 +15,9 @@ export function ShellBackdrop({ mood = 'shelf' }: { mood?: Mood }) {
   const horizon = mood === 'entry' ? '42%' : '30%';
   const planet = mood !== 'running' && mood !== 'quiet';
   return <View pointerEvents="none" accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.backdrop}>
-    <Image source={source.sky} style={StyleSheet.absoluteFill} contentFit="fill" />
+    {mood !== 'running' && <Image source={source.sky} style={StyleSheet.absoluteFill} contentFit="fill" />}
     {planet && <Image source={source.planet} style={[styles.planet, { top: horizon }]} contentFit="fill" />}
-    {mood !== 'quiet' && mood !== 'failed' && <Image source={source.beam} style={[styles.beam, mood === 'running' && styles.shortBeam]} contentFit="fill" />}
+    {mood !== 'quiet' && mood !== 'failed' && mood !== 'running' && <Image source={source.beam} style={styles.beam} contentFit="fill" />}
     {planet && mood !== 'failed' && <Image source={source.flare} style={[styles.flare, { top: horizon }]} contentFit="fill" />}
     {mood === 'failed' && <View style={[styles.failed, { top: horizon }]} />}
   </View>;
@@ -27,7 +27,6 @@ const createStyles = (colors: ShellPalette) => StyleSheet.create({
   backdrop: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, overflow: 'hidden', backgroundColor: colors.background },
   planet: { position: 'absolute', left: '-60%', width: '220%', aspectRatio: 1 },
   beam: { position: 'absolute', left: '50%', marginLeft: -20, width: 40, height: '100%', top: 0 },
-  shortBeam: { height: 180, opacity: 0.55 },
   flare: { position: 'absolute', left: '20%', width: '60%', height: 48, marginTop: -24 },
   failed: { position: 'absolute', left: '50%', marginLeft: -3, width: 6, height: 6, backgroundColor: colors.accent },
 });

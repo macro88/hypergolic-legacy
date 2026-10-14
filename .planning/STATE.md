@@ -3,9 +3,9 @@ gsd_state_version: "1.0"
 current_phase: "2.11"
 current_phase_name: Complete published MVP acceptance
 status: executing
-stopped_at: Glass shell appearance implemented and verified on emulator/Simulator in dark, light and large text. Full E2E remains deferred until feature complete; physical checks only where simulated devices cannot establish behavior. Source push stays owner-controlled.
-last_updated: "2026-10-13"
-last_activity: 2026-10-13
+stopped_at: Slim title-only shell and inset tabs implemented; loaded napplets are borderless while overview/menu frames remain. Both devices have the standalone update. Native UI and swipe checks pass; full E2E remains deferred and source push stays owner-controlled.
+last_updated: "2026-10-14"
+last_activity: 2026-10-14
 state_head: 3eab11e07f625fba5ebe249db73ccaa4df8d24cd
 progress:
   total_phases: 14
@@ -79,6 +79,7 @@ See `docs/phase-zero.md` for actual checks and artifacts.
 | 261012-u4l | Selected optional close-check implementation and simulator-first verification | 2026-10-12 | See task summary | [261012-u4l-implement-the-selected-optional-hypergol](./quick/261012-u4l-implement-the-selected-optional-hypergol/) |
 | 261013-pr7 | Verified published Outbox admission with fresh consent and Relay dependency | 2026-10-13 | See task summary | [261013-pr7](./quick/261013-pr7-complete-verified-published-outbox-admis/) |
 | 261013-udj | Glass appearance, grouped Settings and native UI verification | 2026-10-13 | See task summary | [261013-udj](./quick/261013-udj-adapt-and-implement-the-hypergolic-glass/) |
+| 261014-bvd | Slim title-only shell, white light palette, inset tabs and native navigation | 2026-10-14 | See task summary | [261014-bvd](./quick/261014-bvd-refine-the-approved-slim-napplet-shell-a/) |
 
 Targeted follow-up: iOS native erase/transport failures remain READBACK_FAILED even when subsequent reads return absence. Four new regressions pass; security is 295/295, bootstrap 13/13, storage 80/80, TypeScript and iOS export pass. Aislop remains 100/100 and local React Doctor has no findings.
 
@@ -3461,3 +3462,30 @@ existing two dependency exceptions. Normal gates remain unchanged and nonzero.
 The provided handoff and native evidence are retained privately in Notes.
 Protected identity, physical security and full published MVP acceptance retain
 their separate evidence requirements. Source was not pushed.
+
+
+## Slim loaded shell checkpoint — 14 October 2026
+
+Quick task 261014-bvd implements the owner-selected slim top bar, neutral-white
+light palette and inset tabs. The latest corrections are authoritative: no border
+or corner brackets around a loaded napplet, and no down arrow beside its title.
+The whole title area opens the menu. Overview cards, menus and other shell surfaces
+keep the square frame details and orbital composition. Dark colors are unchanged.
+
+Android native switching/state passes 13 checks; five additional checks verify
+selective system-Back exclusions, title-menu dismissal and overview navigation.
+iOS switching/state passes seven checks and guest scrolling/retention four.
+Native UI scenarios cover dark/light, larger text, settings and close protection.
+TypeScript, 47 shell tests, 294 runtime browser tests, notice regressions, both
+production exports and ordinary native products pass. React Doctor is 100/100;
+aislop is 98/100 with the same two selected dependency advisory exceptions.
+The ordinary gate still reports eight Expo patch recommendations. No quality
+suppression or acceptance-matrix promotion was introduced.
+
+The standalone update is installed and launched on both retained devices with
+matching signing identities, unchanged app-ID inventories and no data clearing.
+Android installed bytes match; iOS has verified install/launch receipts without
+an installed-executable readback claim. Owner testing can proceed. Full E2E stays
+deferred until feature complete; Phase 2.11 and all existing acceptance limits
+remain open as recorded. Source push stays owner-controlled. See the quick summary
+and docs/development.md for scope and observer corrections.

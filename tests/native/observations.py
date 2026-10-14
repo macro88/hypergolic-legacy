@@ -98,14 +98,20 @@ def target_at_native_bounds(rows,bounds):
     if len(matches)!=1:raise CheckFailed('No unique exact native-view/Chromium-target rectangle match')
     return matches[0]
 
-def native_focus(nodes):
+def native_focus(nodes, require_status=True):
     name = exactly_one(nodes, lambda node: node.get('resource-id', '').split('/')[-1] == 'focused-napplet-name', 'native focused title')
     statuses=[node for node in nodes if node.get('resource-id','').split('/')[-1].startswith('runtime-status-')]
-    status = exactly_one(statuses, positive_area, 'one positive-area native runtime status')
     title = label(name)
-    session = status['resource-id'].split('/')[-1].removeprefix('runtime-status-')
-    if title not in ('UX Lab 1', 'UX Lab 2', 'UX Lab 3', 'UX Lab 4') or session != 'ux-lab-' + title.split()[-1] or label(status) != 'Runtime connected':
-        raise CheckFailed('Native title/session/readiness binding is ambiguous')
+    if title not in ('UX Lab 1', 'UX Lab 2', 'UX Lab 3', 'UX Lab 4'):
+        raise CheckFailed('Native focused fixture title is ambiguous')
+    session = 'ux-lab-' + title.split()[-1]
+    visible_statuses = [node for node in statuses if positive_area(node)]
+    if require_status or visible_statuses:
+        status = exactly_one(visible_statuses, positive_area, 'one positive-area native runtime status')
+        if status['resource-id'].split('/')[-1] != 'runtime-status-' + session or label(status) != 'Runtime connected':
+            raise CheckFailed('Native title/session/readiness binding is ambiguous')
+    # Glass hides the connected-status label. This opt-in identifies only the
+    # visible native surface; target inspection and causal input prove readiness.
     return {'title': title, 'sessionId': session, 'webViewBounds': node_bounds(visible_webview(nodes)),
       'nonvisibleStatusesInFullDump':[{'sessionId':node.get('resource-id'),'bounds':node.get('bounds')} for node in statuses if not positive_area(node)]}
 

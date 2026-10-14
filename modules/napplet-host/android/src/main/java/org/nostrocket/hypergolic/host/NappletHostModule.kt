@@ -256,5 +256,10 @@ class NappletHostModule : Module() {
       Prop("active") { view: NappletHostView, active: Boolean -> view.setActive(active) }
       OnViewDestroys { view: NappletHostView -> view.destroySession() }
     }
+    View(ShellGestureRegionView::class) {
+      Name("ShellGestureRegion")
+      Prop("active") { view: ShellGestureRegionView, active: Boolean -> view.setHandleActive(active) }
+      OnViewDestroys { view: ShellGestureRegionView -> view.setHandleActive(false) }
+    }
   }
 }

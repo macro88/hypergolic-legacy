@@ -1,4 +1,3 @@
-import { FrameCorners } from './FrameCorners';
 import type { CloseCheckRequest } from './close-check';
 import { forwardRef, memo, useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View, useWindowDimensions, type NativeSyntheticEvent } from 'react-native';
@@ -54,7 +53,6 @@ const LiveSession = memo(function LiveSession({ session, closeCheck, index, size
       style={[styles.live, { width, height, zIndex: raised ? 2 : 1 }, movement]}>
       {loaded ? <NappletHost closeCheck={closeCheck} active={active} session={session} onHostEvent={onNativeEvent} style={styles.host} />
         : <View style={styles.unloaded}><Text style={styles.reopen}>Open to load</Text></View>}
-      {active && <FrameCorners />}
       <Text testID={`runtime-status-${session.id}`} importantForAccessibility={active ? 'auto' : 'no-hide-descendants'} accessibilityElementsHidden={!active} accessibilityLiveRegion={active ? 'polite' : 'none'} style={[styles.runtimeStatus, loaded && status === 'Runtime connected' && styles.connected]}>{loaded ? status : 'Not loaded'}</Text>
     </Animated.View>
   );
@@ -114,8 +112,8 @@ export const WorkspaceStage = forwardRef<OverviewHandle, StageProps>(function Wo
   </View>;
 });
 const createStyles = (colors: ShellPalette, fonts: ShellFonts) => StyleSheet.create({
-  stage: { flex: 1, marginHorizontal: 12, marginBottom: 8, borderRadius: 0, overflow: 'hidden' },
-  live: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+  stage: { flex: 1, marginHorizontal: 6, marginBottom: 2, borderRadius: 0, overflow: 'hidden' },
+  live: { position: 'absolute', left: 0, top: 0, overflow: 'hidden', backgroundColor: colors.background },
   host: { flex: 1, marginHorizontal: HANDLE_GUTTER },
   unloaded: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   reopen: { fontFamily: fonts.body, color: colors.muted, fontSize: 22 },

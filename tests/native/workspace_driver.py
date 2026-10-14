@@ -48,7 +48,7 @@ def retained_overview_cards(nodes):
         raise CheckFailed('Short stroke opened a close warning')
     if any(label(node).endswith('napplet handle') for node in nodes):
         raise CheckFailed('Focused handles survive the claimed overview')
-    exactly_one(nodes, lambda node: label(node) == 'Loaded napplets', 'retained overview heading')
+    exactly_one(nodes, lambda node: label(node) == 'Your napplets', 'retained overview heading')
     expected = ['Open UX Lab 1', 'Open UX Lab 2', 'Open UX Lab 3']
     actual = [label(node) for node in nodes if label(node).startswith('Open UX Lab ')]
     if sorted(actual) != expected:
@@ -158,8 +158,11 @@ class WorkspaceDriver(base.Driver):
         if not port.isdigit():raise CheckFailed('ADB did not allocate a private diagnostic port')
         self.port=port
         self.result['transport']={'appPid':self.pid,'socket':socket,'allocatedLocalPort':int(port)}
+        # Load each retained session through native input before comparing target identity.
+        for side, title in [('right', 'UX Lab 2'), ('right', 'UX Lab 3'), ('left', 'UX Lab 2'), ('left', 'UX Lab 1')]:
+            self.handle(side, title)
         _,nodes=self.wait(lambda ns:self.focus_matches(ns,'UX Lab 1'),'initial focused UX Lab 1')
-        rows=self.observe()
+        rows=self.wait_targets(lambda observed: len(observed) == 3, 'three rendered fixture targets')
         if len(rows)!=3:raise CheckFailed('Scenario requires exactly three initially loaded fixtures')
         self.initial_rows=copy.deepcopy(rows)
         self.capture('01-initial-three')
@@ -169,16 +172,16 @@ class WorkspaceDriver(base.Driver):
 
     @staticmethod
     def focus_matches(nodes,title):
-        try:return native_focus(nodes)['title']==title
+        try:return native_focus(nodes, require_status=False)['title']==title
         except CheckFailed:return False
 
     def focused(self,title=None):
         _,nodes=self.wait(lambda ns:self.focus_matches(ns,title) if title else self.has_native_focus(ns),'one focused native fixture')
-        return native_focus(nodes),nodes
+        return native_focus(nodes, require_status=False),nodes
 
     @staticmethod
-    def has_native_focus(nodes):
-        try:native_focus(nodes);return True
+    def has_native_focus(nodes, require_status=False):
+        try:native_focus(nodes, require_status=False);return True
         except CheckFailed:return False
 
     def observe(self,mode='snapshot'):
@@ -275,7 +278,7 @@ class WorkspaceDriver(base.Driver):
                 self.swipe((left+(right-left)*a,y,left+(right-left)*b,y),500)
             else:
                 down=box is None or box['y']>snapshot['viewport']['height']/2
-                a,b=(.78,.38) if down else (.35,.77)
+                a,b=(.90,.45) if down else (.35,.77)
                 self.swipe(((x1+x2)/2,y1+(y2-y1)*a,(x1+x2)/2,y1+(y2-y1)*b),500)
         raise CheckFailed('Native scrolling did not reveal '+name)
 
@@ -339,7 +342,7 @@ class WorkspaceDriver(base.Driver):
     def overview(self,side='right'):
         before=self.observe()
         self.handle(side,None,'tap')
-        _,nodes=self.wait(lambda ns:any(label(n)=='Loaded napplets' for n in ns),'native overview')
+        _,nodes=self.wait(lambda ns:any(label(n)=='Your napplets' for n in ns),'native overview')
         if any(label(n).endswith('napplet handle') for n in nodes):raise CheckFailed('Hidden handles leak into overview accessibility')
         same_instances(before,self.observe())
         return nodes
@@ -432,7 +435,7 @@ class WorkspaceDriver(base.Driver):
                 if identity(row)!=identity(target_map(remaining)[key]):raise CheckFailed('Closing remounted another session')
                 assert_state(target_map(remaining)[key]['snapshot'],row['snapshot'])
             remaining=after
-            self.wait(lambda ns:any(label(n)=='Loaded napplets' for n in ns),'stayed in overview after close')
+            self.wait(lambda ns:any(label(n)=='Your napplets' for n in ns),'stayed in overview after close')
             self.check('exact-session-closed',{'title':title,'removedTarget':expected_id,'remaining':len(after)})
         _,nodes=self.wait(lambda ns:any(label(n)=='Nothing open' for n in ns),'explicit empty workspace')
         if any(n.get('class')=='android.webkit.WebView' for n in nodes):raise CheckFailed('WebView survives final close')
@@ -458,7 +461,7 @@ class WorkspaceDriver(base.Driver):
         density = self.adb_run('shell', 'wm', 'density')
         stroke = short_card_stroke(bounds, density)
         self.swipe(stroke['points'], stroke['durationMs'])
-        _, nodes = self.wait(lambda observed: any(label(node) == 'Loaded napplets' for node in observed),
+        _, nodes = self.wait(lambda observed: any(label(node) == 'Your napplets' for node in observed),
                              'overview retained after short card stroke', timeout=8)
         retained_overview_cards(nodes)
         after = self.observe()

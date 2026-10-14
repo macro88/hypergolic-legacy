@@ -313,12 +313,16 @@ External signers are phase 2.
 
 ## Confirmed product direction
 
-V1 has a minimal square-logo / focused-napplet-name / avatar-and-short-npub header.
-The [supplied Hypergolic logo](../assets/brand/README.md) is preserved in the brand
-assets. The confirmed starting header size is 32 logical pixels, to be validated
-on the native device.
-The logo has no tap action. The avatar opens trusted settings, including the full
-copyable npub, saved identities and Open napplet. A pasted published napplet link
+The focused V1 shell uses a slim logo / napplet-name / avatar header. The
+[supplied Hypergolic logo](../assets/brand/README.md) stays unchanged: a 24-point
+spark inside a 44-point overview button when a napplet is loaded, and a 32-point
+logo in the expanded shelf header. The plain centered name opens the napplet menu without a down-arrow control,
+including Close; the avatar opens trusted Settings with the full copyable npub,
+saved identities and Open napplet. The shelf retains the short npub. This selected
+14 October refinement replaces the earlier inert-logo/always-visible-npub layout.
+The loaded view has no outer frame or corner brackets. Thin square frames and
+corner brackets remain on the all-napplets view, menus and other shell surfaces.
+A pasted published napplet link
 opens after verification. After an ordinary exit with an open napplet, later launches
 reopen the last active napplet subject to verification. Deliberately closing all
 napplets persists the empty state across restarts and overrides automatic reopening.
@@ -654,8 +658,10 @@ provided; required-authentication responses remain denied. See
 
 The native shell follows system appearance using shared contrast-tested colors,
 locally bundled Barlow and JetBrains Mono, an orbital backdrop and square frames.
-Settings is grouped, focused sessions expose overview/close actions, and trusted
-requests use scrollable sheets. The existing theme service carries the shared
+Light appearance uses white and subtle cool-gray shading; the dark palette stays
+unchanged. Settings is grouped, focused sessions expose overview and a title menu
+for Close, and trusted requests use scrollable sheets. Inset edge tabs retain their
+large gesture targets and existing navigation behavior. The existing theme service carries the shared
 colors to participating napplets and updates them on appearance changes. See
 [shell appearance](shell-style.md) for the visual decisions, fixture boundaries
 and asset provenance.

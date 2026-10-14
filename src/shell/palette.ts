@@ -9,10 +9,10 @@ export const darkPalette = {
 export type ShellPalette = { readonly [K in keyof typeof darkPalette]: string };
 
 export const lightPalette: ShellPalette = {
-  background: '#EEE6DA', surface: '#FAF6EF', raised: '#E3D7C6',
-  text: '#2B211B', muted: '#68584C', accent: '#983C08', border: '#B1A08D',
-  primary: '#2B211B', onPrimary: '#FAF6EF', onAccent: '#FFFFFF',
-  subtle: '#D4C7B7', glass: 'rgba(250,246,239,0.94)', shade: 'rgba(31,24,18,0.48)',
+  background: '#FFFFFF', surface: '#F7F8FA', raised: '#EEF1F4',
+  text: '#17202A', muted: '#5E6975', accent: '#AA4708', border: '#AAB5C1',
+  primary: '#17202A', onPrimary: '#FFFFFF', onAccent: '#FFFFFF',
+  subtle: '#E3E7EB', glass: 'rgba(247,248,250,0.96)', shade: 'rgba(15,24,36,0.44)',
 };
 
 export function shellPalette(scheme: string | null | undefined): ShellPalette {

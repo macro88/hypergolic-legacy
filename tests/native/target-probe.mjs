@@ -14,7 +14,9 @@ export function admitTargets(rows, port) {
     assert.equal(url.origin, ORIGIN);
     assert.equal(url.pathname, '/assets/runtime/index.html');
     assert.equal(url.hash, '');
-    assert.deepEqual([...url.searchParams.keys()], ['sessionId']);
+    const keys = [...url.searchParams.keys()];
+    assert.deepEqual(keys, url.searchParams.has('fixture') ? ['sessionId', 'fixture'] : ['sessionId']);
+    if (url.searchParams.has('fixture')) assert.equal(url.searchParams.get('fixture'), 'ux-lab', 'Only the UX fixture is observable');
     const generation = url.searchParams.get('sessionId');
     assert(/^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(generation),
       'Target URL lacks a native generation UUID');

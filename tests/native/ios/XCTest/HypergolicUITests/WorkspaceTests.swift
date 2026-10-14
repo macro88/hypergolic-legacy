@@ -113,12 +113,18 @@ final class WorkspaceTests: XCTestCase {
     card.tap()
     try until("Overview returns to focused napplet") { overview.exists && overview.isHittable }
     record("workspace-navigation", currentTitle() == "UX Lab 1", ["title": currentTitle()])
+    try tap("shell-napplet-menu")
+    try until("Focused napplet menu is reachable") { app.buttons.matching(identifier: "shell-close").firstMatch.isHittable }
+    capture("slim-napplet-menu")
+    try tap("shell-menu-done")
+    try until("Menu dismisses back to napplet") { overview.isHittable }
+    try tap("shell-napplet-menu")
     try tap("shell-close")
     let keep = app.buttons.matching(identifier: "close-keep-open").firstMatch
     try until("Unknown dirty state still asks") { keep.exists && keep.isHittable }
     capture("glass-close")
     keep.tap()
-    record("close-protection", app.buttons.matching(identifier: "shell-close").firstMatch.exists, [:])
+    record("close-protection", app.buttons.matching(identifier: "shell-napplet-menu").firstMatch.exists, [:])
     try tap("ui-fixture-review")
     let content = app.staticTexts.matching(identifier: "approval-sheet-content").firstMatch
     try until("Exact request body remains visible") { content.exists && content.label == "A note from my own corner of the network." }
@@ -1564,12 +1570,11 @@ final class WorkspaceTests: XCTestCase {
   private func currentTitle() -> String { let title = app.staticTexts.matching(identifier: "focused-napplet-name").firstMatch; return title.exists ? title.label : "" }
   private func focused(_ number: Int) throws {
     try until("Focused UX Lab \(number) ready") {
-      let status = self.app.staticTexts.matching(identifier: "runtime-status-ux-lab-\(number)").firstMatch
-      guard self.currentTitle() == "UX Lab \(number)", status.exists, status.label == "Runtime connected" else { return false }
+      guard self.currentTitle() == "UX Lab \(number)" else { return false }
       let leaves = self.visibleLeaves()
       guard leaves.count == 1 else { return false }
-      // A newly activated WK tree may initially expose only its wrapper. Native
-      // readiness alone does not prove that fixture controls are queryable yet.
+      // Glass hides its connected-status label. Readiness requires the actual
+      // focused guest tree, its ready marker and applied host theme.
       return leaves[0].staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Ready ·")).count == 1
         && leaves[0].staticTexts.matching(NSPredicate(format: "label == %@", "Host colors")).count == 1
     }
