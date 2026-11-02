@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 
 const generation = '12345678-1234-1234-1234-123456789abc';
 const html = readFileSync('fixtures/ux-lab.html');
+const approvalHtml = readFileSync('fixtures/approval-lab.html');
 const digest = (bytes: Uint8Array | string) => createHash('sha256').update(bytes).digest('hex');
 const htmlHash = digest(html);
 const version = digest(`${htmlHash} /index.html\n`);
@@ -11,15 +12,22 @@ const identity = {
   publisher: '1'.repeat(64), appId: 'published-test', eventId: '2'.repeat(64), version, htmlHash,
 };
 
-type Mode = 'normal' | 'bad-hash' | 'malformed-base64' | 'replayed-sequence' | 'unknown-domain' | 'relay-domain' | 'attributed-head' | 'upload-domain' | 'all-domains' | 'outbox-domain' | 'outbox-only';
+type Mode = 'normal' | 'bad-hash' | 'malformed-base64' | 'replayed-sequence' | 'unknown-domain' | 'relay-domain' | 'attributed-head' | 'upload-domain' | 'all-domains' | 'outbox-domain' | 'outbox-only' | 'published-approval';
 
 async function openPublished(page: Page, mode: Mode = 'normal', extraQuery = '') {
-  const artifact = mode === 'attributed-head' ? Buffer.from(html.toString().replace('<head>','<HEAD data-fixture="attribute">')) : html;
+  const artifact = mode === 'published-approval' ? approvalHtml : mode === 'attributed-head' ? Buffer.from(html.toString().replace('<head>','<HEAD data-fixture="attribute">')) : html;
   const artifactHash = digest(artifact);
   const artifactIdentity = {...identity,htmlHash:artifactHash,version:digest(`${artifactHash} /index.html\n`)};
   await page.addInitScript(({ generation, htmlBase64, htmlLength, identity, badHashVersion, mode }) => {
     if (window !== window.top) return;
-    const state = { requests: [] as unknown[], diagnostics: [] as unknown[] };
+    const state = { requests: [] as unknown[], diagnostics: [] as unknown[],
+      reply(sequence: number, response: unknown) {
+        for (const listener of listenerSet) listener({data: JSON.stringify({
+          type: 'capability.result', sessionId: generation, sequence,
+          response: JSON.stringify(response),
+        })});
+      },
+    };
     (window as any).__publishedTest = state;
     const bytes = Uint8Array.from(atob(htmlBase64), char => char.charCodeAt(0));
     const listenerSet = new Set<(event: { data: string }) => void>();
@@ -36,7 +44,7 @@ async function openPublished(page: Page, mode: Mode = 'normal', extraQuery = '')
         type: 'artifact.chunk', sessionId: generation,
         sequence: mode === 'replayed-sequence' ? sequence + 1 : sequence,
         base64, byteLength: payload.length, totalBytes: htmlLength,
-        ...claims, domains: mode === 'unknown-domain' ? ['future-domain'] : mode === 'outbox-domain' ? ['outbox', 'relay', 'theme'] : mode === 'outbox-only' ? ['outbox', 'theme'] : mode === 'relay-domain' ? ['relay', 'theme'] : mode === 'upload-domain' ? ['upload'] : mode === 'all-domains' ? ['config', 'identity', 'inc', 'intent', 'link', 'notify', 'outbox', 'relay', 'resource', 'storage', 'theme', 'upload'] : ['theme'],
+        ...claims, domains: mode === 'published-approval' ? ['identity', 'relay', 'theme'] : mode === 'unknown-domain' ? ['future-domain'] : mode === 'outbox-domain' ? ['outbox', 'relay', 'theme'] : mode === 'outbox-only' ? ['outbox', 'theme'] : mode === 'relay-domain' ? ['relay', 'theme'] : mode === 'upload-domain' ? ['upload'] : mode === 'all-domains' ? ['config', 'identity', 'inc', 'intent', 'link', 'notify', 'outbox', 'relay', 'resource', 'storage', 'theme', 'upload'] : ['theme'],
         done: (sequence + 1) * 48 * 1024 >= htmlLength,
       };
       for (const listener of listenerSet) listener({ data: JSON.stringify(envelope) });
@@ -52,7 +60,8 @@ async function openPublished(page: Page, mode: Mode = 'normal', extraQuery = '')
         if (request.type === 'capability') {
           const wire = JSON.parse(request.message);
           let response;
-          if (wire.type === 'outbox.query') response = {type: 'outbox.query.result', id: wire.id, events: []};
+          if (wire.type === 'identity.getPublicKey') response = {type: 'identity.getPublicKey.result', id: wire.id, pubkey: '1'.repeat(64)};
+          else if (wire.type === 'outbox.query') response = {type: 'outbox.query.result', id: wire.id, events: []};
           else if (wire.type === 'outbox.publish') response = {type: 'outbox.publish.result', id: wire.id, ok: false, error: 'user rejected'};
           if (response) for (const listener of listenerSet) listener({data: JSON.stringify({type: 'capability.result', sessionId: generation, sequence: request.sequence, response: JSON.stringify(response)})});
         }
@@ -187,4 +196,72 @@ test('an Outbox-only native grant neither exposes usable Outbox nor acquires rel
   expect(await guest.evaluate(() => (window as any).napplet.shell.supports('relay'))).toBe(false);
   await guest.evaluate(() => {parent.postMessage({type: 'outbox.query', id: 'missing-relay', filters: [{kinds: [1], limit: 0}]}, '*');});
   expect(await page.evaluate(() => (window as any).__publishedTest.requests.filter((x: any) => x.type === 'capability'))).toHaveLength(0);
+});
+
+
+// Real Approval Lab SDK, verified-byte bootstrap, Kehto and native client.
+// Native artifact transport, grants and replies are doubled; no signing or network.
+async function submitPublishedApproval(page: Page) {
+  await openPublished(page, 'published-approval');
+  const ui = page.frameLocator('#napplet');
+  await expect(ui.locator('#identity-status')).toHaveText('Identity connected');
+  await ui.locator('#content').fill('published delayed approval');
+  await ui.locator('#send').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__publishedTest.requests
+    .filter((entry: any) => entry.type === 'capability' && JSON.parse(entry.message).type === 'relay.publish').length)).toBe(1);
+  return ui;
+}
+
+async function publishedApprovalCalls(page: Page) {
+  return page.evaluate(() => (window as any).__publishedTest.requests
+    .filter((entry: any) => entry.type === 'capability' && JSON.parse(entry.message).type === 'relay.publish'));
+}
+
+test('published Approval Lab SDK survives both short deadlines and receives one correlated delayed denial', async ({page}) => {
+  await page.clock.install({time: new Date('2026-01-01T00:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
+  const ui = await submitPublishedApproval(page);
+  const original = await publishedApprovalCalls(page);
+  const guest = page.frames().find(frame => frame.parentFrame() === page.mainFrame())!;
+  await guest.evaluate(() => {
+    const state = window as any;
+    state.__shortRead = 'pending';
+    state.napplet.relay.query({kinds: [1], limit: 0}).then(
+      () => { state.__shortRead = 'settled'; },
+      () => { state.__shortRead = 'settled'; });
+  });
+  await expect.poll(() => page.evaluate(() => (window as any).__publishedTest.requests
+    .filter((entry: any) => entry.type === 'capability' && JSON.parse(entry.message).type === 'relay.query').length)).toBe(1);
+  await page.clock.fastForward(28_000);
+  expect(await guest.evaluate(() => (window as any).__shortRead)).toBe('settled');
+  await expect(ui.locator('.request[data-sequence="1"]')).toHaveAttribute('data-state', 'sending');
+  await page.clock.fastForward(3_000);
+  await expect(ui.locator('#status')).toHaveText('Request 1 captured and sent to the shell.');
+  await expect(ui.locator('.request[data-sequence="1"]')).toHaveAttribute('data-state', 'sending');
+  expect(await publishedApprovalCalls(page)).toEqual(original);
+  await page.evaluate(() => {
+    const state = (window as any).__publishedTest;
+    const envelope = state.requests.find((entry: any) => entry.type === 'capability' && JSON.parse(entry.message).type === 'relay.publish');
+    const wire = JSON.parse(envelope.message);
+    const denied = {type: 'relay.publish.result', id: wire.id, ok: false, error: 'user rejected'};
+    state.reply(envelope.sequence, denied);
+    state.reply(envelope.sequence, denied); // Duplicate does not settle/retry twice.
+  });
+  await expect(ui.locator('.request[data-sequence="1"] .event-id')).toHaveText('user rejected');
+  await expect(ui.locator('#status')).toHaveText('Request 1 failed. No automatic retry.');
+  await expect(ui.locator('#pending')).toHaveText('0');
+  expect(await publishedApprovalCalls(page)).toEqual(original);
+});
+
+test('published Approval Lab remains bounded by the original 660-second response deadline', async ({page}) => {
+  await page.clock.install({time: new Date('2026-01-01T00:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-01-01T00:00:01Z'));
+  const ui = await submitPublishedApproval(page);
+  const original = await publishedApprovalCalls(page);
+  await page.clock.fastForward(659_999);
+  await expect(ui.locator('.request[data-sequence="1"]')).toHaveAttribute('data-state', 'sending');
+  await page.clock.fastForward(2);
+  await expect(ui.locator('.request[data-sequence="1"]')).toHaveAttribute('data-state', 'failed');
+  await expect(ui.locator('#pending')).toHaveText('0');
+  expect(await publishedApprovalCalls(page)).toEqual(original);
 });

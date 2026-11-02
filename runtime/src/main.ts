@@ -212,9 +212,12 @@ function createGuestFrame(title: string): HTMLIFrameElement {
   return frame;
 }
 
-function approvalTimeouts(artifact:RuntimeArtifact):Readonly<Record<string,number>> {
-  return Object.freeze({...artifact.publishTimeoutMs===undefined?{}:{'relay.publish':artifact.publishTimeoutMs},
-    ...artifact.domains.includes('outbox')?{'outbox.publish':660_000}:{}});
+function approvalTimeouts(artifact: RuntimeArtifact): Readonly<Record<string, number>> {
+  return Object.freeze({
+    ...(artifact.domains.includes('relay')
+      ? { 'relay.publish': artifact.publishTimeoutMs ?? 660_000 } : {}),
+    ...(artifact.domains.includes('outbox') ? { 'outbox.publish': 660_000 } : {}),
+  });
 }
 
 function rejectEnvelope(event: MessageEvent, source: Window, domains: readonly string[]): void {
