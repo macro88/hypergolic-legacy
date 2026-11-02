@@ -1,6 +1,6 @@
 # Intent and inter-napplet communication
 
-Hypergolic selects the draft [NAP-INTENT](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-INTENT.md), [NAP-INC](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-INC.md) and archetype metadata at the same revision. This is a pinned interoperability target, not a final standard. The owner accepted the profile in the Phase 2.7 interview. Value transfers remain Phase 4.
+Hypergolic selects the draft [NAP-INTENT](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-INTENT.md), [NAP-INC](https://github.com/napplet/naps/blob/a040914b4bbd3a5cd8a14b0f316a723c968ebfb2/naps/NAP-INC.md) and archetype metadata at the same revision. This is a pinned interoperability target, not a final standard. Value transfers remain Phase 4.
 
 ## Handler selection and review
 
@@ -34,91 +34,9 @@ JSON capture rejects accessors, symbols, unexpected keys/prototypes, cycles, spa
 
 Catalog bounds are 64 apps per identity, 256 total and 4MiB signed events. Routing admits 64 endpoints, 16 topics and 8 channels per endpoint, with terminal records included in the channel quota. Review queues are bounded to eight globally/four per generation. Native pending requests are bounded to eight globally/four per generation, and incoming routing pushes to four per generation. Overflow cannot create an unbounded queue. Fire-and-forget operations have no invented wire id or delivery receipt. A handler that lacks the approved INC domain/readiness/topic cannot receive a payload.
 
-## Verification status
 
-`pnpm test:routing` exercises strict contracts, real signed events and SQLite catalog transactions, identity/default/removal/corruption/revocation and app broker routing. Its native port is a labelled double. `pnpm test:routing:native` compiles production Java/Swift endpoint cores; shared native lease proofs separately exercise continuous-clock expiry, sequence and one-use bounds. Browser SDK tests prove the adapters and original SDK channel retention, not mobile security.
+## Testing
 
-Input-driven signed-local Android/iOS Release journeys are in `tests/native/routing`, using the ordinary IdentityShell/native hosts and disposable documented public identities. They seal actual installed products and source before/after, preserve SDK receipts and capture screenshots/accessibility. Each host passes routing/fault (24), Settings/cold14 and absent/ambiguous-target5 cases. All 293 production/native/runtime inputs match final source across those sealed runs. QA observer/fixture differences are separately recorded; full cross-run fingerprints are not claimed identical. Both ordinary production Release builds compile and packaged runtime bytes match. Routing (43) and full browser runtime (188) pass. React Doctor 100 and aislop97 are accepted only under the existing exact Forge/braces exceptions, with ordinary gates still red. CAP-08/CAP-09 are accepted for this selected profile. Physical devices, protected production identities, remote discovery/publication and full MVP parity remain CAP-14. See [the final verification record](../.planning/phases/02.7-intents-and-inter-napplet-communication/02.7-VERIFICATION.md) for acceptance rather than inferring it from successful packaging.
+Final Android/iOS acceptance remains open. See [testing](testing.md) for the unified requirement matrix, current quality gate, evidence limits and full standalone campaign.
 
-
-## Physical iPhone bundled intent/INC subset — 8 October 2026
-
-One green thirteen-check run uses the ordinary signed app, retained protected
-identity and genuine bundled SDK. It proves unavailable role/candidates, structured
-`no handler` dispatch denial, absent channel-peer denial and empty channel list;
-separate exact-topic approval for two loaded views; exact symmetric topic/payload/
-sender with no echo; forged sender/native-control rejection with a subsequent
-live positive delivery; unsubscribe with an independent positive control; actual
-OS background (state3 then suspended2), retained topic approval on return without
-replay; and process-death identity continuity with empty receipts and fresh topic
-review. Only newly created run views are closed; prior focus is restored.
-No retained secret, signing or public write is used. No payload is attempted while
-OS-suspended, so that transition is not a background-emission fault proof.
-
-Three failed observer attempts are preserved separately: JSON field-order
-assumption, expecting the notification review's selected-user field in a routing
-review, and treating the fixed review footer as part of its scroll area. The
-corrected observer preserves exact SDK assertions and native visibility/hittability.
-The green result is one complete run, not a combined sum of earlier observations.
-
-All408 source inputs and the existing local normal-product seal match before/
-after. Main-app metadata and saved public identity remain; main is not reinstalled
-or changed. Installed iOS executable bytes are not retrieved. Private
-`iphone-routing01` retains exact drafts, drivers, receipts and inspected PNG/AX.
-The selected NAP-INTENT/NAP-INC revision remains
-`a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`.
-
-CAP-08/CAP-09 are partial on iOS. The bundled caller has no registered role handler
-or distinct channel peer; verified handler success/choice/default/cold admission,
-channels, distinct identity/publisher/app/version faults, flood/replay and published
-parity remain required. Physical Android is absent from current ADB inventory.
-No final matrix row, plan or Phase2 is closed. No app code changed; previous
-quality/packaging results remain historical, not rerun here. Source push is owner-only.
-
-
-## Bundled channel peer and physical iPhone scope — 8 October 2026
-
-Settings now opens distinct `routing-lab-peer`, running the exact reviewed
-original-SDK HTML as Routing Lab with its own dTag/native session and matching
-grants. Prefix resolution checks the peer first and rejects swapped appId.
-It remains unsigned and registers no intent handler. The release builder still
-produces ten artifacts with its existing separately derived signed peer manifest.
-No protocol, verified-handler trust or published admission policy changes.
-
-One ordinary signed physical iPhone run passes nineteen checks: retained public
-identity, distinct peer readiness and exact native target input; Cancel/empty list;
-fresh approval and matching inbound handle; exact messages in both directions;
-local/remote close and late terminal listener; review for each new channel;
-confirmed OS background3/suspended2 and original `background` close; fresh return
-approval; eight-request review flood with no approvals; foreign-id/forged controls
-followed by live positive delivery; peer view closure with `peer destroyed`; cold
-launch without channel replay; cleanup only of run-created views and restored
-prior focus. Exact receipts/AX/SDK assertions and inspected PNGs are privately
-retained in `iphone-channels01`. The delivery PNG is blank, and the symmetric PNG
-shows controls rather than receipts; those images alone do not prove payloads.
-The later inspected live-positive PNG shows both exact received messages.
-Three failed input observers remain separate: tap entered overview, deletion at
-an interior caret left a suffix, and Select All was unavailable. The passing
-observer requires an empty field and exact replacement before channel work.
-
-Main is updated in place once as Hypergolic, retaining bundle/team/entitlements
-and selected identity. No key read/export, signing, storage injection or public
-write. All410 source inputs and the local normal app product seal match before/
-after; installed executable bytes are not retrieved. Draft contracts remain
-revision `a040914b4bbd3a5cd8a14b0f316a723c968ebfb2`.
-
-TypeScript, shell28, capability57, routing43, native routing120 per host,
-runtime256, security349/preflight13, quality74 and Outbox99 pass. Android prebuild, both JS
-exports, ordinary Android ARM64 Release and signed iPhoneOS Release compile.
-Android physical parity is not tested. Local Doctor has zero findings with no
-numeric score; aislop98 and root/quality audits retain only exact approved
-Forge/braces exceptions, runtime audit clean. No suppression or dependency change.
-Expo Doctor20/21 reports six SDK57 patch mismatches. The existing pin and numeric
-scoring authorization remain pending; no score API retry.
-
-CAP09 stays partial: native enqueue ordering, distinct publisher/account and
-replaced-target isolation, full flood/backpressure/expiry/replay/concurrent-modal
-faults, verified published parity and Android physical remain open. CAP08 verified
-handler success/chooser/default/cold admission still needs the designated Android
-publisher; the retained iPhone QA identity is not a replacement publisher.
-All61 final rows and Phase2 remain open. Source push remains owner-only.
+Run `pnpm run test:routing` and `pnpm run test:routing:native`; the former uses a labelled native-port double and the latter compiles production Java/Swift endpoint cores. Use [native routing journeys](../tests/native/routing/README.md) for ordinary hosts. Cover exact-topic/handler consent, readiness/order, defaults and cold admission, publisher/account collision, expiry/replay, overflow, background, endpoint replacement and original SDK terminal records. Browser adapter tests do not establish native security.

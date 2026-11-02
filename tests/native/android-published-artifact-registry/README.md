@@ -16,7 +16,7 @@ Expo bridge ownership, WebView transfer, host-generation integration or device
 behavior. The generated host remains unchanged and does not execute published HTML.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/android-published-artifact-registry/runner.py \
   --output /private/tmp/hypergolic-android-published-artifact-registry
 ```

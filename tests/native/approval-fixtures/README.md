@@ -18,7 +18,7 @@ mkdir -p .tools/approval-fixture
 cp tests/native/approval-fixtures/ios-public-entry.tsx.template .tools/approval-fixture/index.tsx
 cmp tests/native/approval-fixtures/ios-public-entry.tsx.template .tools/approval-fixture/index.tsx
 
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 export ENTRY_FILE="$PWD/.tools/approval-fixture/index.tsx"
 export DERIVED_DATA=/private/tmp/hypergolic-ios-approval-fixture-derived
 xcodebuild -workspace ios/Hypergolic.xcworkspace \
@@ -71,7 +71,7 @@ node tests/relay/native-review-server.mjs --output "$RELAY_DIR" --mode accept
 In the build terminal, read the chosen port from the server's private receipt:
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 export READY="$RELAY_DIR/ready.json"
 export EXPO_PUBLIC_APPROVAL_RELAY_PORT="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["port"])' "$READY")"
 ```

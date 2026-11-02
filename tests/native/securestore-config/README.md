@@ -29,7 +29,7 @@ source, unchanged policy dependencies, resulting patched files and patch bytes.
 The patch is app-specific and must not be published as a general SecureStore fix.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/securestore-config/run.py
 ```
 
@@ -68,7 +68,7 @@ After coordinating active build jobs, regenerate the lock and install the patch:
 pnpm install --lockfile-only
 pnpm install --frozen-lockfile
 python3 tests/native/securestore-config/run.py
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 cd ios
 pod install
 ```

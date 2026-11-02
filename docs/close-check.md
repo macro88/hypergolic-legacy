@@ -1,7 +1,6 @@
 # Optional close check
 
-The owner selected `hypergolic.close-check.v1` on 12 October 2026. It is a private,
-versioned Hypergolic extension. It supplies the retained clean/dirty/unknown close
+`hypergolic.close-check.v1` is a versioned Hypergolic-specific extension. It supplies the retained clean/dirty/unknown close
 behavior without claiming a new standardized NAP operation.
 
 The selected [NAP-SHELL revision](https://github.com/napplet/naps/blob/5ac0490461ca6fec2f0d2e45b4835cf9bc08de24/naps/NAP-SHELL.md)
@@ -80,25 +79,21 @@ native authority. It does not publish or otherwise commit a guest's work.
 
 ## Development verification and remaining acceptance
 
-Close Lab is a new theme-only bundled fixture with pinned HTML/aggregate hashes.
-Its text draft and Auto/Unknown/No reply modes exercise the three states. Existing
-UX Lab bytes and saved fixture versions are unchanged. Open it from developer
-Settings. The fixture is sealed in the existing review/approval publication catalogue; no upload, signed publication or upstream publication was performed.
+Close Lab is a theme-only bundled fixture with pinned HTML/aggregate hashes. Its
+text draft and Auto/Unknown/No reply modes exercise close behavior without a
+signer or upload/publication authority. Open it from Developer Settings. The
+normal app entry remains unchanged.
 
-Shared coordinator and service regressions cover single use, exact correlation,
-expiry, lifecycle cancellation, pending work, dismissed uncertainty and saved upload
-recovery. Chromium/WebKit tests cover bundled and byte-verified published artifacts,
-legacy silent guests, forged sibling/control messages and malformed/replayed replies.
-The browser published artifact sink is a diagnostic double; it does not prove native
-signed published admission. Focused WKWebView Simulator tests exercise the production
-native host, three states, generation/schema/replay/expiry and background revocation.
-Android production Debug compilation passes. Ordinary Android emulator input was
-attempted, but stale development code followed by the current protective bootstrap
-screen prevented proof of the current clean-close UI flow. No bootstrap restriction
-was bypassed and no Android runtime pass is inferred. Retain that UI check for the
-next usable build/E2E checkpoint; the WK component and browser proofs stay separate.
+```sh
+pnpm run test:shell
+pnpm run test:capabilities
+pnpm run runtime:test
+```
 
-Following the [development testing agreement](../.planning/phases/02.11-published-mvp-acceptance/02.11-CONTEXT.md#development-testing-agreement--12-october-2026),
-full standalone bundled/published journeys, surviving data, cold restoration and
-cross-capability E2E run at the feature-complete checkpoint. UX-07 final physical
-acceptance remains partial. All 61 original rows and prior physical evidence remain.
+Shared/native checks cover single use, source/correlation/generation, deadline,
+lifecycle cancellation, pending work, dismissed uncertainty and saved upload
+recovery. Runtime checks include legacy silent guests, bundled/verified published
+artifacts and forged sibling/control/replay messages. Browser artifact sinks and
+Simulator fixtures do not prove ordinary native published admission or complete
+security. Full standalone bundled/published close, surviving data, cold restore
+and Phase 2/3 acceptance remain open; see [testing](testing.md).

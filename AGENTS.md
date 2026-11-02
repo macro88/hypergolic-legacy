@@ -2,82 +2,73 @@
 
 ## Orient and preserve work
 
-Before editing, inspect `git status --short`, `git branch --show-current`, remotes,
-recent commits and relevant diffs. This checkout uses `mobile-revamp`; verify the
-current target rather than assuming an old branch or commit still exists. Preserve
-user changes and intentional removals. Stage only this task's files. Do not restore
-legacy implementation or rewrite published history without explicit authorization.
+Before editing, inspect Git status, the current branch, remotes, recent commits
+and relevant diffs. Preserve concurrent work and intentional removals. Stage only
+the agreed changes. Do not rewrite existing history or push without authorization.
 
-Read `docs/architecture.md` and `.planning/STATE.md`. Keep implementation decisions,
-commands and their validation status current with the code; avoid duplicated plans.
+Read [architecture](docs/architecture.md), [development](docs/development.md) and
+the [test plan](docs/testing.md). Keep current contracts beside the code. Store
+working plans, raw evidence and chronological investigation notes outside the
+public source tree; publish concise reviewed results with their limitations.
 
 ## Publication privacy
 
-This repository is public. Before publishing, inspect changed files, Git metadata,
-logs and artifacts for unintended personal identifiers, private repository references,
-credentials and personal filesystem paths. Use portable paths and neutral roles.
-Keep private operational context out of public artifacts. Preserve intentional
-public attribution, the repository's configured public Git identity and required
-third-party notices. Do not change that identity without a request.
+Before publishing, inspect source, Git metadata and artifacts for credentials,
+personal identifiers, private repository references and machine-specific paths.
+Use portable paths and neutral test target aliases. Preserve intentional public
+attribution, the configured public Git identity and required third-party notices.
+Do not change that identity without a request.
 
 ## Stack and scope
 
-Use Expo and React Native for the Android and iOS shell, Kehto for the web runtime,
-and Applesauce for Nostr integration. Follow the existing strict TypeScript and Expo
-module conventions; do not impose Kehto's framework-free package architecture or
-ESM-only output on native/config-plugin files.
+Use Expo/React Native for the Android and iOS shell, Kehto for the web runtime and
+Applesauce for selected Nostr integration. Follow existing strict TypeScript and
+native module conventions. Keep the code simple and changes focused.
 
-Do not implement key storage, signing approval, remote napplet trust policy or
-identity-switch safeguards until their open decisions are resolved. First-launch
-identity creation/reuse and post-entry trusted settings for import remain confirmed.
-The profile napplet is a UI example, not a required product feature. A browser
-runtime does not prove Android WebView or iOS WKWebView isolation. Build, signing, device behavior
-and security each need their own evidence.
+The MVP extends through Outbox. Phase 3 includes native local signing, outgoing
+NIP-46 and Android NIP-55 clients. Value/zaps and incoming signer services are
+outside this scope. Signing-method selection is explicit and has no automatic
+fallback. A verified napplet remains untrusted web content.
 
-## Workflow and checks
+## Checks and evidence
 
-Use pnpm and its pinned lockfiles. If the manifest, lockfiles or scripts disagree,
-report the migration gap; do not silently fall back to npm or recreate its lockfiles.
-Use actual `package.json` scripts: `pnpm run check`, `pnpm run export:android`, and,
-for native/config-plugin changes, `pnpm run prebuild:android` plus the relevant Gradle
-build in `docs/development.md`. Documentation-only edits need command/link, diff and
-privacy checks; do not claim a build was rerun when it was not.
+Use pnpm and the pinned lockfiles. Do not fall back to npm, regenerate lockfiles
+casually, weaken resolution policy or suppress findings. Use the actual scripts
+in package.json and the commands in the development guide.
 
-Add regression coverage for changed behavior using real contract cases. Require complete React
-Doctor and aislop reports with scores of 100/100; fix findings without suppressing
-source or lowering either gate. Update affected setup and architecture docs in the same change.
+Add meaningful regressions for changed behavior. Run focused shared/native checks
+and regenerate/compile each platform affected by native or config-plugin changes.
+Documentation-only changes need link, command, whitespace and privacy checks.
+Final React Doctor and aislop reports must both reach 100/100 with findings fixed.
+Report blocked, skipped and unrun checks explicitly.
 
-Install GSD with `pnpm run gsd:install`. Use the installed Codex skills appropriate to
-the task: `$gsd-quick` for a small change, `$gsd-debug` for investigation, and
-`$gsd-plan-phase` / `$gsd-execute-phase` for planned work. Keep `.planning/` state
-accurate; generated `.codex/` stays local. Resolve missing product decisions before
-auto-advancing. Finish with a coherent commit and authorized push, reporting the
-actual target, checks and remaining limits; a PR is not mandatory for every task.
+Builds, browser fixtures, simulators and physical tests establish different scopes.
+Use emulator/Simulator testing where faithful; identify the missing capability
+before a targeted physical test. Final acceptance requires ordinary standalone
+Android and iOS journeys on the final artifacts. Keep Phase 2/3 acceptance open
+until the matrix's evidence requirements are met. Never relabel an old failed
+receipt or uncertain outcome as a new pass.
 
 ## Device test cleanup
 
-Keep the agreed current Hypergolic app ID stable for normal device updates.
-After each physical test batch, reconcile running jobs and uncertain side effects,
-then uninstall the temporary test apps and runner packages created for that batch.
-Verify their exact IDs are absent and the retained app remains installed unchanged.
-Record before/after inventories and cleanup results. Do not leave test launchers
-for the owner to remove. Preserve the retained app's data; removing older retained
-apps requires explicit owner approval because uninstalling erases local app data.
+Preserve the retained app's identity and data. Use explicit disposable targets,
+accounts and fixture packages. After each physical batch, reconcile jobs and
+uncertain side effects, remove the exact temporary apps/runners and scratch, and
+verify before/after inventories. Removing a retained app requires explicit owner
+approval because it erases app data. Do not leave test launchers for the owner to
+remove.
 
-## Protocol changes
+## Protocol and security changes
 
-Before changing a NAP/NIP surface, check its owning specification and record the
-exact revision. Compare wire fields, direction, errors, lifecycle and caller trust.
-Treat library exports, issues and tests as implementation evidence, not protocol
-authority. Draft contracts require explicit selection; document gaps and conflicts
-instead of inventing policy.
+Check the owning NAP/NIP specification and immutable revision before changing its
+surface. Compare fields, direction, errors, lifecycle and caller trust; library
+exports and tests are implementation evidence, not protocol authority. Resolve
+product and draft-contract decisions before widening capabilities.
 
-Carry accepted fields through every affected shell/host adapter and permission
-check. Test lifecycle, denied requests, sender binding and payload integrity at the
-native boundary. Document intentionally unsupported operations and report the
-checked specification/ref with conformance results. Do not copy upstream browser
-behavior or package wiring as proof of native security.
+Carry accepted fields through every shell/host adapter and permission check.
+Test denial, cancellation, stale replies, sender binding, payload integrity,
+restart and revocation at the native boundary. Preserve unknown outcomes after
+possible dispatch. Document unsupported operations and remaining conformance
+gaps; never infer native security from upstream browser behavior.
 
 Adapted from [Kehto's engineering guidance](https://github.com/kehto/web/blob/8ccc4f44b0a2bff3f16d1a4165d35b9c801b8634/AGENTS.md).
-Kehto-specific worktree paths, package publishing, changesets and playground commands
-do not apply to this application.

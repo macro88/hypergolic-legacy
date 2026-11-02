@@ -14,7 +14,7 @@ Pod::Spec.new do |s|
   s.version = package['version']
   s.summary = 'Restricted bundled napplet host for Hypergolic'
   s.description = 'A local Expo WKWebView host with native generation-bound diagnostics.'
-  s.license = { :type => 'UNLICENSED' } # Parent project has no declared license yet.
+  s.license = { :type => 'MIT' }
   s.author = 'Hypergolic contributors'
   s.homepage = 'https://github.com/nostrocket/hypergolic'
   s.source = { :git => 'https://github.com/nostrocket/hypergolic.git' }

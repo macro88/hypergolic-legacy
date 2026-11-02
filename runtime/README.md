@@ -1,169 +1,149 @@
 # Hypergolic web runtime
 
-This isolated package builds the trusted Kehto outer document for the Android and iOS
-Expo native views. It hosts reviewed bundled fixtures and verified published
-napplets in opaque sandboxed frames. Native adapters mediate the selected capability
-operations; the trusted shell owns identity, permissions and approval workflows.
-The pinned operation profiles and their native acceptance limits are documented
-in the root capability documents.
+This package builds the trusted Kehto document embedded by Android WebView and
+iOS WKWebView. It hosts reviewed bundled fixtures and verified published napplets
+in opaque sandboxed frames. The native shell owns identity, permissions, trusted
+review and effects; this web package neither stores private keys nor supplies a
+browser signer.
 
 ## Build and check
 
-Use the project-pinned Node24.20.0 and pnpm10.34.5:
+Use Node 24.20.0 and pnpm 10.34.5. From this directory:
 
-```
+```sh
 pnpm install --frozen-lockfile
+pnpm exec playwright install chromium webkit
 pnpm verify
 pnpm audit --audit-level=high
 ```
 
-`dist/index.html` and `dist/host.js` are the only native runtime assets. Copy them
-with the root `pnpm runtime:build` command before native builds on either platform.
-`assets-manifest.json` records their SHA256/byte lengths and the fixture provenance
-for the native build verifier. It is a build-time sidecar, not a WebView resource.
-No source map, remote script, CSS file, fixture fetch or native HTML prop is used.
-The fixture originals and unsigned manifest remain under `fixtures/`; the build
-refuses a changed HTML hash, aggregate or manifest declaration. Runtime SHA256
-verification completes before iframe creation. Injection is outside the original
-artifact bytes. These checks establish bundled-artifact integrity, not publisher
-signature verification: the bundled fixture is unsigned.
+`verify` runs TypeScript, builds the host and runs Chromium/WebKit tests. `test`
+also builds a separate capability-test host under ignored `.test-fixtures/`;
+that host is never copied into native assets.
 
-## Initial native adapter contract
+Before native builds, run from the repository root:
 
-Load `https://appassets.androidplatform.net/assets/runtime/index.html?sessionId=GENERATION`
-where GENERATION is a native-issued identifier matching `[A-Za-z0-9_-]{1,80}`.
-The native module must expose `window.HypergolicHost.postMessage(string)` only to
-the exact trusted main-frame origin. This package sends only:
-
-```
-{"type":"ready","sessionId":"GENERATION"}
-{"type":"error","sessionId":"GENERATION","code":"runtime-bootstrap"}
+```sh
+pnpm run runtime:build
 ```
 
-Diagnostic serialization is bounded to2048 characters; native independently checks
-UTF8 byte length, schema, exact generation, origin and main-frame ownership. Codes:
-`invalid-session`, `bridge-unavailable`, `fixture-integrity`, `runtime-bootstrap`,
-`runtime-timeout`, `frame-navigation`. No raw exception, event content, identity or
-HTML is sent. Ready means the genuine Kehto `shell.ready` established its session;
-it does not mean user content has finished rendering. The actual theme round trip
-is independently checked by the fixture's Host colors observation.
+That command builds this package, checks SHA-256/length against
+`assets-manifest.json`, copies identical `dist/index.html` and `dist/host.js`
+into both native modules, and seals the fixture-release catalog. The manifest is
+a build sidecar, not an executable WebView resource. No source map, remote host
+script or CSS file is required. Bundled HTML/manifest hashes must match reviewed
+catalog pins; runtime packaging does not silently rebuild napplet sources.
 
-The browser tests install a **top-document diagnostic sink only**. This is not an
-Android bridge emulator or proof of native origin/frame isolation. In native,
-never install a wildcard WebMessageListener or addJavascriptInterface fallback.
-Keep DOM storage/cookies/file/content/network/navigation/popups/permissions denied.
-Kehto's best-effort localStorage persistence tolerates disabled storage: both browser
-engines are tested with top localStorage/sessionStorage getters throwing. The host
-never enables those capabilities.
+## Artifacts and native boundary
 
-## Exact runtime contracts
+The trusted native host supplies a fresh generation and exact packaged document.
+Android uses the app-assets HTTPS origin; iOS uses its checked resource bundle
+and isolated WebKit content world. Never install a wildcard bridge or
+`addJavascriptInterface` fallback. See the [native contract](../docs/native-contract.md)
+for origin/frame, platform and lifecycle checks.
 
-- Kehto shell0.20.0, runtime0.22.0, services0.20.0, acl0.18.0, firewall0.5.0.
-- Outer host core/NAP0.31.1 and nostr-tools2.24.0; fixture SDK0.27.2 separately built.
-- Release source: https://github.com/kehto/web/tree/f031d5d2264d047cd40e2524bf12b7f68c74caa6
-- NIP-5D draft: https://github.com/dskvr/nips/blob/24711d9c47bbdd07908bf1d52bf677d9cbc530f0/5D.md
-- NIP-5A: https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/5A.md
-- NAP-SHELL/THEME: https://github.com/napplet/naps/tree/5ac0490461ca6fec2f0d2e45b4835cf9bc08de24/naps
+Bundled fixtures verify original UTF-8 HTML/hash/aggregate before frame creation;
+unsigned fixtures do not establish publisher trust. Published mode retrieves a
+generation-bound artifact through ordered native chunks, rechecks its claims,
+bytes and aggregate, and inserts leading CSP before publisher markup. It accepts
+no guest/network URL or HTML prop. Signed-manifest verification and first-open
+consent remain separate shell requirements; see the
+[artifact registry](../docs/published-artifact-registry.md).
 
-Mandatory shell is injected by Kehto before fixture scripts. Bare `shell.ready`
-receives one `shell.init` with optional domains/services `["theme"]`. The parent
-checks the exact bound Window, trusted browser event, envelope shape and operation
-rate before calling Kehto. `theme.get` accepts only a nonempty ID of at most128
-characters and returns the real reference service result. Duplicate readiness is
-idempotent; unknown, malformed and ungranted messages are silently ignored. Shell
-queries are local. No fake dirty-state protocol or direct signing namespace exists.
+Diagnostics are bounded `ready` or `error` messages naming generation and fixed
+code, without raw exceptions or content. `ready` means a genuine Kehto session
+registered, not that guest rendering or acceptance completed. Capability, stream,
+routing and private byte-transfer messages use separate validated lanes; this
+bridge is no longer diagnostic-only.
 
-The outer CSP permits its one local host.js and the child's inline bootstrap;
-the child's first head element has an additional stricter policy denying network,
-workers, nested frames, forms, base overrides and external scripts. Opaque sandbox
-is only `allow-scripts`. Hiding the view leaves the same Window and live fixture
-state; close/pagehide/subsequent frame load tears down listener/registry/runtime.
-Native must separately revoke its callback generation on renderer loss and close.
+The frame uses `sandbox="allow-scripts"`, no-referrer and a leading default-deny
+CSP. Direct network, external scripts, workers, nested frames, forms and navigation
+are unavailable. Granted resources may project bounded Blob media; WebView policy
+still does not grant direct guest networking. Exact source Window, trusted event,
+schema, readiness and rate checks precede Kehto dispatch. Close/pagehide or a
+subsequent document load tears down listeners, registry, native client and frame.
+Native code separately revokes callbacks and effect authority.
 
-## Initial browser validation limits
+## Selected capability surface
 
-Browser tests exercise genuine bootstrap/theme, pre-ready denial, duplicate and
-forged readiness, malformed/privileged messages, sibling and synthetic source,
-opaque DOM/storage separation, absent child bridge, attempted direct fetch/WS/
-worker/image/script/top navigation, live state continuity/reload, native-adapter
-absence, runtime hash mismatch and self-navigation teardown. They cannot prove
-Android renderer/native-boundary isolation, OS gestures, native process death,
-publisher trust, signing or encrypted persistence. Native attack fixtures and
-current-device evidence are still required. Kehto's permissive default ACL and
-browser persistence are not Hypergolic's eventual privilege or saved-state policy.
+`shell.ready` receives the admitted environment, not a fixed theme-only profile.
+The reviewed native domains are identity, storage, theme, relay, resource, upload,
+link, intent, inc, notify, config and outbox. Each artifact receives only its
+admitted subset; Outbox is removed from its usable environment without Relay.
+Domain availability is not full conformance or an operation approval.
 
-The build enumerates packages contributing code to the actual bundle. Their
-metadata and exact versions are included in assets-manifest.json; license texts
-are preserved in THIRD_PARTY_NOTICES.txt and appended to host.js so native delivery
-retains the notices without another WebView request. Packages declaring MIT but
-omitting a separate license/copyright file are identified explicitly rather than
-attributed to an invented author. Publication-specific license review remains
-part of the complete release audit.
+Theme uses the shell's current system appearance; identity is read-only and
+native-backed. Whole-operation adapters handle storage, relay/Outbox reads,
+subscriptions and publication, resources, uploads, intent/INC, foreground
+notifications and shell configuration. Link handling is native-mediated. The
+optional [close-check service](../docs/close-check.md) and advisory
+[support report](../docs/nap-support.md) confer no additional authority.
 
-
-## Pinned secure-randomness patch
-
-`patches/@kehto__shell@0.20.0.patch` replaces Kehto's namespace-prelude request-ID
-fallback with 16 bytes from Web Crypto `getRandomValues`, formatted as hex. The
-normal `randomUUID` path is retained. If neither secure API exists, request creation
-throws before posting. These are correlation IDs; native session generations remain
-native-issued UUIDs. This changes no NAP message fields or capabilities.
-
-The reviewed upstream is `@kehto/shell` 0.20.0 from the Kehto revision recorded above.
-Its original fallback used a timestamp and `Math.random`. React Doctor's line-based
-security-context rule found it in the minified delivery bundle. The patch removes
-that weak primitive itself; no scanner exclusions or generated-code substitutions
-are used. pnpm records the exact patch hash in the runtime lockfile. The build
-rejects any `Math.random` call in the final bundle, and Chromium/WebKit tests exercise
-both the no-`randomUUID` fallback and failure when secure randomness is unavailable.
-
-Web Crypto API reference:
-[getRandomValues](https://developer.mozilla.org/en-US/docs/Web/API/Crypto/getRandomValues).
+The [capability contract](../docs/capability-contract.md) and its linked references
+own wire fields, limits, permission and lifecycle policy. Incoming signer services,
+Value/zaps and unsupported domains are not provided by this runtime.
 
 ## Whole-operation native adapter seam
 
-The combined shell patch forwards `operationOverrides`; the runtime patch invokes
-only the nine reviewed storage/relay operations after registered-session, domain,
-ACL and firewall admission. A selected override consumes its operation even when
-it throws or rejects. It cannot fall through to a built-in signer. Absent overrides
-retain upstream behavior. Neither patch advertises or grants a capability.
+The locked [shell patch](patches/@kehto__shell@0.20.0.patch) forwards trusted
+`operationOverrides`; the [runtime patch](patches/@kehto__runtime@0.22.0.patch)
+selects reviewed operations only after registered-session, domain, ACL and firewall
+checks. A selected handler consumes the operation even when it fails; it cannot
+fall through to built-in persistence, relay publication or signing. An absent
+override retains upstream behavior, so native configuration must keep unsupported
+services disabled. `auth.getSigner()` stays null, and browser storage is not the
+authoritative saved-data backend.
 
-Canonical denial results preserve original IDs/subscription IDs. Reply closures
-stop after session replacement/unregister or bridge teardown. They do not cancel
-native side effects; native admission, payload validation, expiry and revocation
-remain mandatory. `auth.getSigner()` stays null in the native host. Identity uses
-the existing service adapter, not an invented signing domain.
+Replies retain original correlation/source and stop after unregister/replacement
+or teardown. Native responses cannot select another recipient. Config subscribers
+receive only no-ID `config.values` pushes; correlated get replies stay separate.
+Transport cleanup cannot undo already dispatched effects. Native lease, exact
+payload, deadline and final effect/delivery checks remain mandatory.
 
-The shell patch also accepts a trusted per-operation timeout map. Unconfigured
-requests retain 30 seconds. A future publication adapter may select 660 seconds
-only with the bounded native deadline in the [selected contract](../docs/capability-contract.md).
-This is host configuration, not a new NAP field or caller-controlled timeout.
+Host configuration supplies per-operation SDK/client deadlines; guests cannot
+choose them. Ordinary defaults are 30 seconds in the injected SDK namespace and
+27 seconds in the native client. An admitted Relay domain selects a 660-second
+`relay.publish` response budget by default, with any trusted bundled override
+preserved. `outbox.publish` also selects 660 seconds. This policy applies to
+verified-published and bundled artifacts. Native approval still expires within
+600 seconds; a longer response budget grants no extra approval lifetime.
 
-`pnpm test` builds a separate test host under ignored `.test-fixtures/` using the
-actual installed patched packages. It is never copied into native assets. Its
-in-memory adapter has no native bridge, key, signer or network. On 15 September
-2026, 38 adapter checks plus the existing 26 runtime checks passed in Chromium
-and WebKit (64 total). Coverage includes the exact admission order, canonical
-ACL/firewall denials, original unsigned payloads, failure without fallback, absent
-hook compatibility, late replies and precise configured/default deadlines.
-That browser proof covers shell/theme. The root capability documents record the
-subsequent native privileged interfaces and their separate acceptance limits.
+The published-artifact regression uses the shipped Approval Lab SDK and real
+byte verification, Kehto and native client. Native artifact metadata/transport
+and replies are doubled. It checks delayed correlated denial, duplicate replies,
+ordinary read timeouts, no retransmission and the response deadline; it does not
+prove native signing, relay delivery or device acceptance. See
+[signing approval](../docs/signing-approval.md).
 
+## Secure randomness
 
-## Packaged attribution checkpoint — 11 October 2026
+The shell patch retains `crypto.randomUUID` when available and replaces the
+request-ID fallback with 16 secure `getRandomValues` bytes encoded as hex. Without
+either secure API, creation fails before posting. `src/secure-random-compat.ts`
+also supplies secure version-4 UUIDs for older secure WebViews. Correlation IDs
+are not native generation or approval authority. No `Math.random` fallback exists;
+the final bundle build rejects any such call.
 
-An observer of the owning build records 47 modules, 15 of which belong to nine
-packages. Its outputs remain identical to the ordinary packaged Android/iPhone
-host. Both retained products contain the complete existing notice text, all nine
-package metadata headers and the exact installed originals for noble-curves,
-noble-hashes and nostr-tools. Six other package distributions omit a separate
-license file; their declaration-based generic MIT material is explicit. This is
-verified delivery, not full source/attribution or application license acceptance.
-The five installed Kehto source maps now match all 80 embedded source entries
-against the recorded immutable source commit. The complete Git-blob/UTF-8 text
-review recovers no original notice; declaration-only attribution remains open.
-Source-map matches do not reproduce patched compiled distributions. Napplet core's
-immutable source is still unresolved.
-See [the native dependency checkpoint](../docs/native-dependency-notices.md#packaged-trusted-web-runtime-attribution--11-october-2026)
-for source identities, evidence scope and remaining gaps. No new runtime asset,
-capability or dependency change follows from this review.
+## Versions, notices and evidence
+
+The manifests/lockfile pin Kehto shell/runtime/services 0.20.0/0.22.0/0.20.0,
+ACL/firewall 0.18.0/0.5.0, NAP core/NAP 0.31.1 and nostr-tools 2.24.0. Kehto source
+is [f031d5d](https://github.com/kehto/web/tree/f031d5d2264d047cd40e2524bf12b7f68c74caa6).
+Selected SHELL/THEME, NIP-5A/5D and capability revisions are recorded in the
+[native](../docs/native-contract.md#selected-versions-and-authorities) and
+[capability](../docs/capability-contract.md#owning-specifications-and-supported-profile)
+contracts. Updating packages does not silently select new draft semantics.
+
+The build enumerates actual contributing packages in `assets-manifest.json`,
+writes `THIRD_PARTY_NOTICES.txt` and appends notices to `host.js`. Preserve original
+licenses and clearly identified declaration-only material. Missing upstream
+original attribution and source-provenance gaps remain documented under
+[runtime attribution](../docs/native-dependency-notices.md#runtime-attribution).
+
+Browser tests cover real Kehto dispatch, adapters, genuine SDK messages, sandbox
+and CSP behavior, source/replay/schema rejection, private byte carriers and late
+delivery. Their native ports/artifact sinks are explicit diagnostic doubles.
+Neither browser engines, successful build nor theme/Ready labels prove WebView
+native isolation, protected storage, external signers or complete Android/iOS
+acceptance. Use [native harnesses](../tests/native/README.md) and the
+[testing plan](../docs/testing.md); final Phase 2/3 acceptance remains open.

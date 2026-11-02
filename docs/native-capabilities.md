@@ -1,389 +1,98 @@
-# Native identity and storage admission checkpoint
+# Native capability admission
 
-The process-owned identity/workspace authority, shared broker and both native
-transports now connect genuine Kehto/SDK identity and storage operations to native
-SQLite. Settings can open State Lab, a peer app, and the same app under another
-reserved unsigned publisher namespace. These are embedded test artifacts, not
-remote verified releases. No signer, relay access or published loader is enabled.
+The process-owned identity/workspace owner, shared brokers and both native
+transports connect the Kehto runtime to scoped native operations. Bundled fixtures
+and verified published napplets share the reviewed domain profile, but acquire
+authority only through their own registration and grants. See the
+[capability contract](capability-contract.md) and [testing](testing.md).
 
 ## Runtime and shell integration
 
-The reviewed fixture catalogue pins exact HTML and NIP-5A aggregate hashes. Build
-and runtime checks verify those bytes before creating the sandboxed guest. Only
-the fixture's reviewed domains are exposed. Real Kehto source-window, session,
-ACL and firewall checks precede the host-only operation adapter. Its native client
-bounds pending requests, correlates the original operation/ID, and rejects late,
-foreign or malformed responses. No browser storage or signer fallback is enabled.
+The runtime verifies artifact hashes and keeps genuine Kehto source-window,
+session, ACL and firewall checks ahead of its host-only operation adapter. The
+native client bounds pending requests, correlates original operations/IDs and
+rejects late, foreign or malformed replies. Browser storage and signer fallbacks
+are disabled.
 
-One React component lifetime owns one immutable view binding; ordinary workspace
-snapshot cloning or focus changes must not reset request history. The process
-owner captures selected identity and epoch, checks the accepted inventory revision,
-and checks exact live
-workspace membership before broker work. New State Lab openings use native UUID
-instance IDs, persisted across restarts and replaced on a later opening after close.
-The read-only public identity result must match the selected shell identity.
+One mounted component lifetime owns an immutable view binding. Snapshot cloning
+or focus changes must not reset request history. The process owner captures
+selected account/epoch, accepted inventory revision and exact live workspace
+membership. Persisted native UUID instance IDs survive restart; closing and
+opening a new instance obtains another ID. Read-only public identity must match
+the selected shell account.
 
-State Lab's output values are exposed as text to native accessibility. Its SDK
-buttons exercise missing/empty distinctions and literal saved strings through the
-same real request path that a compatible napplet will use. See the Android
-`tests/native/state_storage.py` and iOS `state-storage` scenario for native journeys;
-these use isolated installed fixtures and never reset the normal app's data.
+The supported domains are identity, storage, theme, relay, resource, upload, link,
+intent, inc, notify, config and outbox. A domain's presence does not grant every
+operation or claim full draft conformance. Dedicated owners retain publication,
+link, routing and upload authorization. Outbox also requires the Relay grant.
 
 ## Ownership and request lifetime
 
-A trusted native configuration captures session, selected public identity/epoch,
-publisher, stable app, version, persisted instance, bundled fixture and domains.
-Each native view adds its own fresh generation. Configuration is immutable and
-limited to the bundled UX Lab or State Lab variants; it accepts no URL or HTML.
-This configuration path is not proof of a remote publisher or artifact signature.
+Trusted configuration captures session, public account/epoch, publisher, stable
+app, version, persisted instance, descriptor and domains. Each host adds a fresh
+generation. Neither configuration nor view props accept arbitrary HTML or URLs;
+published content uses the verified one-use [artifact registry](published-artifact-registry.md).
 
-The native host checks its actual WebView, main frame, origin, exact document URL,
-generation, readiness and transport schema before admitting a request. The
-original serialized NAP message remains a string inside a native-held snapshot;
-JSON serialization must not normalize its payload before shared validation. React
-Native receives only a random one-use token, session ID and generation. Synchronous
-module methods claim the snapshot and check native lease liveness. Delayed React
-events cannot recreate or extend authority.
+Native receipt checks the actual WebView, main frame, origin, exact document URL,
+generation, readiness and transport schema. Original NAP JSON remains a string in
+the native-held snapshot, preserving payload bytes until shared validation.
+React Native receives a random one-use token, session ID and generation.
+Synchronous claim/liveness methods cannot create or extend a lease from a delayed
+event.
 
-The ordinary identity/storage transport allows 64 active generations, four pending
-requests per generation and eight globally. Each lease expires after 25 seconds.
-Android uses [elapsedRealtime](https://developer.android.com/reference/android/os/SystemClock.html)
-and iOS uses [ContinuousClock](https://developer.apple.com/documentation/swift/continuousclock);
-both include device sleep. Cleanup timers do not grant authority. Final lease
-consumption and generation checks occur on the native UI thread immediately before
-the original reply callback. The larger, individually approved publication queue
-in the capability contract is separate and remains unimplemented.
+| Ordinary identity/storage transport | Bound |
+| --- | --- |
+| Active generations | 64 |
+| Pending requests | Four/generation, eight/global |
+| Native lease | 25 seconds |
+| Serialized snapshot | 2 MiB UTF-8, including nested JSON escaping |
+| Correlation history | 1,024 operation/ID pairs per broker |
+| Storage | 1 KiB key, 256 KiB value, 512 KiB namespace including keys/values |
 
-Transport and snapshot limits are two MiB of UTF-8, including nested JSON escaping.
-The broker accepts the existing one-KiB keys, 256-KiB values and 512-KiB namespace
-quota. Maximum control-character strings fit the transport bound and round trip
-through real SQLite. Correlation history is bounded at 1,024 distinct operation/ID
-pairs per broker; exhaustion requires a fresh native session, rather than forgetting
-old IDs and admitting a replay. A valid next transport sequence is consumed even
-when admission is overloaded. Gaps and previous sequences cannot acquire leases.
+Android uses elapsed monotonic time; iOS uses `ContinuousClock`, including sleep.
+Cleanup timers do not confer authority. Final consumption/generation checks occur
+on the UI thread immediately before the original reply callback. Publication has
+a separate longer [approval lifetime](signing-approval.md).
 
-Close, navigation failure and teardown synchronously revoke the native generation.
-The broker additionally requires selected identity/epoch, the accepted inventory revision, and workspace
-membership checks from its owning shell. The integrated owner also rejects a
-failed workspace binding and an altered saved descriptor.
-Every database operation rechecks authority around awaits and before commit. A
-revoked pre-commit write rolls back. Revocation after commit cannot recall the write,
-but cannot produce a stale success response. Each request binding is then released.
+Exhausted correlation history requires a new session; forgetting IDs would permit
+replay. A valid next transport sequence is consumed even under overload. Gaps or
+old sequences cannot acquire a lease. Backgrounding invalidates pending ordinary
+work while retaining loaded sessions and replay counters. Close, navigation
+failure and teardown revoke the generation synchronously.
+
+Database operations recheck ownership around awaits and before commit. Revoked
+precommit writes roll back. Revocation after commit cannot undo the write, but
+must prevent stale success delivery. Release the request binding afterward.
+Failed workspace binding, changed descriptors and unaccepted inventory revisions
+deny operations.
 
 ## Supported broker operations
 
-The pinned [owning capability contract](capability-contract.md) governs exact fields.
-At the original admission checkpoint, all nine identity reads returned the selected public key or specified empty defaults;
-they never access a signer or the database. Storage get/set/remove/keys route to the
-native-bound composite namespace. Missing values remain null, empty strings remain
-empty, failures use the canonical result/error shape, and write success follows
-commit. Caller-supplied user, publisher, app, version or instance fields are denied.
-Malformed requests, absent domains and foreign registrations cannot reach storage.
+The [wire contract](capability-contract.md#message-shapes) governs exact fields.
+Identity is read-only; the [public identity owner](public-identity-data.md) supplies
+supported signed public data and separately consented sensitive lists. Native
+storage implements get/set/remove/keys in its composite namespace. Missing values
+are null, empty strings remain empty, failures use canonical result/error shapes
+and write success follows commit. Caller-selected account, publisher, app, version
+or instance fields are denied.
 
-## Earlier transport verification on 15 September 2026
+Relay query and selected Outbox reads use the captured registration and their
+bounded read services. Subscriptions, publication, uploads, resources, links,
+routing and notification/configuration operations retain dedicated owner checks;
+ordinary lease admission cannot substitute for their permissions or review.
 
-- `pnpm typecheck` and `pnpm test:capabilities` pass: 22 broker tests use actual
-  on-disk SQLite, including owner separation, reopen, quota rollback, mutation,
-  replay, expiry/revocation, post-commit uncertainty and maximum encoded strings.
-- The standalone Java and Swift lease proofs each pass 100 assertions, including
-  expiry, bounded admission, sequence handling, revocation and concurrent claims.
-  These exercise the native-language registry on the build host, not a WebView.
-- `pnpm prebuild:android` and the owning module's Gradle Debug Kotlin/Java compilation
-  pass. Android native transport execution and the full React Native binding remain
-  open; a successful compilation is not an emulator proof.
-- The source-linked UIKit/WKWebView harness passes all 17 tests in one iPhone17 /
-  iOS26.5 Simulator run. Four new tests cover native snapshot/reply ownership,
-  one-use claims, guest/synthetic/wrong-frame/wrong-generation denial, close and
-  frame-navigation revocation. The prior 13 isolation tests pass in the same run.
-  Capability stimulus is privileged native injection; this is not yet a genuine
-  SDK storage journey or an Expo-wrapper integration test. All 18 sealed input
-  hashes and 12 built product hashes still match after execution.
-- Full aislop: 100/100, all five active engines completed, zero findings across 102
-  supported files; 29 files are unsupported, predominantly Swift. Full local React
-  Doctor: zero diagnostics across 105 files after fixing two lookup warnings.
-  Numeric scoring remains unapproved/unverified. No findings are suppressed.
+## Verification
 
-This earlier transport receipt describes the preceding runtime assets. The later
-State Lab integration requires its own native journey and refreshed boundary
-receipts; compilation alone does not carry these passes forward. Physical-iPhone
-security and complete v1 acceptance remain open.
+```sh
+pnpm run test:capabilities
+pnpm run test:storage
+pnpm run test:query
+pnpm run test:outbox
+```
 
-## State Lab integration verification on 15 September 2026
-
-- Android prebuild and both production JavaScript exports pass.
-- Root TypeScript, 27 broker/owner tests, 71 storage/transition tests and 25 shell
-  tests pass. Owner tests use the actual identity transition and SQLite, including
-  a close during a pending write and fresh native IDs when display numbers repeat.
-- The complete browser runtime suite passes all 76 cases across Chromium and
-  WebKit. Twelve exercise the genuine State Lab SDK and Kehto adapter with an
-  explicitly simulated native transport; they are not native device evidence.
-  State Lab's independent suite passes 30 tests; each conformance run reports
-  five passes and five explicitly skipped manifest/wire/lifecycle checks.
-- Android's isolated standalone Release app passes all six native State Lab journey
-  checks in one run: selected identity, all storage operations and empty/missing
-  distinctions, cold restart, shared/instance separation, app/publisher separation,
-  and cancelled/confirmed identity switches with return to the original data.
-  Native ADB input and accessibility observations are used; no debug JavaScript
-  evaluation or database mutation supplies the results. Installed APK bytes are
-  checked before and after; 108 source files and bundled source contents were
-  compared with the owning checkout before installation. Three separate native
-  close/reopen checks also pass: exact warning, shared retention and a fresh private
-  instance namespace.
-- The isolated iOS Release fixture passes the corresponding six native XCTest
-  checks in one run, plus three separate close/reopen checks. Real shared UI,
-  identity transitions, Kehto, WK transport and Expo SQLite are compiled together.
-  The fixture's vault stores public keys only, carries a visible fixture label,
-  and excludes protected identity/signing modules. The observed SDK public key
-  independently decodes from the selected native npub. Installed app bytes and
-  source snapshots are stable across each run. This is not physical-iPhone key
-  storage or authentication evidence.
-- The refreshed source-linked WK suite passes all 17 tests in one run with the new
-  runtime assets. All 18 sealed inputs and 12 products match after execution.
-  Its four capability cases deliberately use a theme-only fixture and privileged
-  native injection to isolate transport/source/revocation mechanics; a transported
-  storage message is not a storage permission grant. Broker/domain enforcement and
-  actual SDK/SQLite integration have the separate checks above.
-- Full aislop is 100/100 with zero findings across 109 supported files; 29 files,
-  predominantly Swift, are unsupported. Full local React Doctor reports zero
-  diagnostics across 115 files; external numeric scoring still needs explicit
-  authorisation. No source suppressions or lowered gates were introduced.
-
-Private evidence is retained under
-`.tools/evidence/state-integration-checkpoint-20260915`, with complete original
-runs preserved separately, including test-driver failures. Native output labels,
-clipped controls, inset handles and platform-specific select controls were checked
-through real UI rather than inferred from browser tests. Android and iOS restart
-screenshots were inspected. The handle overlap found during this review is fixed
-by the layout checkpoint below. Physical security, authenticated actions, signing,
-remote loading/updates and complete v1 acceptance remain open.
-
-
-## Handle spacing verification on 15 September 2026
-
-The guest viewport reserves 12 points on each side for the visible grips, keeping
-them beside napplet text. Touch targets remain 44 by 88 points. Gesture thresholds,
-ordering and accessibility actions are unchanged. Rebuilt and attested isolated
-Android and iOS apps each pass the existing three-check close/reopen journey, using
-real native input and the same persisted data. Screenshots from both platforms
-show the Result text unobscured. This covers the observed overlap, not full physical
-device gesture or accessibility acceptance. TypeScript and all 25 shell tests pass;
-full aislop remains 100/100 and the local React Doctor scan has zero findings.
-External numeric scoring is still awaiting explicit authorisation.
-
-
-An explicitly validated inactive-identity deletion may advance the accepted
-inventory revision without changing the selected identity, workspace controller
-or epoch. Existing storage bindings can remain usable afterward. Any unaccepted
-revision change still fails, and a later identity switch permanently revokes the
-earlier bindings. The shared deletion transition tests cover both boundaries;
-its user-facing native action flow is not yet enabled.
-
-
-The selected Phase2.4 upload profile passes SDK/native photo/file, revoked
-recipient, transfer/queue/recovery and normal signed-admission journeys on both
-selected hosts; see [upload evidence](upload-access.md). Normal Settings review,
-persisted grant/cache, actual system picker, exact provider bytes and original SDK
-receipt are exercised. The signed fixture is locally supplied and signs uploads
-with a public disposable identity under compile-gated local TLS. Physical iOS
-protection/signing, ordinary workspace identity-switch parity and public-provider
-acceptance remain Phase2.11 gates. CAP-05 is accepted for this declared profile under the owner-approved exception
-for the still-visible patched tooling advisory.
-
-## Public profile tracer — 2 October 2026
-
-Phase2.5 Plan01 connects genuine State Lab `identity.getProfile()` to a captured
-native identity, verified signed kind0 projection and a dedicated durable SQLite
-source cache. Five-minute recent cache avoids a query; older validated data can
-be returned after a bounded refresh failure, without a freshness wire extension.
-No-cache transport failure is an error. Native denial can no longer become a
-successful missing profile. Metadata URLs stay literal data.
-
-Both isolated native Release products pass nine source/product-linked SDK checks,
-including actual public WSS, cold cache, controlled offline/empty/failure cases,
-view closure, trusted identity-epoch revocation with the view open and tampered
-native disk signatures. Identity19, capability55, State Lab34 and runtime162 browser
-regressions pass. [Plan01](../.planning/phases/02.5-public-identity-data/02.5-01-SUMMARY.md)
-records exact products, scope and retained failures. Lists/permissions/badges,
-normal signed admission and final quality remain open; this is not CAP-06 or
-physical/protected identity acceptance.
-
-
-## Public identity selected acceptance — 2 October 2026
-
-All three Phase2.5 plans are complete for the [selected public profile](public-identity-data.md).
-The final list/permission/badge matrix passes22 actual SDK/native checks on each
-host, including queued revoke/regrant denial and background with an observed
-pending query. Normal signed State/Feed loading passes14 on each host through
-IdentityShell/Settings, first-open domain review, separate remembered list consent,
-cold native SQLite cache, Settings revoke and confirmed public-only transitions.
-Each signed journey independently compares nine original SDK values. The new user
-separately approves domain access; no original user's permission or source is reused.
-
-Android build04 and iOS build05 share all application/runtime/HTML bytes. Only the
-iOS XCTest selector/scroll helper changed between their seals. The list matrix's
-production bytes also match; later QA driver-only changes are recorded explicitly.
-Historical profile evidence includes actual WSS; signed admission/list matrices
-use labelled local signed artifacts and diagnostic relay frames/clocks/destinations.
-Normal protected identity switching, physical devices and full published MVP parity
-remain Phase2.11 gates. Both ordinary exports/Release builds and regressions pass.
-Full numeric quality is ReactDoctor100/aislop99 with only the approved locked Forge
-exception: the normal root audit stays red and the other eight audits are clean.
-See [verification](../.planning/phases/02.5-public-identity-data/02.5-VERIFICATION.md).
-
-
-## Ordinary physical iPhone storage checkpoint — 7 October 2026
-
-Bundled State Lab now exercises genuine SDK storage through the existing protected
-Release app: missing/empty values, get/set/keys/remove, shared/instance separation,
-process persistence and app/publisher/user namespace isolation subsets pass in
-one combined 12-check storage/import run. The original identity and saved values
-are restored after a public test fixture import. The [physical checkpoint](../.planning/phases/02.11-published-mvp-acceptance/02.11-03-CHECKPOINT.md#ordinary-storage-and-protected-identity-import)
-retains exact evidence and limits. Published updates, full cross-product,
-close/reopen, quota/type faults, native protection and Android parity remain open.
-
-
-## Physical WK fault checkpoint — 8 October 2026
-
-The separate source-linked iPhone boundary app passes all20 methods in one run.
-The three added cases exercise actual WebKit process termination, synchronous
-claimed/queued lease revocation and recovery with a different process/generation;
-four-per-generation and eight-global request bounds across three real WK views
-with overload replay rejection; and UTF-8 envelope/snapshot byte limits. A
-2,097,153-byte envelope is rejected before sequence consumption; a 2,097,140-byte
-envelope whose captured-registration snapshot exceeds two MiB consumes its
-sequence and creates no lease. Fresh sequences still receive their exact replies.
-
-The [boundary test scope](../tests/native/ios-boundary/README.md) pins the WebKit
-test-only fault control. No private API or policy implementation is added to the
-production host;49 actual native core sources compile unchanged, while Expo
-wrappers and unused fixture-release transport remain outside this probe. Both
-installed Hypergolic apps, their local products and primary process remain
-unchanged. Shared security/bootstrap tests pass353+13 cases. This supplements
-SEC-01/03; it does not close protected signing, external network receiver, full
-resource/subscription/session limits, owning Expo or published cleanup acceptance.
-All61 full Phase2 requirements remain intact, with five complete across both phones.
-
-
-A subsequent21-method physical WK run adds an independent LAN HTTP/TCP receiver.
-Before/after unrestricted WK controls prove device/app reachability; the listener
-observes only those two control requests and no guest requests or extra TCP
-accepts during fetch/XHR/WS/image/script/CSS/worker/form/popup attempts. Actual
-per-path CSP events, form target/method, unchanged guest location and native
-sandbox/SDK-theme observations are retained. A disposable previously permitted
-probe uses test-only HTTP WebContent configuration; normal Hypergolic apps and
-production core policies remain unchanged. This supplements SEC-02 without
-claiming DNS/UDP/public HTTPS, protected-key absence, all navigation/download/file/
-content paths or owning Expo/published parity. All61 row scopes/statuses persist.
-
-
-## Android native boundary preparation — 9 October 2026
-
-The [disposable instrumentation harness](../tests/native/android-boundary/README.md)
-compiles against the unchanged production host, all native transports and exact
-packaged runtime in an ordinary Expo Release app. Five prepared cases cover genuine
-opaque/main/matching-origin-child callbacks, native schema/generation/replay,
-one-use replies, queue limits and foreground-input/close revocation. Actual Expo
-context is retained; manually attached probe views have no JavaScript callback
-registration. Registry observations and real WebView replies are the scoped oracles.
-No secondary policy, fabricated frame or enabled application fault hook is used.
-
-The signed ARM64 app and instrumentation APK compile with 62 pinned native/build/runtime inputs and
-1,239 sealed source/generated inputs unchanged. App and test use the existing
-local development certificate; trusted runtime and ordinary JavaScript bundle match
-the reviewed bytes. A missing test compile dependency failed the first attempt;
-both original logs are retained. No installation or native execution occurs, and
-no matrix row advances. Protected signing, owning authorization, OS background,
-renderer/UTF-8/network/published faults and full Android/iOS parity remain open.
-Do not operate either phone until its owner confirms the backup panel is closed.
-
-
-## Android emulator native fault checkpoint — 9 October 2026
-
-The [source-linked harness](../tests/native/android-boundary/README.md) now passes
-all seven cases with493 assertions in one disposable Android API36/ARM64 run,
-then passes again through the exact-source/installed-byte/cleanup runner. Actual
-native main/opaque/matching-origin-child callbacks, original SDK theme barriers,
-schema/generation/replay, one-use replies, both overload replay counters, native
-foreground-input/close revocation, measured UTF-8 wire/snapshot bounds and real
-public-API renderer death/fresh-generation recovery are exercised. WebView133 is
-the selected emulator provider; no physical-device inference follows.
-
-The initial iOS-style reply observer failure and preflight-only dotted-path parser
-failure are retained. Android's native message-object observer replaces the
-incorrect test oracle; production dispatch is unchanged. The2,097,521-byte native
-snapshot exceeds the2,097,152-byte bound despite an in-bound wire. Real renderer
-handles differ after actual production destruction/revocation, without OS PID or
-protected signer claims. All62 pinned production/build/runtime inputs and installed
-products persist. The owned emulator stops and its disposable userdata is removed;
-original AVDs and phone UI remain untouched. All61 matrix scopes/statuses persist,
-six complete/55 open. Owning physical journeys and final full MVP gates remain.
-
-
-## Physical Android ordinary Feed continuation — 9 October 2026
-
-Owner confirmation closes both backup panels and clears the public phone-input
-and capture gate. It does not establish Android authentication/export or either
-platform's full backup/cancel acceptance.
-
-The unchanged ordinary protected Android QA Release passes thirteen scoped
-checks across an initial query run and reconciled continuations: zero-limit empty
-completion, bounded signed selected-author query, live history/EOSE, two exact
-individually approved notes after switching and real OS background/same-process
-return, retained draft, explicit SDK Close and only-owned two-view cleanup. Both
-new exact reviewed payloads/hashes/signatures independently arrive after EOSE at
-nos.lol. Navigation pauses signing review; the driver initially omitted Resume
-approvals twice. Each original pending request is reconciled/resumed and approved
-once; no Send or publication replay occurs. Failed attempts remain retained.
-
-Nineteen original screenshots and accessibility captures are inspected. Live
-counts, draft, native review and restored empty workspace are visible. Event
-rows are clipped/toast-obscured and expanded JSON lies below the captured review
-viewport; exact full IDs/JSON are accessibility/hash evidence. No complete event
-card pixels, native socket/signing counters, zero stale delivery, full fault matrix
-or published parity is claimed. All1,226 build-sealed inputs retain production
-bytes; nine differences are existing documentation/planning files. Both installed
-APK hashes remain unchanged. CAP-02/03 become partial on Android; six of61 full
-cross-platform requirements remain complete/55 open.
-
-The separately prepared seven-case boundary probe cannot run yet: its one physical
-app install fails INSTALL_FAILED_USER_RESTRICTED (Install canceled by user).
-The test APK is not installed and instrumentation is not started. Existing QA and
-primary apps remain intact. This is a device installer resource dependency, not
-native test execution or a product fault. Canonical private evidence is
-`android-feed-lifecycle01` and `android-boundary-install01`. Full Plan03/04 and
-Phase2 remain open. Documentation-only checkpoint; no source push or fresh full
-quality/build claim. Usage91%, owner ceiling about98%.
-
-
-## Physical Android native transport/fault run — 9 October 2026
-
-All seven source-linked cases pass in one physical Android16/API36 run with498
-assertions on WebView153. Genuine main/opaque/matching-origin-child callbacks,
-original SDK positive controls, schema/generation/replay, one-use replies,
-per-view/global queues and consumed overload replay, native foreground-input/close
-revocation, UTF-8 wire/snapshot bounds and actual public renderer termination/
-fresh-generation recovery are exercised. All eleven owned probes close; all67
-source inputs and both installed test products remain unchanged during execution.
-This is native transport coverage with privileged diagnostic stimulus, without
-React JS callback registration; protected signer/storage authorization, real OS
-background/lock/app death, independent egress and verified-published parity remain.
-
-The runner now receives its own Hypergolic application label through the androidTest
-manifest. Its label and manifest become build/run seals. The signed build seals
-1,242 inputs and62 owning native/runtime pins. Target app bytes remain identical
-to the predecessor; only runner packaging changes. Label alone does not resolve
-the installer rejection. Inspection shows the real Xiaomi USB-install dialog with
-Install and countdown Deny controls. The already-authorized ordinary Install click
-succeeds; Remember my choice stays unchecked. Earlier owner-reported approval and
-rejected attempts remain, with their exact cause unconfirmed. No installer bypass
-or OS restriction change occurs.
-
-Both newly owned test packages are subsequently hash-verified and uninstalled;
-the prior launcher returns and both retained QA/primary APK hashes remain. Canonical
-private `android-native-boundary-physical01` preserves originals, source, build,
-installer reconciliation and cleanup. SEC01/03 become partial on Android; six of61
-full cross-platform rows complete/55 open. Pre-documentation source-bound Doctor100/430 and ten
-audits run; aislop98 contains only the two exact approved locked Forge/braces
-advisories. The normal verifier remains red, with full evidence preserved. No new
-exception, suppressed finding, production policy change or source push. Usage93%,
-ceiling about98%; full Plan03/04/Phase2 remain open.
+State Lab and its peer exercise genuine SDK missing/empty distinctions, literal
+strings and identity/instance isolation. Android `tests/native/state_storage.py`
+and the iOS `state-storage` scenario use isolated installed fixtures. Native
+admission, WK boundary and lease harnesses retain their local instructions.
+See [testing](testing.md) for cases and evidence limits. Full ordinary-app,
+protected-device and Phase 2/3 acceptance remain open.

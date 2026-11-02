@@ -18,3 +18,12 @@ __pycache__/
 # Generated trusted fixture release catalog; rebuilt from reviewed runtime inputs.
 /modules/napplet-host/android/src/main/assets/runtime/fixture-release.json
 /modules/napplet-host/ios/Resources/runtime/fixture-release.json
+
+# Local planning/history is retained outside the public source inventory.
+.planning/
+*.p12
+*.pfx
+*.mobileprovision
+*.apk
+*.ipa
+*.xcresult/

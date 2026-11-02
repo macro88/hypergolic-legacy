@@ -10,7 +10,7 @@ the expanded HTTPS suite on those API levels. The runner writes a
 source- and DEX-bound JSON receipt.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/android-published-transport-device/runner.py \
   --serial emulator-5554 --output /private/tmp/hypergolic-transport-proof
 ```
@@ -27,7 +27,7 @@ acceptance remain separate.
 ## Physical Android selected transport cases — 11 October 2026
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/android-published-transport-device/physical_runner.py \
   --serial DEVICE_SERIAL --output /private/tmp/hypergolic-physical-transport
 ```

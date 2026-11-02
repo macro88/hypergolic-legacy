@@ -10,8 +10,8 @@ and unique output placeholders. One Android accessibility observer may run at a
 time. The `settings` and `protocol` suites require a clean isolated app store.
 
 ```sh
-source .tools/use-local-tools.sh
-source .tools/use-ios-tools.sh
+# Configure the pinned tools described in docs/development.md.
+# Select full Xcode as described in docs/development.md.
 python3 -B tests/native/routing/build.py --platform android --output /tmp/routing-android-build-UNIQUE
 .tools/android-sdk/platform-tools/adb -s EXPLICIT_ANDROID_SERIAL install -r /tmp/routing-android-build-UNIQUE/routingfixture.apk
 HYPERGOLIC_UPLOAD_UI_DUMP=fast python3 -B tests/native/routing/android.py \

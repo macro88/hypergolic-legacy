@@ -3,7 +3,7 @@
 This standalone host regression extracts the actual resource-transfer statements from `NativeImportPanel.kt` and `NativeConnectionPanel.kt`. It checks the signer module's release compile classpath offline and requires its current resolved coroutines1.8.1 artifact. Kotlin2.1.20 compiles the fixture with warnings as errors.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/signer-core/panel-cancellation/run.py --output /tmp/hypergolic-panel-cancellation-proof
 ```
 

@@ -2,8 +2,7 @@
 
 This selected read-only profile binds every request to the native-captured selected
 identity. The guest cannot choose a user, relay, cache, signer or decryption key.
-Phase 2.5 is accepted for this selected profile, with the single approved dependency
-exception below. Broader native MVP acceptance remains Phase 2.11.
+The selected profile implements public identity reads; full integration acceptance is tracked separately.
 
 ## Owning contracts
 
@@ -97,38 +96,6 @@ nested sets, missing evidence and invalid/partial pairs fail. This strict select
 profile differs from NIP-58's permissive guidance to ignore incomplete pairs.
 Returning all awarded badges remains an explicit future gap.
 
-## Selected native acceptance
-
-The [native tracer](../tests/native/identity-data/README.md) exercises genuine SDK
-calls through Android WebView and iOS WKWebView, native leases and SQLite.
-Plan01 passes nine profile/cache/lifetime cases per host, including an independently
-verified live public WSS profile. Plan02's expanded list/badge matrix and Plan03
-normal signed admission/final quality are recorded in the phase summaries.
-Controlled frames, clocks, owner revocation and offline destinations are labelled
-separately from public transport. Simulator/emulator evidence does not establish
-physical protected storage, protected identity switching or full MVP acceptance.
-
-The final expanded matrix passes 22 SDK/native checks per host. Normal signed
-State/Feed admission passes 14 per host and independently checks nine original SDK
-results. It covers first-open decline, separate list consent, remembered access,
-cold older-cache fallback, refresh, Settings revoke and confirmed public-only user
-switching. The new user must approve the napplet domains separately before reads;
-returning to the original user restores only that user's own grants and cache.
-
-Identity54, capabilities55, query16, storage92, security349 plus bootstrap13,
-shell27, subscriptions12, resources23, uploads51 and quality-verifier58 regressions
-pass. Chromium/WebKit runtime162, State Lab56 and Feed Lab12 pass. Conformance CLI
-boot checks pass with its five declared lifecycle/wire omissions per fixture;
-those omissions are not counted as native proof. Both ordinary exports, Android
-prebuild/ARM64 Release and unsigned generic iPhoneOS Release compile pass.
-
-React Doctor is 100/100 and aislop is 99/100 with zero warnings and the sole
-visible Forge finding. The root audit remains red for that exact advisory; eight
-other audits are clean. The only authorized quality exception is the exact
-[locked node-forge patch](dependency-patches.md). The strict ordinary gate remains
-red; the separate exception review verifies complete fresh reports, source/tool
-hashes, coverage and installed patch closure. See [phase verification](../.planning/phases/02.5-public-identity-data/02.5-VERIFICATION.md).
-No source push or public fixture publication is implied by these checks.
 
 ## Trusted shell avatar
 
@@ -161,13 +128,8 @@ so a replacement remounts for the same identity and late codec errors from its
 predecessor cannot hide it. This key never grants a guest native authority.
 No profile URL or app-only native transport is granted to a WebView.
 
-Shared contract regressions cover verified cache sharing/cold reopening, missing,
-malformed and forged profiles, URL/body/type/dimension admission, native cancellation,
-late identity/background replies and same-identity source replacement. Physical
-valid-image, missing/broken fallback, identity-switch and cold-restart journeys now
-pass UX-02 on both physical platforms. Android adds ten ordinary native-input
-cases with independently checked public keys, original UI snapshots and exact
-avatar crop bytes; the original identity and empty workspace return. Shared
-tests and packaging alone cannot pass the row. Missing/broken visual outcomes
-do not identify a particular native transport or codec failure branch. See the
-Phase2.11 acceptance matrix and profile-avatar checkpoint for the exact scope.
+## Testing
+
+Final Android/iOS acceptance remains open. See [testing](testing.md) for the unified requirement matrix, current quality gate, evidence limits and full standalone campaign.
+
+Run `pnpm run test:identity` and [native identity-data journeys](../tests/native/identity-data/README.md). Keep controlled frames/clocks, public WSS reads, protected identity switching and physical avatar results distinct. Cover the full data/permission/cache/badge matrix, public-source verification, account/publisher isolation, native queued revocation and cold restart. Missing/broken avatar outcomes alone do not identify a particular transport/codec failure branch.

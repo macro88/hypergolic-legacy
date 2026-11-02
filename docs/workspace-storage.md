@@ -1,246 +1,93 @@
-# Workspace persistence checkpoint
+# Workspace persistence
 
-The app now saves opening order, the last selected napplet and explicit empty state
-under the selected public identity. It restores these descriptors before entering
-the shell. A missing workspace starts with the approved embedded fixtures; an
-existing empty row stays empty. Corrupt or unavailable saved descriptors stop
-startup without replacing them. Only exact bundled fixture descriptors are
-currently admitted; published loading and verification remain separate work.
+The shell persists opening order, selected napplet and explicit empty state per
+public account. A missing workspace uses approved initial fixtures; an existing
+empty row remains empty. Corrupt/unavailable descriptors stop startup without
+replacement. Stored state consists of descriptors and saved strings, not live
+WebView memory, unsaved drafts or approval requests.
 
-The process-owned identity service opens one dedicated `hypergolic-shell-v1.db`
-connection after the identity vault is ready. It is separate from identity metadata
-and secret storage. Each binding captures the selected public key and checks the
-vault selection/revision before and after asynchronous database work. The native
-one-shot bootstrap still prevents a competing React Native runtime from reopening
-these services in the same process.
+## Ownership and commits
 
-The controller publishes cached, immutable snapshots through React's
-[external-store subscription API](https://react.dev/reference/react/useSyncExternalStore).
-The existing shell receives controlled workspace state. One save may run at a
-time, with only the latest subsequent snapshot retained. Revision checks prevent
-stale writes from overwriting newer data. A write failure revokes the binding,
-keeps the loaded shell mounted and shows a recovery screen. A lost commit
-acknowledgement remains uncertain until restart reads persisted state; it is not
-retried as a fresh write or converted to an empty workspace.
+The process owner opens dedicated `hypergolic-shell-v1.db` after the native vault
+is ready. Workspace storage is separate from account/key commits. Each binding
+captures public account, vault selection/revision and epoch, checking them around
+asynchronous work. A competing React runtime cannot reopen owners in the same
+process.
 
-SQLite uses the same dedicated connection for transactions, with WAL, FULL
-synchronization, verified foreign keys and the requested iOS full-fsync settings.
-These configuration checks are not physical power-loss or backup-security proof.
-No private key enters this database. Saved napplet strings are ordinary text,
-partitioned by user, publisher, stable app, version and shared/instance scope.
+The controller publishes immutable cached snapshots. Only one save runs at once;
+coalescing retains the latest subsequent snapshot. Revision checks prevent stale
+writes from overwriting new state. Failure revokes the binding, preserves the
+mounted shell and displays recovery. A lost commit acknowledgement stays uncertain
+until persisted state is read after restart; do not retry it as a fresh write or
+turn it into an empty workspace.
+
+SQLite transactions use the dedicated connection, WAL, FULL synchronization,
+verified foreign keys and required iOS full-fsync settings. These checks do not
+prove physical power-loss durability. No key/signer secret enters this database;
+ordinary napplet strings are stored as text.
 
 ## Prepared storage capabilities
 
-The integrated core provides bounded string storage and atomic accepted-version
-copy/selection/receipts. Storage get/set/remove/keys are now available to reviewed
-State Lab fixtures through the [native broker](native-capabilities.md). The trusted
-owner binds every request to the current identity epoch, immutable descriptor and
-live workspace membership. Confirmed identity changes rebuild all views; late old
-callbacks cannot acquire another identity's storage binding.
+Namespaces use account, verified publisher, stable app, aggregate version and
+shared/instance scope. Instance scope additionally includes a persisted native
+UUID, surviving restart; a new opening after close receives another ID. Closing
+retains shared data. Already-saved legacy numeric UX Lab descriptors remain
+compatible.
 
-New State Lab openings receive native UUID v4 instance IDs, which persist with the
-workspace across process restarts. Closing and reopening obtains another ID even
-when a display number is reused. Shared storage remains keyed by identity,
-publisher, app and version; instance storage additionally uses that persisted ID.
-Already-saved numeric UX Lab descriptors remain compatible. Accepted-version copy
-transactions are prepared core operations; published update UX is still pending.
+The native [broker](native-capabilities.md) binds operations to current epoch,
+immutable descriptor, generation and live membership. Get/set/remove/keys use
+prepared SQL and transactional quotas: 256 keys, 1 KiB/key, 256 KiB/value and
+512 KiB/namespace including keys/values. Internal storage work is also bounded
+to 16 requests/binding and 128 total; workspace encoding is at most 512 KiB.
+Delimiter-like keys are data and cannot choose another namespace. Missing is
+null; empty strings are preserved; write success follows commit.
 
-Workspace persistence stores descriptors, not live WebView state or approval
-requests. A published descriptor includes its exact signed manifest event ID as
-well as its coordinate owner and content version. Restore and storage decoding
-reject a missing or malformed event pin, so recovery can only reverify the selected
-manifest or show an error. An accepted version change updates the content version
-and exact event ID atomically in the saved descriptor. Older published rows without
-an event ID now fail closed and require recovery or explicit removal.
-Schema migration preserves older accepted-update receipts with an unknown event pin;
-replaying one cannot report success because its selected manifest cannot be verified.
-Drafts still need a napplet's saved-data capability to survive termination.
-Identity import and rebinding are covered in the subsequent
-[identity-switching checkpoint](identity-switching.md). Published descriptors and
-full standalone application acceptance remain open.
+Accepted verified updates revoke/freeze old generations and atomically copy
+strings into an empty same-owner version namespace with selection and receipt.
+Keep old state. Never overwrite retained target data blindly or copy between
+accounts/publishers/apps. Failures preserve old selection; native authority runs
+no guest migration code. Copied bytes do not guarantee schema compatibility.
+
+## Published descriptors and grants
+
+A published descriptor retains coordinate owner, content version and exact signed
+manifest event ID. Restore rejects absent/malformed pins and revalidates exact
+cached bytes or fetches only that event. Accepted updates save content version
+and event pin together. Older descriptors without valid pins fail closed.
+Migrated update receipts with unknown event pins cannot be replayed as verified
+success.
+
+Revisioned grants are scoped to account, publisher and stable app. Trusted writes
+use compare-and-swap, snapshot inputs before awaits and reject malformed domain
+sets. Migrations preserve existing workspace/app data. Schema-v4 support metadata
+records requested set, supported intersection and profile in the same transaction;
+see [admission](nap-support.md). A persisted grant alone does not authorize a live
+generation or approve an operation.
+
+## Lazy restoration and transitions
+
+Restore initially mounts only the last focused napplet. Other entries show Open
+to load until selected. Visited views remain mounted through focus, Settings and
+overview changes; closing, accepted replacement or account epoch change tears
+down the applicable generation. Opening order and persisted instance IDs do not
+change merely on focus.
+
+Foreground Android views can remain resumed for live overview previews; focus
+separately gates media and privileged work. Activity background pauses rendering
+and playback. Account changes flush/revoke/remount; cancelled confirmation
+preserves the existing routing/configuration registrations. See
+[identity transitions](identity-switching.md) and [close checks](close-check.md).
 
 ## Verification
 
-- `pnpm run test:storage`: 62 real-SQLite and controller tests pass, covering
-  namespace isolation, quota bounds, prepared SQL parameters, corruption, cancellation,
-  version continuity, lost acknowledgements, actual Node process restarts, rapid
-  UI changes, explicit-empty restoration and rejection of unavailable descriptors.
-- Android: `tests/native/workspace_restart.py` passed against the normal debug app
-  without clearing data. A fourth fixture reopened after cold launch; all four
-  retained opening order; each closed through the normal warning; empty state
-  survived another cold launch. The public identity and installed APK were unchanged.
-- iOS: `tests/native/ios-driver.py workspace-restart` passed the corresponding
-  journey in a separate standalone Release fixture with real Expo SQLite and the
-  actual shared controller/shell. Two public XCTest terminate/launch cycles were
-  observed. The fixture contains a labelled public identity and no key/signing
-  modules; this does not establish production iOS identity storage or authentication.
+```sh
+pnpm run test:storage
+pnpm run test:capabilities
+```
 
-Both final empty-state screenshots were inspected. Private receipts are in
-`.tools/evidence/workspace-checkpoint-20260915`; full raw native artifacts remain
-separately preserved. After native execution, one trailing space in the SQL schema
-source and the Android harness's inherited limitation wording were corrected;
-these edits change no operation or assertion. Physical-device checks and the
-React Doctor external numeric score remain open. Full local aislop is 100/100 and
-React Doctor has zero findings, without suppressing source or lowering gates.
-
-## Lazy restoration checkpoint
-
-The restored workspace now starts only its last focused napplet. Other saved
-entries show “Open to load” in overview until selected. A visited napplet stays
-mounted while focus/settings/overview change; only closing or an identity epoch
-change discards that live view. This follows UX-09 without changing saved order,
-instance IDs, the explicit-empty model or the native capability limits.
-
-The previous eager startup intermittently left the focused iOS State Lab with
-“No identity selected”. A clean launch passed once and then reproduced the failure;
-those failed runs remain preserved. Startup request contention is a plausible
-cause (native admission is globally bounded), not a directly instrumented finding.
-After lazy restoration, three consecutive XCTest process-restart runs each passed
-identity connection, exact deletion review, unavailable-authentication denial and
-live-draft retention after cancellation. Both rebuilt platforms also pass the
-three-check State Lab close/reopen shared/instance-storage journey.
-
-Current Android APK: `cec0ebf35cad2c4db95e371712710d8b3c4b5456a6b81c539f741d0620120c4b`.
-The iOS public-only fixture input seal is
-`9193c7d41f56eff98194c375a7285f9ae3f8d7d55a1d42d99ad6f4a659a68c5a`.
-Its native identity/secret modules remain absent. This is Simulator UI/runtime
-proof; protected iOS keys and authentication still require physical-device proof.
-Raw receipts: `/private/tmp/hypergolic-ios-delete-unavailable-06` through `-08`,
-`/private/tmp/hypergolic-lazy-ios-close-01` and
-`/private/tmp/hypergolic-lazy-android-close-01`. TypeScript and 25 shell tests pass;
-full aislop remains 100/100 and local React Doctor has zero findings/no numeric score.
-
-## First-open grant storage checkpoint
-
-Schema v3 adds one revisioned capability grant per selected user, verified
-publisher and stable napplet ID. The trusted shell binding can read, replace or
-revoke the exact reviewed capability set with revision compare-and-swap. It
-canonicalizes NAP capability identifiers (for example `theme` and `storage`),
-snapshots caller input before asynchronous work, and rejects malformed persisted
-sets. Existing v1/v2 databases migrate without replacing workspace or app data.
-The 89-test storage suite covers isolation, conflicts, migration and corruption.
-The first-open review UI and decision gate remain to be connected; a stored grant
-alone does not authorize a napplet.
-
-## Physical Android live overview regression — 8 October 2026
-
-The ordinary physical Android Release reproduced blank inactive overview cards:
-three loaded UX instances retained distinct counters and drafts, but only the
-last selected card rendered. Selecting another instance changed which card was
-visible; settling did not restore the inactive previews.
-
-The native host now resumes loaded WebViews while the activity is foreground.
-Selected focus still controls the trusted media prelude, accessibility, picker,
-approval and privileged transport authority. Background still pauses WebViews;
-close destroys the original view. This separates renderer lifetime from selected
-media authority, consistent with the documented [WebView lifecycle](https://developer.android.com/reference/android/webkit/WebView#onPause()).
-
-The same-name, same-certificate in-place ordinary Release update has matching
-installed APK bytes. The physical repeat renders all three previews with their
-exact distinct state. Sixteen focused state assertions, nine independent PNG
-inspections, five physical video checks and exact-target Keep open/close checks
-are retained privately. The video receipt matches an independent full public byte
-read. Foreground switching pauses at a retained position; an eight-second actual
-background hold returns paused, with a measured 1.984-second advance between the
-last foreground observation and pause. Both returns require fresh manual Play.
-Only the newly created resource test view is closed; existing sessions remain.
-
-Regression recipe: open three disposable UX instances, seed distinct counters
-and public drafts through native input, switch both ways, enter overview and
-inspect every visible loaded preview. Tap a card and verify its original state.
-Then load a bounded public video through Resource Lab, independently compare its
-MIME/size/hash, test switch and background pause, require fresh Play after each,
-and close only the test resource after checking Keep open. Preserve screenshots,
-AX trees, input geometry, installed-byte proof and source hashes separately.
-Uncompressed AX trees are observation data; they do not prove screen-reader scope.
-
-TypeScript, 28 shell tests, 23 resource tests, 18 real browser resource checks and 74
-installed-patch quality tests pass. Android prebuild and ordinary arm64 Release
-pass. Full React Doctor scans 425 files with numeric 100/100 and zero findings. Aislop 98/100 across 417 files retains only the two approved dependency exceptions;
-root/tool audits still report them, runtime audit is clean, and Expo Doctor20/21
-retains the six held patches. Full order, all-three scroll, deliberate empty,
-continuous transition/reduced-motion/accessibility and final MVP acceptance remain
-open. iOS is unaffected by this Android lifecycle change and needs its own evidence.
-
-
-## Physical Android handle parity — 8 October 2026
-
-UX-04 now passes the complete named handle journey on physical Android as well as
-iPhone: inset thumb-height targets, both inward previous/next directions, live
-translation, both early cancellations, both end resistance/no-wrap and actual
-near-edge guest buttons without a false switch. Native state assertions agree
-with independent review of the original physical recordings.
-
-The continuation completes thirty checks: ten genuine checks precede an observer
-scrolling failure, then twenty checks finish the journey. An earlier controller's
-incorrect four-view assumption and both failed receipts remain preserved. This
-is not one uninterrupted green run. Original sixteen-view order, the original
-public draft/counter, APK/process and motion settings are retained/restored; only
-three newly owned views close. Twelve owning gesture/UX inputs and parent style
-blocks match current source. Seventeen other recorded inputs differ, so retained
-app evidence does not establish current full-app/build/signing/published acceptance.
-
-All twelve handle/card returns at first/middle/last under normal and zero Android
-transition scale pass. Normal sparse frames include zoom intermediates; reduced
-sequences settle directly but some frames contain mixed layouts. No exact pacing
-or zero-intermediate-frame guarantee follows. UX-05 stays partial: the earlier
-ignored first tap is unexplained and successful repetitions do not prove a fix.
-TalkBack and full UX-10 remain open. Canonical private `android-gesture04` receipts,
-inspected derivatives and ten byte-preserved original videos retain the scope.
-
-One regular nonstreamed installation of the separately signed Hypergolic QA app
-now succeeds with installed bytes matching the tested APK. The original app's
-APK/process stay unchanged and device security settings are not altered. This
-proves that this transport works; the prior streamed rejection's cause remains
-unconfirmed. First launch and the prepared nine-check saved-data/empty journey
-are next. No fresh application build or quality scan is claimed.
-
-
-## Physical Android saved data and deliberate empty — 8 October 2026
-
-All nine original SDK/native-input checks pass in one ordinary signed separate QA
-run: missing/empty/exact shared and distinct instance values, Keep open and complete
-order, exact target close staying in overview, quiet last empty with accessible
-identity/Open napplet/existing Settings, two real process restarts preserving empty,
-and reopening with a new native UUID/exact shared recovery/missing instance value.
-Seven complete native inventories and eight original PNGs agree with the assertions.
-All closed views belong to the fresh disposable profile; the original app APK/PID
-remain unchanged. Current observer inputs and installed bytes are sealed; only five
-documentation inputs differ from the original tested build. No private key export,
-main reset/update or uncertain-upload retry occurs. Canonical private `android-empty02`
-preserves the exact original evidence and current source/build binding.
-
-UX-08 is now complete on both phones: five of61 full final requirements complete,
-56 open. UX-09 gains deliberate-empty persistence but still needs verified-published
-version-pin/lazy reload. ID-01 gains normal first entry, independent public npub
-verification and two process restarts; device reboot and failed-read/no-replacement
-remain required. No fresh app packaging or quality scan; Phase2 stays active.
-
-
-## Physical Android published restart — 8 October 2026
-
-Ordinary verified State Lab and Feed Lab preserve their full two-view opening order,
-exact native UUIDs, selected public identity, last active view and both pinned signed
-event IDs through two actual force-stop/not-running/new-process launches. The inactive
-view visibly shows Open to load in each case; actual native card focus reloads its
-original SDK. State recovers its exact previously saved shared value. Only these two
-new QA views close, restoring deliberate empty. The prior full empty-workspace proof
-completes the named Android UX09 requirement; iPhone published parity remains open.
-
-Five continuation checks pass with the same existing two views/data. First-open/save
-predecessors and failed header/scroll/readiness observations are retained; this is not
-one uninterrupted green first-open run. The observer now distinguishes fixed Settings
-controls from scrolled public-key text and waits for actual SDK identity/status after
-Runtime connected. All 1,221 runtime inputs and installed APK remain unchanged, with
-only five documentation differences from the original build. Main APK/PID are preserved.
-No application fix, unsaved draft recovery, Outbox publication, fresh packaging or full
-quality claim follows. All 61 full requirements remain, 5 complete across both phones.
-
-
-## Physical iPhone published restart journey — 9 October 2026
-
-The existing signed normal QA app passes all eight physical published State/Feed checks. Ordinary Settings verifies the exact public publisher, event and requested access; Feed still warns that Outbox is unavailable. State saves and rereads a fresh shared value. Two actual process terminations and launches restore complete opening order, independently decoded public identity, exact native UUIDs, last-active view and both signed event pins. Each inactive preview visibly shows Open to load before native focus reloads the original SDK; State recovers the exact saved value. Closing only the two newly owned published views preserves all six original views/order and returns to the original UX focus. Original screenshots and public accessibility records were reviewed.
-
-Two failed predecessors are retained: an offscreen Overview Open helper and a generic Done query that matched Settings Done. Neither opened a published view. The corrected third driver passes the complete journey with no application change. All 1,221 observed inputs, both local app seals, installed metadata and primary process stay unchanged. The runner alone was built/installed; installed iOS executable bytes were not retrieved. This proves the named restart requirement together with the prior deliberate-empty run; unsaved draft recovery, published Outbox support and final MVP completion remain open.
-
-UX-09 now passes on both physical phones; all 61 original requirements remain, six complete and 55 open. Identity/signing/capability/security/fault acceptance and final build/quality sign-off remain. Documentation-only checkpoint; no new application build, fresh quality scan or source push. Usage 83%, owner ceiling about 98%.
+Tests cover namespaces, quotas, SQL parameters, corruption, cancellation,
+copy/rollback, lost acknowledgements, real process restarts and explicit-empty
+restoration. [Workspace restart](../tests/native/workspace-restart.md) and
+co-located native drivers describe installed-app scenarios. Native fixtures
+establish only their own storage/UI scope, not physical key protection. Full
+ordinary-app and Phase 2/3 acceptance remain open in [testing](testing.md).

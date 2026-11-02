@@ -8,7 +8,7 @@ approval. The native host must separately validate transport source/sequence and
 bind the captured event, identity, publisher, app and destinations.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/android-approval-authority/runner.py \
   --output /private/tmp/hypergolic-android-approval-proof
 ```

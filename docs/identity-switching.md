@@ -1,171 +1,93 @@
 # Identity import and whole-shell switching
 
-Trusted Settings now lists saved identities and accepts trimmed nsec input. Invalid
-input leaves the current identity and live napplets unchanged. The input is masked,
-excluded from autofill, cleared before review, and unmounted when Settings closes
-or the app leaves the foreground. Mutable decoding buffers are cleared; this is
-not a guarantee of erasing immutable strings or every runtime copy.
+Trusted Settings manages public accounts and native signing methods. Secret
+import is entered in native UI and never appears in React snapshots or errors.
+See [identity storage](identity-storage.md) and [external methods](external-signing.md).
+Complete Phase 2/3 acceptance remains open in [testing](testing.md).
 
-Importing the selected identity is a no-op. Importing another saved identity uses
-the selector without duplicating storage. A new identity is written and read back
-through the existing protected vault. One confirmation names the destination npub
-and explains that every loaded napplet will restart and unsaved work will be lost.
-Keep current identity cancels the exact pending request. Stale confirmations cannot
-accept a later request. No private key appears in transition snapshots or errors.
+## Preparation and confirmation
 
-Opening the confirmation retains the current native routing owner, revision and
-live registrations. Cancelling therefore preserves configuration schemas, saved
-values and subscriptions without guest re-registration. Settings removes native
-review focus independently, and trusted reviews remain blocked while confirmation
-is open. Accepting the switch withdraws the old routing owner synchronously before
-vault/workspace changes; deletion and recovery also remain unavailable.
+Invalid/cancelled import leaves the current account and live napplets unchanged.
+Native entry is masked and excluded from autofill/capture where supported; owned
+buffers are cleared on cancellation, dismissal or lifetime loss. This does not
+guarantee erasure of immutable strings or every OS/runtime copy.
+
+Native preparation returns a public key and an opaque two-minute candidate bound
+to vault ID/revision and owner. Importing an already selected local identity is a
+no-op; selecting a saved account does not duplicate it. Importing for an account currently using an external method requires the native
+import confirmation explicitly choosing its local key; successful import selects
+local as part of that mutation. It does not require another method-picker action.
+Linking the same public key preserves that account's data.
+
+Confirmation names the destination account and warns that loaded napplets restart
+and unsaved work is lost. Cancellation targets the exact pending request; stale
+confirmations cannot accept a successor. Candidate ownership, native confirmation,
+vault selection and workspace commit are independently checked.
+
+Opening confirmation retains the existing native routing owner, revision and
+registrations. Cancelling preserves configuration schemas, values and subscriptions
+without guest re-registration. Trusted review focus is removed independently;
+reviews cannot proceed while confirmation is open. Confirmed switching withdraws
+the old routing owner before changing vault/workspace state. Deletion and recovery
+cannot run concurrently.
 
 ## Commit and failure behavior
 
-The process-owned transition controller serializes selection. Confirmation freezes
-workspace edits and waits for the last descriptor write before asking the vault
-to persist the new selected identity. Session authority rejects operations during
-that transition. Once selection is confirmed, the old workspace binding is revoked;
-a fresh controller saves the current opening order and focus in the selected user's
-namespace. The shell remounts every loaded napplet under a new identity epoch.
-Existing saved napplet strings remain partitioned by identity. Returning to an
-identity carries the currently loaded descriptors, with that identity's own data;
-it does not resurrect a different set of previously closed views.
+The process-owned transition controller serializes changes, freezes workspace
+edits and waits for the latest descriptor save before native commit. Session
+authority denies operations during switching. Accepted changes revoke the old
+binding, advance epoch/revision as applicable and remount loaded sessions under
+fresh authority. Data stays scoped to the selected account.
 
-A rejected precommit validation keeps the same live shell and permits edits again.
-Uncertain vault writes, failed source saves or destination workspace failures
-require restart; the app cannot keep exposing the previous identity after durable
-selection may have changed. Selection and workspace use separate databases, so
-this does not claim a cross-database atomic transaction. Corrupt destination rows
-are preserved and stop entry. The vault's existing journal determines recovery
-of interrupted imports/selections without generating a replacement identity.
+Account switching carries the currently loaded descriptors in opening order and
+focus into that account's workspace; returning uses its own saved napplet data,
+not a resurrected set of views previously closed elsewhere. Same-account method
+changes also flush/restart sessions. Selection has no automatic signer fallback.
 
-The old authority's identity, vault revision and epoch are checked on every use.
-This narrow authority still needs to be connected to native storage and approval
-registrations. Native napplets currently expose readiness/theme only; no signing
-queue or napplet storage request is claimed delivered by this checkpoint.
+Known precommit denial preserves live state and re-enables edits. Uncertain native
+writes, failed source saves or destination failures require recovery/restart;
+the old account cannot remain exposed after durable selection may have changed.
+Vault and workspace have separate commit boundaries, not a cross-store atomic
+transaction. Preserve corrupt destination rows and stop entry; do not reset them
+or generate a replacement identity.
 
-## Native UI correction
-
-Full-screen Settings and workspace-recovery modals provide their own safe-area
-context. The iOS trace found that the inherited provider left Settings under the
-status bar, so Done could be reported hittable while its coordinates overlapped
-system UI. The fix follows the library's
-[modal-provider guidance](https://appandflow.github.io/react-native-safe-area-context/api/safe-area-provider/).
-The iOS regression compares the Done button against the actual visible fixture
-safe-area baseline, then exercises dismissal. Screenshots require visual inspection.
-
-## Evidence and limits
-
-The integrated storage suite has 71 cases, including nine transition cases using
-actual SQLite: invalid/cancelled input, duplicate imports, single-flight selection,
-late workspace callbacks, stale authority, identity-isolated saved strings, explicit
-empty state, validation rejection, source-write failure, corrupt destination state
-and lost destination commit acknowledgement. Strict TypeScript and the existing
-278 security, 13 bootstrap and 25 shell cases pass.
-
-A separate Android Release installation uses the unchanged production identity,
-SQLite and native host code. Its namespace and local test-signing configuration
-isolate it from the normal app. The native journey passed masked input, invalid and
-cancelled import retaining all three drafts, confirmed import resetting every loaded
-session, duplicate import, saved selection, and inventory/selection/focus after a
-cold launch. The original generated identity was retained, and only a publicly known
-disposable key was imported. The first harness attempt failed on a zero-sized
-offscreen draft node; the visible-node selector was corrected without app changes.
-
-The corresponding iOS fixture contains the actual transition, Settings, shell and
-SQLite controller with a labelled public-key-only test inventory. It stores no
-secret and does not instantiate protected vault adapters. Its initial native run
-exposed the modal safe-area bug before any identity change committed. The corrected
-journey passes five checks, including Done below the observed 62-point safe-area
-baseline, cancellation retaining all three counter/draft states, fresh sessions
-after import, duplicate handling, saved selection and restart persistence. Final
-confirmation and inventory screenshots were visually inspected. Android was rebuilt
-with the same two modal-provider changes and passed Settings dismissal plus
-identity continuity across two further cold launches; the vault/transition source
-from its full import journey is unchanged. Normal iOS Simulator entry still
-requires a physical iPhone; no test backend is available in production.
-
-The complete local aislop scan is 100/100 and React Doctor has zero findings;
-its external numeric score remains pending permission. The Expo Doctor patch
-mismatch remains separately open. Private receipts are in `.tools/evidence/identity-switch-checkpoint-20260915`.
-Android source maps verify 41 owning source files against the release inputs;
-iOS verifies the corresponding shared source in its 1,110-module bundle.
-No source push or remote change is part of this checkpoint. Authenticated backup/deletion, native capabilities, signing, published
-loading and full physical-device acceptance remain unfinished.
-
+Preparations carry a generation and the captured session. Fatal preparation
+errors can revoke that session even after cancellation; a late failure cannot
+overwrite a newer healthy session. Native callbacks, candidate cancellation and
+workspace writes must never target a replacement operation. Public snapshots
+validate inventory, exact selected account and accepted vault revision on use.
 
 ## Inactive identity deletion transition
 
-The shared owner now accepts deletion only from the trusted confirmation's exact
-current session. It freezes and flushes workspace changes before calling the
-authenticated vault operation. Successful deletion must remove only the requested
-inactive identity, retain the selected identity and vault, advance the inventory
-revision exactly once, and match the vault's actual readback. The workspace
-controller and identity epoch remain unchanged, preserving the mounted-view
-identity and selected napplet data. A subsequent identity switch still revokes
-that authority permanently.
+Deletion requires the exact trusted confirmation/current session, an inactive
+target and native authentication. Freeze/flush workspace before the native action.
+Successful readback must remove only that account, retain current account/vault,
+and advance inventory revision exactly once. Keep the workspace controller/epoch
+and mounted data unchanged. A later account switch still revokes this authority.
 
-A known authentication denial preserves the current session. If approval was lost
-after writing the deletion journal, the exact pending identity is exposed for a
-fresh authenticated retry; its key is not silently removed. Unknown outcomes or
-unexpected inventory changes require recovery. Unaccepted inventory revisions
-still fail workspace and capability checks.
+Known authentication denial preserves unchanged state. Unknown writes or unexpected
+inventory changes require recovery, even if a later read appears absent. A native
+pending operation may be retried only under its exact recoverable state and fresh
+authentication; never silently remove a key. Unaccepted revisions fail capability
+and workspace checks. Local-key removal is a distinct operation retaining the
+account, connections and data; neither deletion erases legacy namespaces.
 
-The complete storage suite now passes 80 tests and the capability suite 27, with
-real SQLite and explicit key/authentication doubles. Cancellation also covers the
-initial flush and key verification before an OS prompt can open. The shared UI
-shows the exact inactive key, separate confirmation and native authentication.
-An actual Android system-PIN journey retains all three loaded napplet drafts after
-deleting the inactive identity; its inventory and current workspace survive restart.
-See [native authentication evidence](identity-storage.md#native-authentication-and-settings-integration)
-for source/artifact boundaries and the remaining iOS physical-device acceptance.
+## Native presentation and verification
 
+Full-screen Settings/recovery modals own their safe-area context. Controls must
+remain below system UI and reachable with large text. Cancellation is checked
+during workspace flush, preparation, native review and authentication, not only
+at the final button.
 
-## Ordinary physical iPhone import checkpoint — 7 October 2026
+```sh
+pnpm run test:storage
+pnpm run test:security
+pnpm run test:signer
+pnpm run test:presentation
+```
 
-The existing protected Release app now passes a combined 12-check original SDK
-storage/import journey. Malformed and zero-scalar imports fail; cancellation
-retains the original identity and data; secure input masks a publicly known test
-fixture. Approved import selects its independently derived public identity and
-isolated saved data, survives process restart, and saved selection restores the
-retained original identity and values. The test driver never receives or exports
-the retained private key.
-
-The [physical checkpoint](../.planning/phases/02.11-published-mvp-acceptance/02.11-03-CHECKPOINT.md#ordinary-storage-and-protected-identity-import)
-records all actions, original driver failures, source/product bounds and remaining
-work. Full multi-session/pending-authority switching, native protection/backup/
-delete and Android parity remain open; this is not final Phase 2 acceptance.
-
-
-## Ordinary physical Android identity lifecycle — 9 October 2026
-
-The current protected QA Release now has thirteen supporting physical checks
-across recorded continuations: malformed/zero-scalar denial, valid/cancelled public
-fixture import, duplicate nochange and imported/original selection after real cold
-processes. Two State Lab views and one Approval Lab view retain distinct drafts
-and the same paused native review when switching is cancelled. Confirmed switching
-resets all three SDK identities/drafts and removes the old review. Saved-key reads
-are isolated by identity; restoring the original recovers both exact saved strings.
-Only run-owned data/views are removed; the original empty workspace and identity
-survive another cold process. The public imported fixture remains inactive.
-
-The [physical checkpoint](../.planning/phases/02.11-published-mvp-acceptance/02.11-03-CHECKPOINT.md#current-physical-android-identity-import-and-lifecycle--9-october-2026)
-retains all original observer failures and visual limits. Three exact native hashes
-are independently recomputed; bounded relay EOSE absence supports its named scope
-without proving zero native signing/frame effects. Protected at-rest inspection,
-owning stale callback/replay faults, authenticated backup/deletion and complete
-Phase 2 acceptance remain open. Source implementation and installed APKs are
-unchanged; no new build or full quality run is claimed for these documentation edits.
-
-
-The routing-confirmation repair passes real shared import/selection/configuration
-regressions and120 owning registry assertions per native platform. Signed Android
-and iPhone products pass. After a data-preserving Android update, both original SDK
-instances retain exact saved values and subscription histories on cancellation.
-The corrected eight-case configuration actor also verifies confirmed remounts,
-separate saved values for two development identities and exact restoration on
-both return switches, with fresh subscriptions. Both modified scopes, three owned
-views, original identity/empty workspace and keeper bytes are restored/verified.
-Earlier empty-output observer failure evidence is retained. No complete
-physical iPhone or all-capability identity acceptance follows from this subset.
+Regressions cover actual SQLite isolation, invalid/cancelled/duplicate import,
+single-flight changes, late writes, stale epochs, deliberate-empty restoration,
+destination corruption, lost acknowledgements and configuration/subscription
+preservation. Native fixtures and physical account workflows have different
+protection guarantees; their cases and remaining gates are in [testing](testing.md).

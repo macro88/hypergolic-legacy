@@ -9,7 +9,7 @@ The nine tests cover focused and foreground review, global pause and explicit re
 Run with a fresh disposable directory:
 
 ```sh
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 python3 tests/native/approval-unit/runner.py \
   --build-root /private/tmp/hypergolic-approval-unit
 ```

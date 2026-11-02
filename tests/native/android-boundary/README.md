@@ -62,7 +62,7 @@ existing development workflow first. Enable the pinned local toolchain if presen
 then use a fresh output directory outside the repository:
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 -B tests/native/android-boundary/build.py --output /tmp/android-boundary-build-01
 ```
 

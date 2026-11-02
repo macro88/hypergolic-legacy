@@ -48,77 +48,12 @@ is pending, before React Native lifecycle callbacks necessarily arrive. Final
 native delivery independently checks the same generation. Reads never acquire a
 signing approval or a scoped storage binding.
 
-Required-domain admission remains a separate check. `relay` admission currently
-supports this query profile and existing individually approved publication; it
-does not promise subscriptions, close, encrypted publication or automatic AUTH.
-Subscriptions are phase 2.2. Resource sidecars and outbox routing are later work.
-Unsupported required `cvm`/`webrtc` and other domains still block execution.
+## Compatibility
 
-## Verified checkpoint — 30 September 2026
+The relay domain covers only selected operations. [Subscriptions](relay-subscriptions.md), individually reviewed publication and [Outbox routing](outbox-routing.md) have their own lifetime/permission policies. Query authority does not imply encrypted publication or automatic AUTH. Current tolerant admission reports unavailable groups without granting their operations; see [NAP support](nap-support.md). Optional AUTH announcements are discarded under the selected [read policy](relay-subscriptions.md#optional-auth-announcements); required authentication stays denied.
 
-Both standalone isolated fixtures pass exact public-event retrieval, empty EOSE,
-invalid-filter denial, close/reopen and cold restart. Android API 36 uses actual
-compressed accessibility and ADB input, compares the returned ID/content against
-an independently hash/signature-verified sample from `wss://nos.lol`, and checks
-installed APK equality and query-source stability. iPhone 17 Pro/iOS 26.5 Simulator
-uses XCTest with exact native input replacement; installed executable, JavaScript
-and runtime assets match the recorded Release build. Five screenshots per
-platform were captured. Early harness failures are retained separately.
+## Testing
 
-The deterministic query/service suite passes 10 tests and the broker suite adds
-6 owner/grant/revocation cases. All 40 capability, 344 security plus 13 preflight,
-80 storage, 25 shell and 110 Chromium/WebKit runtime tests pass. Feed Lab has 6
-browser tests. Conformance CLI passes 5 and skips 5 checks, including unresolved
-manifest and lifecycle measurements; its label does not establish full protocol
-conformance. Full numeric React Doctor and aislop are 100/100 with no findings,
-and dependency audits pass for all seven lockfile roots.
+Final Android/iOS acceptance remains open. See [testing](testing.md) for the unified requirement matrix, current quality gate, evidence limits and full standalone campaign.
 
-TypeScript, both production exports, Android Release and iOS Simulator Release
-builds pass. `pnpm run check` stops at the existing Expo Doctor patch-pin mismatch
-(20/21 checks). The intentionally pinned Expo 57.0.20 family remains unchanged;
-the later quality/audit gates were run independently, without suppression.
-
-The ten-case controlled matrix also passes on each native host: known signed
-result, empty EOSE, bad signature, signed filter mismatch, missing EOSE, event and
-frame floods, shortened timeout, explicit close and owner-epoch revocation. SDK,
-Kehto, native leases, broker and validation are real; its frame port is a diagnostic
-double, distinct from the live WSS proof. Late frames are supplied after actual
-cancellation and never become a successful reply to revoked owners. Owner-epoch
-revocation exercises the authority assertion, not the protected-identity UI.
-The production Java/Swift lease registries each pass 100 assertions, and a normal
-runtime-owner regression verifies a real confirmed identity transition aborts a
-pending query. Early harness layout/expectation failures remain separate.
-
-Phase 2.1's selected query-profile exit is accepted (CAP-02). CAP-01 remains an
-ongoing compatibility requirement across capability phases. Full normal-app and
-verified-published Feed Lab parity, selected real napplets, older WebView query
-behavior, physical-iPhone protected identity/signing and live published updates
-remain open for final phase-2.11 integration acceptance. No full relay conformance
-or MVP completion is claimed. The [native fixture guide](../tests/native/feed-query/README.md)
-records reproduction and evidence limits.
-
-The final scans surfaced development-tool transitive advisories after the earlier
-clean scan. Exact overrides now select `fast-uri` 3.1.8, `ip-address` 10.7.1 and
-`brace-expansion` 5.0.12 where affected, retaining the existing `xcode>uuid` pin.
-Application/Expo versions are unchanged. Both required quality scores and all
-seven complete audits must pass again before the targeted commit.
-
-
-## Selected physical Android transport faults — 11 October 2026
-
-The current compiled Release module passes 115 selected transport assertions in
-a disposable API 36 shell process: 55 HTTPS (including resource redirects), 37 WSS
-and 23 structural NIP-01 request/response assertions. The receipt binds 67
-source/API/runtime inputs and 389 compiled classes, unchanged after execution.
-Five exact temporary files are removed and verified absent; installed app bytes
-and package inventory remain unchanged. The first observer's historical HTTPS
-count fails after all suites pass; its receipt remains alongside the corrected
-final run. No production parser or transport changes occur.
-
-The [runner and scope](../tests/native/android-published-transport-device/README.md#physical-android-selected-transport-cases--11-october-2026)
-record the controlled loopback resolver, policy, certificates and hostname
-verifier. WSS TLS stop labels are synthetic; JSON envelope classification runs as
-a separate owning proof. These results add selected native transport evidence to
-CAP-02 and CAP-04. Ordinary Expo/SDK dispatch, complete signed-event validation,
-owner revocation, public-host/system trust and published Android/iOS parity remain
-open. No full acceptance row passes; the matrix remains seven of 61 complete.
+Run `pnpm run test:query` and the [native Feed query guide](../tests/native/feed-query/README.md). Compare signed known events, empty EOSE, invalid signatures/filter mismatch, missing EOSE, frame/event floods, timeout and revoked owners. Diagnostic frame doubles, standalone transport/TLS proofs, actual SDK native reads and ordinary protected/published journeys are separate evidence.

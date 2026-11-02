@@ -6,7 +6,7 @@ Simulator ID, checks the complete HTTPS and WSS case lists, hashes owning
 source before and after the run, and writes a JSON receipt to a new directory.
 
 ```sh
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 python3 tests/native/ios-published-transport-simulator/runner.py \
   --simulator BOOTED_SIMULATOR_UDID --output /private/tmp/hypergolic-ios-transport-proof
 ```

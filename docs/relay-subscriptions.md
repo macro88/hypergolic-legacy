@@ -1,6 +1,6 @@
 # Live relay subscriptions
 
-Phase 2.2 implements the selected NAP-RELAY draft profile at PR #2 revision
+The selected [NAP-RELAY draft](https://github.com/napplet/naps/blob/0be8abce18beb46ca37bd4ddd042f58d30b4eedc/naps/NAP-RELAY.md) profile uses PR #2 revision
 `0be8abce18beb46ca37bd4ddd042f58d30b4eedc`. NIP-01 comparison uses
 `0046368a747c5c25ae2bec28bae0e537744c8f10`. This is a selected draft contract,
 not an interoperability claim across every SDK release or future draft.
@@ -53,120 +53,12 @@ not reconnect. Approval and pending transfer/background protections remain
 independent. Android cancellation closes raw TCP synchronously; TLS close-notify
 and cleanup remain on the worker, avoiding network writes on the UI thread.
 
-## Validation status
+## Optional AUTH announcements
 
-The [native fixture](../tests/native/feed-subscription/README.md) separates real
-SDK/native WSS lifecycle, diagnostic frame faults, registry proofs and protected
-identity integration. Final isolated Android API 36/WebView 133 and iOS 26.5
-Simulator Release products each pass eight actual WSS lifecycle checks and nine
-diagnostic SDK/native fault cases. Installed products and source snapshots match.
-An independent, read-only public relay observer verifies every rendered live ID
-in the final captures: 17 Android and 16 iOS, including 11 and 10 new events after
-both native and observer EOSE respectively. Switching retains drafts/connections;
-background stops both sockets; return creates two fresh connections; close, view
-removal, public-owner revocation and cold restart reject old intent. Inspected
-final screenshots show the corresponding UI and native counters.
+The pinned [NIP-42 revision a2494f4](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/42.md) permits AUTH announcements alongside public reads. Native/shared discovery, query and stream classifiers accept only an exact two-field string announcement under existing frame/byte/count/rate bounds, discard it and continue waiting for verified events/EOSE. No authentication state, guest challenge, signing permission or client AUTH response is created. An announcement is not successful history; malformed/flooded announcements and CLOSED fail closed. Required authentication stays denied under separate approval policy.
 
-The ordinary public-only published-update shell journey also passes on both
-platforms, retaining the accepted verified revision and connected runtime across
-background/return. This proves loaded published read-view retention, not published
-Feed Lab subscription parity. Java/Swift retained-authority proofs each pass 82
-assertions; the existing Java WSS proof passes 223 checks. Diagnostic frame faults
-are not native WSS fault-server or protected-identity UI evidence.
+## Testing
 
-Full React Doctor and aislop pass 100/100 with zero findings, and all seven
-lockfile audits are clean. Strict TypeScript, both exports/prebuilds, normal
-Android ARM64 Release and unsigned iOS Simulator/device Release compilation pass.
-`pnpm run check` still stops at the existing Expo Doctor patch-pin mismatch;
-Expo/application pins and quality gates are preserved. CAP-03 is accepted for
-this selected profile. See the [phase verification](../.planning/phases/02.2-live-relay-subscriptions/02.2-VERIFICATION.md).
+Final Android/iOS acceptance remains open. See [testing](testing.md) for the unified requirement matrix, current quality gate, evidence limits and full standalone campaign.
 
-A real runtime-owner regression proves focus retention and confirmed identity
-revocation during suspension. Browser tests cover captured recipients, invalid
-signatures/subscription IDs, private-channel forgery, background deadlines and
-explicit encrypted-kind denial. These tests do not replace native evidence.
-Physical iPhone protected identity/signing, complete published MVP capability
-parity and older WebView acceptance remain CAP-14/phase-2.11 gates.
-
-
-## Ordinary physical published stream checkpoint — 12 October 2026
-
-An existing reviewed Feed release with remembered grant reaches original SDK signed
-history/EOSE on the retained iPhone. Atomic accessibility snapshots show sustained
-live delivery beyond the ordinary request lease, and a loaded-view switch preserves
-the draft and growing event count. A targeted follow-up activates iOS Settings
-without changing settings and verifies real background/return. Explicit SDK Close
-leaves displayed event IDs unchanged for four seconds; an actual cold process does
-not display an old live handle. The original six views, identity and focus return.
-Five atomic event snapshots match independently verified signed relay observations.
-
-Two original observer failures remain failed: non-atomic list readings during
-live insertion, then unconfirmed background after Home. The passing portions of
-the latter compose with a separately passing five-check follow-up; this is scoped
-supporting evidence, not a passing full Phase 2 method. Corrections affect only the
-observer. No application rebuild or reinstall is performed.
-
-Native socket/frame counters, no-emission while backgrounded, complete bounds and
-owner/identity/update revocation remain separate required evidence. Display
-continuity and a stable closed list cannot prove zero native effects. CAP-03 final
-physical acceptance remains partial; published Outbox and full fixture parity are
-open. No new full quality rerun or source push accompanies this checkpoint.
-
-
-## Optional relay authentication announcements — 12 October 2026
-
-The pinned [NIP-42 revision a2494f4](https://github.com/nostr-protocol/nips/blob/a2494f4f81d46684e5814a9bf35e2b1df978f955/42.md)
-allows a relay to announce an AUTH challenge while serving a public request.
-Previously both native read classifiers and the shared parser rejected that valid
-announcement, preventing discovery, public queries and streams on such relays.
-
-Android and iOS now accept only the exact two-field string announcement under the
-existing frame, byte, count and rate bounds. Shared discovery, query and stream
-adapters discard the challenge and continue waiting for verified events and EOSE.
-No challenge is retained as authentication state or exposed to a napplet, no signing authority is granted,
-and no client AUTH reply is constructed. A challenge alone is not successful
-history; malformed/flooded announcements and CLOSED still fail closed. Required
-authentication remains denied under the selected separate-approval policy.
-
-Four affected shared suites pass46 cases, with three new regressions reproducing
-the original parser/query/stream failures before the repair. The broader loader,
-query broker and Outbox integration batch passes235 cases. Android native policy,
-classifier, owner and TLS proofs pass140/30/23/41 checks; the TLS case uses the exact
-outbound subscription identifier. Swift owning proofs, arm64 iOS compilation and
-nine controlled TLS modes pass, including initial and rotated AUTH announcements.
-Controlled transport uses disposable loopback addresses/trust anchors through
-existing host-only seams; it does not prove ordinary physical-device acceptance.
-
-TypeScript, Android/iOS exports and Android prebuild pass. A signed ordinary ARM64
-Android Release builds under the retained application ID/certificate, with exact
-permissions and92 original native notices. Only its JavaScript bundle and one DEX
-file change relative to the prior candidate; native libraries, trusted host and
-notice assets remain byte-identical. Generated packaging edits restore afterward.
-Both physical phones now have the repair installed under the retained application
-ID and certificate. Android's installed APK matches the sealed candidate. The
-ordinary arm64 iPhone Release also builds with 68 exact original notices; its eight
-re-signed frameworks retain identical code bytes before their signature regions.
-iPhone installation is confirmed by the device receipt and runtime observations;
-installed executable bytes were not retrieved.
-
-The existing compiled iPhone observer passes four invalid-identifier checks before
-the update and five targeted published Feed checks afterward. Original SDK history
-loads, delivery resumes after actual system-Settings backgrounding, explicit close
-leaves stable displayed event IDs, and actual process termination/cold launch keeps
-the stream closed. Two atomic SDK snapshots match independently signed relay events.
-The original six views, full selected public identity and focus restore. The exact
-temporary runner is removed and app inventory reconciles. This uses an existing
-reviewed release and remembered grant; it does not prove fresh consent, physical
-AUTH challenge receipt, zero native socket effects or full fixture parity.
-
-Android installation succeeds, but the original post-update observer fails because
-it expects transient Settings to remain open across process startup. Independent
-reconciliation verifies installed bytes, unchanged package inventory, original
-public identity and empty workspace without repeating installation. Settings is
-closed; automated native input remains unresolved. The original failure is retained.
-No full acceptance row advances from this batch. No new full quality rerun accompanies
-these physical checks.
-React Doctor reports100/100. Aislop reports98/100 with only the existing node-forge
-and braces advisory exceptions; root/quality audits remain nonzero, and the
-normal full quality gate fails visibly. Physical UI/authentication/error journeys
-and RELAY-02 remain open; this compatibility repair does not pass a full acceptance row.
+Run `pnpm run test:subscriptions` and the [native subscription guide](../tests/native/feed-subscription/README.md). Cover actual WSS history/live delivery, duplicate/flood/invalid events, explicit close, foreground switch, background/return, missed lifecycle intervals, owner/view replacement and cold restart. Preserve independent signed-event observation; diagnostic frame faults and standalone registries cannot prove whole-app protected identity or published parity.

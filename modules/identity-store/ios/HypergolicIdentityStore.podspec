@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.version = package['version']
   s.summary = 'Native encrypted identity storage for Hypergolic'
   s.description = 'Keychain-wrapped, backup-excluded iOS identity secret files.'
-  s.license = { :type => 'UNLICENSED' }
+  s.license = { :type => 'MIT' }
   s.author = 'Hypergolic contributors'
   s.homepage = 'https://github.com/nostrocket/hypergolic'
   s.source = { :git => 'https://github.com/nostrocket/hypergolic.git' }

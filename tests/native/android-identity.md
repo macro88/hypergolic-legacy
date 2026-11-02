@@ -9,7 +9,7 @@ This scenario deliberately force-stops and launches the installed app before bot
 The app must already be installed, the explicitly selected device booted, and the installed APK hash known from build/install evidence. For a development app, arrange Metro connectivity first; the harness does not start Metro or change ADB forwarding. The selected checkout must have its locked `nostr-tools` dependency installed.
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 PYTHONDONTWRITEBYTECODE=1 python3 tests/native/identity_driver.py \
   --source "$PWD" \
   --serial "$HYPERGOLIC_ANDROID_SERIAL" \

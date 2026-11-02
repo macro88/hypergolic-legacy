@@ -1,612 +1,135 @@
 # Identity storage
 
-## Current native vault — Phase 3
+## Current native vault
 
-Production account operations now use the native signing vault. The trusted owner
+Production account operations use the native signing vault. The trusted owner
 activates `HypergolicSignerCore` before opening
-[`NativeIdentityVault`](../src/security/native-identity-vault.ts); React Native
-receives public snapshots and opaque operation handles. Secret generation, import
-entry, persistence, backup presentation and signing stay in native code. See
-[the native signing contract](signing-core.md) for the exported interface and
-[external signing](external-signing.md) for explicit method selection.
+[`NativeIdentityVault`](../src/security/native-identity-vault.ts). React Native
+receives public snapshots and opaque handles; generation, secret entry,
+persistence, backup and signing remain native. See [signing core](signing-core.md)
+and [external methods](external-signing.md).
 
-Android stores one AES-GCM authenticated record through
-[`NativeVaultFile`](../modules/signer-core/android/src/main/java/org/nostrocket/hypergolic/signercore/NativeVaultFile.java),
-using `AtomicFile` in the app's no-backup directory and an Android Keystore wrapping
-key. Writes require a checked file-descriptor sync before `finishWrite`, then
-checked syncs of the containing directory and its parent before decrypted readback.
-The parent sync covers creation of the native vault directory. A post-rename sync
-failure remains an uncertain error even when proposed bytes can be read; it must
-not be reported as success or automatically retried. `AtomicFile` still owns its
-stream and finish/fail lifecycle. Its internal void/log-only finalization is not
-mistaken for an observable success result. Matching vendor/filesystem and power-loss
-behavior require separate device validation.
+The native owner admits one identity bootstrap per OS process, preventing a
+replacement React runtime from opening competing services. Vault/account/epoch
+checks apply around asynchronous work and mutations. Only a completely absent
+store may initialize. Missing established state, corrupt metadata, unavailable
+keys and unknown writes require recovery without replacement identities.
 
-The [offline durability regression](../tests/native/signer-core/vault-durability/README.md)
-executes the actual production file orchestration with real host AES-GCM/files and
-explicit Android OS/Keystore/AtomicFile fault doubles. It covers pre-commit sync,
-post-rename directory/parent sync and readback failures; it does not prove hardware
-Keystore protection or crash/power-loss durability. Writes verify decrypted readback. Missing established state, malformed records
-and uncertain writes fail without generating a replacement identity. The wrapping
-key requires an unlocked device on API 28 and later; physical protection and older
-Android behavior still need their named acceptance checks.
+### Android
 
-iOS uses [`NativeSignerVaultStorage`](../modules/identity-store/ios/NativeSignerVaultStorage.swift)
-for one AES-GCM authenticated record in its separate native namespace. Its wrapping
-key and guard receipt use `WhenUnlockedThisDeviceOnly` Keychain storage. The file
-adapter enforces complete protection, backup exclusion, permissions and atomic
-replacement with readback. Missing or inconsistent established state requires
-recovery. Simulator lacks the required file-protection behavior and is rejected;
-there is no production fallback backend.
+[`NativeVaultFile`](../modules/signer-core/android/src/main/java/org/nostrocket/hypergolic/signercore/NativeVaultFile.java)
+stores one AES-GCM authenticated record using `AtomicFile` in app no-backup
+storage with an Android Keystore wrapping key. Writes check descriptor sync before
+`finishWrite`, containing-directory and parent-directory sync after replacement,
+then decrypted readback. Parent sync covers first directory creation. `AtomicFile`
+owns stream/finish/fail lifecycle; its void/log-only finalization is not an
+observable success result. Post-rename sync failure remains uncertain even if
+proposed bytes can be read; never convert it to success or automatically retry.
 
-The owner waived preservation of pre-release accounts for this transition. The
-SQLite identity journal and Expo SecureStore account layout described below belong
-to the earlier implementation. Workspace and other nonsecret SQLite stores remain
-separate from the native account commit boundary. The app does not automatically
-migrate or erase the earlier account namespace.
+The wrapping key requires unlocked state on API 28+. Matching filesystem,
+Keystore, older-Android and power-loss behavior need device validation. The
+[durability harness](../tests/native/signer-core/vault-durability/README.md) uses
+actual file orchestration with explicit Android/Keystore/AtomicFile doubles; it
+does not establish hardware protection or power-loss durability.
 
-Current native and ordinary-app evidence is recorded in
-[Phase 3 validation](../.planning/phases/03-external-signing/03-VALIDATION.md).
-Earlier protected-storage, authentication and backup checks apply to their exact
-recorded builds; they do not establish acceptance of the new vault. Complete
-protected-device, backup/deletion and route acceptance remains open on both
-platforms. Phase 2 acceptance is unchanged.
+### iOS
 
-## Earlier implementation checkpoints
-
-The following sections preserve the pre-Phase-3 design and its dated results.
-Their references to the SQLite identity journal, Expo SecureStore account records
-and pending work are historical, not the current production vault description.
-
-The application now enters through one process-owned identity vault. Android has
-shown the same valid public identity in its header and trusted Settings after a
-real process restart. iOS native storage builds, but its protected-file behavior
-still requires a physical iPhone. [Identity import and whole-shell switching](identity-switching.md)
-are integrated with shared trusted Settings. Inactive deletion now has the Android
-system-authentication evidence below. Manual backup is implemented on both native
-platforms with the scoped evidence below. iOS physical authentication, older Android
-compatibility, signing and full device acceptance remain open.
-
-## Ownership and first entry
-
-The native owner admits one React Native identity bootstrap per OS process.
-A second bootstrap requires a process restart, preventing replacement runtimes
-from opening a competing vault while earlier asynchronous work may still finish.
-Secure native randomness is installed before Nostr code is imported. The Expo
-`getRandomValues` path is used; no development `Math.random` fallback is accepted.
-The shell receives public snapshots and narrow trusted identity-change controls;
-no secret accessor or vault storage object reaches a napplet.
-
-The vault keeps public inventory and operation journals in the dedicated
-`hypergolic-identity-v1.db` SQLite database. Protected inventory receipts, staged
-operations and secret readback determine whether a mutation committed. Unknown
-storage outcomes fail without generating a replacement identity. All admitted
-secret verification reads finish and clear their mutable buffers before the vault
-releases its operation lock. This is not a claim that JavaScript strings or every
-runtime copy can be erased.
-
-## Platform adapters
-
-Android uses Expo SecureStore's Android Keystore-backed encrypted storage with a
-fixed service and verified readback. Its adapter accepts the actual Android API;
-iOS-only Keychain accessibility constants are not required. Expo's generated
-backup and device-transfer rules exclude the SecureStore preferences. Actual
-backup transport, device lock behavior and physical-device security remain to be
-validated. Android deletion uses the native authenticated effect described below;
-the SecureStore adapter refuses deletion when that effect is absent.
-
-iOS keeps Nostr secret payloads in authenticated encrypted files. Only the wrapping
-key and nonsecret inventory receipt enter Keychain. The file adapter requires
-complete file protection, backup exclusion, restricted permissions, regular files
-and its fixed native-owned directory. Atomic replacement and durability checks
-remain mandatory. The native action owner binds authentication and one-use deletion
-grants to the live process/session and exact target. The shared action UI and native
-availability method now compile, but real-device authentication and the complete
-iOS action journey are not yet accepted.
+[`NativeSignerVaultStorage`](../modules/identity-store/ios/NativeSignerVaultStorage.swift)
+uses one AES-GCM authenticated file in a separate native namespace. The wrapping
+key and guard receipt use `WhenUnlockedThisDeviceOnly` Keychain storage. Enforce
+complete file protection, backup exclusion, permissions, fixed regular-file paths,
+atomic replacement and decrypted readback. Inconsistent established state fails
+closed.
 
 ## Simulator limitation
 
-Foundation omits file-protection attribute reads and writes on iOS Simulator.
-The [owning Foundation source at a pinned revision](https://github.com/swiftlang/swift-foundation/blob/f379cf17df0d897af980a981ce4a60dc94ee6356/Sources/FoundationEssentials/FileManager/FileManager%2BFiles.swift#L658-L667)
-and the actual native probe agree: backup exclusion, permissions and non-symlink
-checks pass, but the protection attribute is absent. The production policy rejects
-this environment. Changing a String cast would not supply the missing protection.
+Simulator lacks required protected-file behavior and is rejected; production has
+no alternate backend or bypass flag. Availability is an environment preflight,
+not proof that subsequent storage operations will satisfy their guards. Public
+fixture identities test shared UI without claiming protected persistence,
+authentication or signing. The entry restriction and physical tests are separate
+from those fixtures; see [testing](testing.md).
 
-iOS availability now reports that unsupported environment before SQLite is opened
-or an identity journal is created. The entry screen says “Use a physical iPhone.”
-A supported-device result is only an environment check; real storage operations
-must still pass every protection guard. Native errors and malformed availability
-responses remain failures. There is no alternate production secret backend or
-runtime flag that bypasses protection.
+## Namespace transition and recovery
 
-An earlier development attempt left an initialization journal before a protected
-receipt or staged identity could be confirmed. The current build preserves it.
-A phase-less initialization journal with no durable staged key deliberately
-requires recovery; logs are not permission to clear it or generate another key.
-No reset or automatic repair has been added.
+The new vault intentionally starts in its own namespace. Pre-release SQLite
+identity journals and Expo SecureStore account records are not automatically
+migrated or erased. Workspace and ordinary nonsecret SQLite stores remain
+separate from the account commit boundary. Removing a native local method or
+account does not claim deletion of legacy key copies.
 
-Shared Simulator UX testing uses a separate test-entry workstream with labelled
-public fixture identities. Those tests must not be reported as iOS identity
-creation, key persistence, authentication or signing proof. Full v1 still requires
-those workflows on both Android and iOS.
-
-## Validation and remaining work
-
-`pnpm run test:security` runs the vault, codecs, SQLite/adapter, native-owner and
-randomness regressions, then builds a fresh isolated test bundle for the actual
-entry/bootstrap composition. The latter uses explicit test-only native ports;
-its React element assertions are not native rendering evidence.
-
-`python3 scripts/test-identity-native.py` compiles the owning native identity
-sources for the Swift unit suites. Their fake file-policy, Keychain and device-auth
-ports do not establish physical-device behavior. The [separate real file-policy
-XCTest probe](../tests/native/ios-file-policy/README.md) verifies Simulator rejection and provides physical-device cases for
-protected replacement/readback and downgrade rejection.
-
-The normal iOS Simulator build was installed byte-for-byte and cold-launched.
-Its visible device-required screen and unchanged existing nonsecret database/
-protected-directory contents were checked. No secret content was inspected.
-Android public-identity continuity and the absence of an iOS storage fallback are
-separate findings. Completing import/switching, device-authenticated actions,
-napplet saved-data access, approval/publish, verified loading and final standalone
-Android/iOS acceptance remains necessary.
-
-## Recorded checkpoint
-
-The diagnostics-free [Android identity driver](../tests/native/android-identity.md)
-passed two cold launches with distinct app processes and four equal, independently
-checksum-validated public values. Its shutdown check requires the real pidof exit
-status and empty stdout/stderr, so a disconnected device cannot count as a retired
-process. The initial resumed run found a stopped emulator and failed before input;
-the recorded pass uses the existing emulator data after normal startup.
-
-The separate standalone Release Simulator fixture uses byte-identical production
-shell and napplet-host sources, a labelled public identity, and a different bundle
-identifier. Its seven switching/state checks pass, including the two-column grid,
-restoring independent input/counters and stopping at each end. It contains no
-identity storage or signing modules. Its preparation remains a private test
-artifact, not an alternate production entry or an iOS identity proof.
-
-The resumed local checks pass 278 security cases, 13 actual-bootstrap cases,
-25 workspace cases, 12 Android harness cases, three owning-decoder cases and five
-file-policy runner cases. Earlier unchanged native source passed 52 Swift test
-functions (82 parameterized cases); the real Simulator file-policy test passed
-once with zero skips. Source paths and execution scopes are distinct in their
-receipts. No import, backup, deletion, signing or physical-device success is implied.
-
-Private receipts and inspected screenshots are preserved in
-`.tools/evidence/identity-checkpoint-20260915`. Full local aislop scoring is 100/100;
-complete React Doctor reports zero findings with numeric scoring disabled pending
-permission for its external request. Neither gate has been weakened. The reviewed
-adm-zip 0.6.1 security update is confined to quality-tool dependencies.
-
-The separate fixture also passes four native content-gesture checks: vertical and
-horizontal scrolling, marker selection, and retained scroll/selection after
-switching away and back. Root, runtime and quality-tool dependency audits report
-no known vulnerabilities. Expo Doctor passes 20 of 21 checks; the remaining check
-requests newer patches for Expo, Crypto, Image, SecureStore and SQLite. The
-explicit Expo 57.0.20 pin is preserved; no compatibility exclusion or suppression
-has been added. The aggregate `pnpm run check` is therefore not green.
-
-Workspace descriptor persistence is now integrated; see [workspace storage](workspace-storage.md)
-for the subsequent Android and isolated iOS native restart evidence.
-
-
-## Android deletion authority checkpoint
-
-The native-only `DeletionAuthority` now provides the approval state machine needed
-for the Android action adapter. Settings ownership captures a validated immutable
-inventory; an authentication attempt is bound to that owner, session, identity and
-revision. Attempts expire after 60 seconds and successful grants after 15 seconds,
-using the injected native monotonic clock. Every deletion validates the inventory
-again at its effect, consumes the exact token once, and serializes revocation with
-the synchronous erase. A failed erase cannot reuse its token. Background, settings
-dismissal, inventory mutation and runtime retirement invalidate earlier authority.
-
-The owning JVM suite now passes 126 assertions, including changed native inventory, late
-authentication, expiry during the final read, replacement sessions, failed effects
-and concurrent revocation. Android prebuild and the actual module's Release Java
-and Kotlin compilation pass. These tests use explicit native port doubles; they
-do not establish Android OS authentication or protected storage behavior.
-The native fixed-service reader and erase effect now pass the separate runtime
-probe below. The subsequent Expo/system-prompt integration has the independent
-evidence recorded in the next section. Manual backup remains unfinished.
-
-
-`SecureStoreIdentityRecords` reads the actual protected inventory and every identity
-envelope using the existing Android Keystore key. It creates no key, writes no
-secret and accepts only the pinned SDK's canonical format. It rejects legacy or
-unknown formats, invalid payloads and incomplete staging without changing them.
-The native erase effect removes one exact inactive identity after the authority's
-final validation and checks the synchronous preference commit and absence.
-
-The isolated Android runtime probe passes 89 assertions. It reads both existing
-SDK-written identities, then tests invalid records and actual erase on disposable
-preferences. Existing protected records remain byte-identical. The installed app
-and test APK bytes and owning sources are checked before and after execution.
-The probe's authentication result is still a double; no system-authentication or
-physical-device acceptance is implied. See the [native authority and record proof](../tests/native/android-identity-actions/README.md)
-for repeatable commands and exact boundaries. Full local aislop remains 100/100;
-React Doctor numeric scoring still requires explicit external-request approval.
-
+A native mutation must durably write and verify readback before public success.
+Known pre-effect cancellation differs from uncertain acknowledgement after a
+possible commit. Uncertainty revokes cached authority and requires recovery;
+old workspace authority cannot continue under an assumed account selection.
+Keep existing corrupt/incomplete records intact. Never clear them based on logs
+or silently initialize a replacement. Generic SecureStore's tracked patch limits
+data exports to the exact native configuration service/scope/protection profile;
+it is not a secret-vault compatibility bridge.
 
 ## Native authentication and Settings integration
 
-Android identity admission now binds the exact native-created main AppContext and
-React Native JavaScript thread. Replacement claims retire the earlier authority;
-module destruction, activity background and user departure revoke it. The action
-module obtains protected records, entropy and monotonic time natively. No Expo
-method accepts an authentication outcome, inventory, runtime identity or file path.
-Late cancellation cleans up only its own attempt, including after a newer attempt
-has started. Authentication expiry is checked again after native inventory/entropy
-work, before issuing a grant.
+Authentication binds the exact live native owner/session, action, account, vault
+revision and deadline. No Expo method accepts an authentication outcome,
+inventory, secret path or replacement runtime identity. Backup, local-key removal
+and account deletion use separate exact-action permits. Cancellation, lock,
+background/protected-data loss and replacement ownership revoke work. Late
+callbacks/cleanup affect only their own attempt.
 
-The shared Settings review displays the exact inactive identity and explains loss
-of local key access. No-lock/unavailable authentication cannot enable confirmation.
-The Android API 30+ system prompt accepts a strong biometric or device credential;
-a PIN-only device works. API 26–29 remains unsupported by this new action adapter
-and is an open v1 compatibility item, not a silently changed application minimum.
-Cancellation is effective during workspace flush, protected-key verification,
-native Settings opening, authentication and journaling. Native erasure checks and
-consumes the exact target/token synchronously. An unconfirmed Android erase cannot
-become success through an in-memory absence readback. Known native denial with the
-key still present leaves the exact journal retryable; inconsistent outcomes require
-recovery. The iOS erase adapter now applies the same conservative failure rule: a
-native unlink/flush or transport failure requires recovery even if a later file read
-returns absence. Only a known native authorization denial remains retryable when
-the core confirms the key is still present. Its physical action journey remains open.
+Android's current action adapter requires API 30+ and a device credential or
+strong biometric; no-lock/unavailable devices cannot enable the action. API
+26–29 action support remains a compatibility gap, not a new app minimum. Android
+authentication and reveal each have a 60-second bound. iOS uses fresh
+`deviceOwnerAuthentication` with passcode fallback and no biometric reuse window;
+missing passcode or Face ID usage description leaves the action unavailable.
 
-The actual isolated Android Release app passes eight checks in one run: no lock,
-exact review cancellation, system cancellation, background revocation, wrong PIN,
-the native 60-second timeout, successful PIN deletion with all three loaded napplet
-drafts retained, and deletion/current-workspace persistence across restart. It uses
-only a public disposable test key and a named disposable auth emulator. APK bytes,
-owning source snapshots and harness hashes match before/after. APK SHA256:
-`0e98e9b517e671e4b04c89f828a69c4ad1244072fb7c534be64c03aa257052d8`.
-The UI review, removed identity and retained live draft screenshots were inspected.
-Android protects the system credential dialog from screenshots; its captures are
-blank. Native hierarchy, foreground ownership and callback/effect behavior supply
-that portion of the evidence; no screenshot protection was bypassed.
+iOS carries one absolute 60-second monotonic deadline through authentication,
+backup read/reveal and both deletion permits. Delayed timers cannot extend it.
+Protected action denial keeps known unchanged state; a failed/uncertain durable
+write requires recovery even if a later read returns expected bytes or absence.
+See [account transitions](identity-switching.md) for inactive deletion and workspace
+retention. Unsupported authentication leaves the action unavailable.
 
-The protected-record probe again passes 89 assertions on the prior isolated
-installation, with all pre-existing protected records unchanged. The current
-native authority passes 126 JVM assertions. Shared checks pass 291 security tests,
-13 bootstrap tests, 80 storage tests, 27 capability tests, 25 shell tests and
-TypeScript. Both production JS exports, Android Release and the actual iOS Debug
-Simulator native build pass. Local React Doctor has zero findings but no numeric
-score; full aislop is 100/100. External scoring approval is still pending.
-The iOS owning suite passes all 52 tests. A previously intermittent macOS exclusion
-test now establishes actual effective metadata removal before checking refusal;
-protection verification clears cached URL resource values before reading. This
-neither supplies Simulator Data Protection nor establishes physical-device proof.
-The normal iOS app remains unavailable on Simulator. See the [repeatable Android
-action journey](../tests/native/android-identity-actions/README.md).
+## Manual backup
 
-The refreshed actual file-policy probe passes its one Simulator unsupported-protection
-test with no skips; its unsigned iPhoneOS branch also compiles. Exact current source
-hashes are recorded by the [file-policy harness](../tests/native/ios-file-policy/README.md).
+Review names the selected local account's public key before explicit
+authentication. Native UI alone renders `nsec`; shared code receives completion
+only. No clipboard/share operation or secret bridge return is provided. Nsec
+uses [NIP-19 01e707b](https://github.com/nostr-protocol/nips/blob/01e707bacdc87cf262db80545aecaa8f17ac2a4f/19.md):
+ordinary Bech32, `nsec`, 32-byte nonzero secp256k1 scalar.
 
-The targeted iOS erase-boundary follow-up adds four regressions for failures before
-and after file removal, sanitized errors and consumed-token replay. All 295 security,
-13 bootstrap and 80 storage tests, TypeScript and the iOS export pass. Full aislop
-remains 100/100; local React Doctor has zero findings and no numeric score. This is
-shared adapter/core verification; it does not add physical iOS execution evidence.
+Android uses a `FLAG_SECURE` native panel and excludes secret content from
+accessibility, autofill and content capture. Owned mutable buffers clear on hide,
+focus loss, background, cancellation or expiry. This does not guarantee erasure
+of immutable Java/JSON strings or platform rendering buffers.
 
-## Fingerprint and iOS review checkpoint
+iOS starts concealed, warns that screenshots cannot reliably be prevented,
+remains concealed during recording/mirroring and clears before app-switcher
+snapshots. Dismissal requires fresh authentication. No secure-text-field layer
+workaround is part of the design. Native readiness/activation waits preserve the
+original owner, protected-data and absolute auth deadline. After successful iOS
+backup authentication, at most five seconds may be spent waiting for active UIKit
+before reading material; background/protected-data loss cancels that wait. This
+does not extend the absolute 60-second attempt. Authentication success
+alone does not establish safe presentation readiness.
 
-The isolated API 36 Release fixture now passes four real-system fingerprint checks:
-unrecognised/cancelled authentication preserves inventory, leaving the app revokes
-the request, matching authentication deletes only the inactive public test identity
-while retaining all three live drafts, and deletion/current workspace survive a
-process restart. Enrollment was performed through Android Settings on the named
-`Hypergolic_Auth_API_36` emulator, using only its public test PIN and virtual sensor.
-No production test credential or authentication-result setter was added.
+Keep independent backups for any imported key. Bulk application-data export and
+migration are separate unfinished features. Local-key removal keeps the account,
+connections and napplet data; inactive-account deletion removes its methods.
+Neither operation guarantees deletion of independent backups or legacy namespaces.
 
-Both the initial fingerprint run and the final lazy-restoration build pass. One
-intermediate attempt stopped when ADB reported that the emulator was offline; its
-failed receipt is retained, and the subsequent full run passed. Current APK:
-`cec0ebf35cad2c4db95e371712710d8b3c4b5456a6b81c539f741d0620120c4b`.
-The final receipt is `/private/tmp/hypergolic-android-biometric-deletion-03/result.json`.
-The PIN journey remains independently recorded against its earlier attested APK.
-This does not establish physical biometric hardware or Android API 26–29 acceptance.
-
-The shared iOS deletion review also passes three checks on each of three consecutive
-clean launches: the exact inactive npub, no confirmation when authentication is
-unavailable, and cancelled review retaining identity/inventory/live draft. The
-public-only fixture uses an explicit unavailable-authentication double; all native
-identity/secret modules remain absent. All 90 installed product files match the
-attested app before and after these runs. The earlier intermittent eager-startup
-failure and lazy-restoration fix are recorded in [workspace storage](workspace-storage.md).
-Physical iPhone key protection, system authentication and actual deletion remain open.
-
-Private receipts and inspected screenshots are retained in
-`.tools/evidence/identity-actions-lazy-20260915` and the canonical Notes checkpoint.
-TypeScript, 25 shell tests and all 50 native-driver tests pass. Full aislop remains
-100/100 and local React Doctor has zero findings. Its external numeric score still
-awaits explicit approval; zero findings are not recorded as a verified 100 score.
-
-
-## Manual backup implementation (22 September 2026)
-
-The shared Settings review requests backup only for the selected identity and
-shows its exact public npub before an explicit authentication tap. Its narrow
-native interface returns only completion. Secrets, nsec rendering and reveal
-controls stay in native code; the shared component cannot read a private key.
-Backup and deletion share the same pending-action lock and exact Settings session.
-Each cancellation, replacement session or background transition invalidates earlier
-work. Missing native backup methods leave the feature unavailable.
-
-On Android, the native authority binds fresh device authentication to backup of
-the exact selected identity and protected inventory. A backup attempt cannot issue
-a deletion grant. After authentication, one native read checks the encrypted record
-digest and inventory again, and returns a mutable character buffer only to the
-native panel. The panel draws directly to a Canvas in a `FLAG_SECURE` window,
-excludes secret content from accessibility/autofill/content capture, and clears
-its owned buffer on hide, focus loss, background, cancellation or expiry. There is
-no clipboard/share action or secret bridge return. Authentication and reveal each
-expire within 60 seconds. Java/JSON String and platform rendering-buffer erasure
-are not claimed.
-
-Nsec encoding follows [NIP-19 at the reviewed revision](https://github.com/nostr-protocol/nips/blob/01e707bacdc87cf262db80545aecaa8f17ac2a4f/19.md):
-ordinary Bech32, `nsec` prefix, 32-byte nonzero secp256k1 scalar. Owning JVM checks
-include reference vectors, action confusion, late authentication, stale inventory,
-cancellation, expiry, failed reads and wiping denied output. The current suite
-passes 126 deletion/ownership assertions, 88 backup assertions and 13 encoding
-assertions. These are native authority tests with explicit OS-auth/storage doubles;
-they do not substitute for the separate device journey.
-
-The user approved an iOS limitation on 22 September: show a screenshot warning and
-use supported native protection while permitting authenticated manual reveal.
-Apple provides [recording/mirroring detection](https://developer.apple.com/documentation/uikit/uiscreen/iscaptured)
-and [background snapshot guidance](https://developer.apple.com/documentation/uikit/preparing-your-ui-to-run-in-the-background),
-but arbitrary screenshots cannot reliably be prevented. The reveal must start
-hidden and remain hidden during recording/mirroring, clear before app-switcher
-snapshots and require fresh authentication after dismissal. No secure-text-field
-layer workaround is part of this design. Physical iPhone validation remains required;
-the production Simulator storage policy remains unchanged.
-
-The isolated Android Release app passes all six actual backup checks: exact review
-and cancellation, system cancellation, unrecognised fingerprint, background
-revocation during authentication, native reveal/hide with screenshot redaction and
-private-key accessibility exclusion, then background clearing and fresh
-authentication on return. The installed APK is
-`ead0b781e4e625da5079e83ccc1c323d9be348d0a218d0aa59bbe878af33e44d`
-before and after execution; source and driver seals are unchanged. The review and
-redacted panel captures were visually inspected. Earlier harness-label and ADB
-timeout failures remain recorded; the complete sixth run is the accepted receipt.
-The separate protected-record probe passes 99 assertions and preserves both SDK
-identity records byte-for-byte. These are disposable emulator identities.
-
-iOS passes 60 owning native tests (95 parameterized cases) and three actual UIKit
-panel tests. The latter source-links the production presenter/encoder and uses
-public scalar 2 with an authentication double. It covers initial concealment,
-accessibility exclusion, large-text Done reachability, cancellation during
-presentation, synchronous resign-active hiding and completion after dismissal.
-See the [repeatable Simulator panel harness](../tests/native/identity-unit/ios-backup-panel/README.md).
-The unsigned production Simulator Release app builds with a nonempty bundled
-JavaScript payload; app-owned source hashes remain unchanged during the build.
-This is packaging and panel evidence, not protected storage or LocalAuthentication
-evidence. No physical iPhone was connected for this checkpoint.
-
-Shared TypeScript, 309 security, 13 bootstrap, 80 storage, 27 capability and 25 shell
-tests pass; Android Release and the iOS export also pass. Full aislop is 100/100,
-with no findings. Local React Doctor has no findings and no numeric score; its
-external scoring approval is still pending. Private evidence is retained under
-`.tools/evidence/identity-backup-20260922`. Physical capture/authentication, the
-backup-specific PIN/timeout journey, and Android API 26–29 support remain open.
-This checkpoint does not complete v1.
-
-
-### Backup PIN/timeout driver checkpoint
-
-The tracked Android backup driver now has a separate `--pin-timeout` mode and
-`identity-backup-pin-timeout` scenario. It requires the isolated API 36 authentication
-fixture, exact installed APK hash and the fixed public scalar-2 selected identity.
-It checks system PIN fallback, protected reveal, accessibility exclusion, automatic
-expiry and fresh authentication afterward, without extracting the private key.
-
-The journey **passed on 23 September 2026** against the isolated API 36 Release
-app. Actual System UI PIN authentication opened the protected native panel; no
-secret was exposed through accessibility or the redacted screenshot. Automatic
-return to Settings was observed after 64.2 seconds, and a subsequent reveal
-required fresh system authentication. Both saved identities remained present.
-Installed APK, source and harness seals were unchanged throughout the run.
-
-The new run first exposed a test-harness error: the full-screen credential prompt
-belongs to System UI, so the generic application-only hierarchy guard rejected it.
-The driver now observes one enabled, password-marked System UI field only after
-the exact owned backup prompt and its observed PIN fallback action. The corrected
-run passes all three checks. Earlier sleep/keyguard and source-drift attempts are
-retained as failed evidence; they do not count as acceptance. The prior six-check
-fingerprint evidence remains valid. Physical-device and older-Android backup
-acceptance remain open.
-
-Example with an already awake/unlocked disposable fixture and its verified APK:
+## Verification
 
 ```sh
-python3 tests/native/identity_backup.py --pin-timeout \
-  --source "$PWD" --serial emulator-5556 \
-  --package org.nostrocket.hypergolic.identityfixture \
-  --activity org.nostrocket.hypergolic.dev.MainActivity \
-  --expected-apk-sha256 "$HYPERGOLIC_FIXTURE_APK_SHA256" \
-  --output /private/tmp/hypergolic-backup-pin-timeout-proof \
-  identity-backup-pin-timeout
+pnpm run test:signer
+pnpm run test:security
+pnpm run test:storage
 ```
 
-### API 26 public identity continuity
-
-On 28 September 2026, the normal app already installed on the disposable API
-26 emulator passed the public-npub Settings/restart driver. Two force-stops
-retired the app process; each cold launch showed the same full selected npub in
-Settings and the header. Four values decoded canonically, the installed APK
-SHA-256 stayed `931e4de91f9e6623352b610d6d8fdb61dc58216d8f8e3ace27abdd59af570057`,
-and source/harness snapshots did not change during the run. All four screenshots
-were visually inspected. The receipt and original captures are in the private
-Notes project checkpoint.
-
-The APK was last installed on 25 September, so this is not a current-source
-rebuild. Its bundled WebView 58 still refuses napplet execution. The emulator
-has no enrolled device credential, and the backup UI reports authentication
-unavailable. The protected backup/deletion adapter currently requires API 30+;
-the older-Android support decision is pending. This pass is limited to public
-identity continuity.
-
-A subsequent current-source build closed the APK-age limit above. The normal
-ARM64 Release app was rebuilt from clean commit `278a975`, then aligned and
-signed with the repository's disposable Android debug key. Its new APK SHA-256
-is `1e27084cf5da494efeeba69bc9ec28abbd503cfd9814dc06fcea14cdd7e89b31`;
-the signing certificate matched the old installation. A data-preserving update
-on API 26 succeeded and the installed bytes matched the new APK. The public
-identity driver passed **3/3** again, with the same npub as before the update,
-four canonical decodes, stable installed bytes and unchanged source/harness
-hashes. All four new screenshots were visually inspected. The private Notes
-checkpoint holds the build/upgrade manifest, native receipt and captures.
-The API 26 WebView and authenticated-action limits above still apply.
-
-
-## Physical native read-failure checkpoint — 8 October2026
-
-The [physical identity storage suite](../tests/native/identity-unit/ios-atrest/README.md)
-passes eight methods in one actual iPhone16/iOS26.5 run. All thirteen included
-production core sources compile unchanged; a separate probe owns real Keychain
-records and protected/excluded files using a known public development key. The
-prior five protection/encryption/tamper/missing-file/key/policy cases remain.
-Three added cases inject actual corrupt-receipt, missing-receipt and legacy-record
-state through the OS Keychain, then exercise IdentityBridgeOwner read and initial
-inventory-write paths. Repeated failures preserve existing wrapping key, receipt/
-fault state and ciphertext. The real entropy port is counted and allocates no
-replacement wrapping key; explicit test restoration recovers original ciphertext.
-
-No Hypergolic key/data is accessed. Both installed Hypergolic records and local
-products remain unchanged; the primary process persists and QA return reuses its
-process. These native-core results supplement ID01/02, not whole Expo bootstrap,
-device reboot/lock/auth/export, actual backup transport, full secret/log/crash
-absence or Android parity. All61 original Phase2 requirements/statuses persist.
-
-
-## Physical iPhone public backup review — 9 October2026
-
-Five checks pass on the unchanged signed normal QA app: exact selected development
-identity/focus, backup explanation and iOS screenshot/capture warning, cancellation
-before authentication, unchanged identity/original UX focus, and reopened public
-review left for owner authentication after recording stops. Original public review
-and cancellation pixels are inspected. The selected test never taps authenticated
-reveal or obtains a private key/passcode. This does not prove authentication,
-secret reveal or native effect counters.
-
-All1,221 current source inputs, both local app seals/installed metadata and primary
-process remain unchanged. Only the XCTest runner builds/installs. Its first compile
-kept unused signing helpers after removing their guest helper; the second removes
-that unused section and passes. The complete physical public-review run passes
-without a product change. The slow bounded Settings control search is retained;
-elapsed time is not authentication or performance acceptance evidence.
-
-Private evidence `iphone-public-backup-review01` retains original tests, attachments,
-driver/controller/build logs, seals and reviewed pixels. ID-05 is partial; fresh
-authentication success, authenticated cancel/failure/unavailable, secret handling,
-exact manual export/reimport and Android parity remain open. All61 requirements
-persist, six complete across both phones and55 open. The next step needs owner
-Face ID/passcode on the iPhone, observing the development backup and closing Done
-without sending or recording the key. Android is disconnected. No application
-rebuild/reset/publication/source push or fresh quality claim.
-
-
-## Backup handoff after successful Face ID — 9 October2026
-
-The owner reports successful Face ID followed by trusted backup failure. The
-public physical screenshot shows the error with the same development npub and
-no secret. The old flow resumes authentication completion immediately, while
-the presenter requires active UIKit. This rejection path is reproduced; its role
-in the specific device failure remains provisional until owner retry. Apple's
-asynchronous policy reply does not establish active presentation readiness.
-
-The backup-only adapter now waits asynchronously for active UIKit before the
-authority can read backup material. The five-second bound continuously checks
-native attempt liveness, cancellation, background and protected-data loss. The
-existing60-second authority deadline, selected identity/revision/inventory checks
-and panel capture/lifecycle guards remain. Deletion authentication is unchanged.
-No secret transport or capture exception is added.
-
-Two foreground cases fail with the strict immediate check. The complete66-test
-owning-source suite then passes, including six new cases; all original test bodies
-remain unchanged. Shared security/bootstrap353+13 and TypeScript pass. The signed
-iPhone Release compiles the real UIKit/LAContext adapter using the same QA bundle,
-Hypergolic label and signing team; both original products remain preserved. This
-is core/build evidence, not successful physical reveal. The standard check still
-fails six existing Expo patch mismatches pinned under the selected dependency-age
-policy. Separate full quality reports retain exact accepted advisory exceptions.
-
-Private repair group `iphone-backup-foreground01` retains owner failure, red/green
-tests, old frozen manifest, build/input seals and subsequent public device recheck.
-Actual authenticated success/cancel/unavailable, secret handling, export/reimport
-and Android parity remain open. ID-05/Phase2 remain partial: six of61 requirements
-complete across both phones,55 open. Owner must retry authentication manually
-after recording stops. Source push remains owner-only.
-
-
-## Physical Android normal Expo identity storage — 9 October 2026
-
-A fresh isolated nondebuggable ARM64 Release runs ordinary App/index, the current
-Expo bootstrap, SecureStore57.0.3 and unchanged native record reader. Eighteen
-native modes pass6141 assertions. The actual AES256 Keystore wrapping key is
-nonexportable; KeyInfo reports level1/TEE, with the existing per-storage-read
-authentication false. Manual backup/deletion authentication is separate.
-
-Corrupt inventory/secret, missing inventory/secret, legacy inventory and missing
-wrapping key each produce the exact recovery screen on two real stopped-process
-launches. There is no admitted identity header/WebView. Native metadata remains
-equal and no replacement wrapping alias appears. Five exact ciphertext restores
-recover the original public identity and saved value through the original State
-Lab SDK. The key continuity challenge confirms the same old key where it exists.
-The pinned SDK removes only the exact unreadable slot in its documented cases;
-other entries remain equal. No zero generator-call claim is made.
-
-Six bounded in-process scans find no raw32/hex/nsec/Base64 development-secret
-patterns in observed private files and own-UID logs. No secret leaves the native
-process. Actual packaged backup/device-transfer XML excludes SecureStore, while
-real backup transport is not exercised. Twelve original recovery app regions are
-byte-identical; thirteen original screens spanning first entry, six faults and
-six State Lab scenes are reviewed. Exact saved SDK result is independently in
-the original XML but below its screenshot viewport. No visible-result claim.
-
-The earlier run stops after two proven faults because an ADB observation fails;
-its exact cause is unconfirmed and its receipt remains. The fresh revised run has
-no observer failures and binds1250 compiled inputs plus original installed app/
-runner bytes. Both runs remove their temporary packages and retain the current
-Hypergolic APK unchanged. No owner app data/key is read. New driver admission
-controls pass three tests, including refusal to uninstall a changed package.
-
-See [the physical workflow](../tests/native/android-identity-atrest/README.md).
-ID01 remains partial with reboot required; ID02 advances Android from not-run to
-partial. Lock/unlock, real backup transport, full plaintext/log/crash absence and
-iOS owning Expo parity remain. Seven of61 complete rows/54 open; full Plan03/04
-and Phase2 stay open. Canonical private android-identity-storage01 retains the
-original builds, stopped partial run, final run and independent review. No source
-push, policy change, owner-app replacement or Phase3 advance. Usage4%, ceiling
-about98%; current source-bound quality verification follows this checkpoint.
-
-
-## Physical iPhone deletion prerequisites — 12 October 2026
-
-The ordinary protected app passes seven prerequisite groups in an isolated signed
-copy: no delete action for a sole/selected identity; cancelled public-vector import
-preserves inventory; confirmed import and returning selection retain both identities;
-exact inactive target review/Keep identity; background dismissal of unconfirmed
-review; and unchanged two-identity inventory/selection after process death. Seven
-original native inventories and two distinct PIDs independently verify. The public
-scalar1 vector is disposable test data, not a retained secret. The corrected observer
-returns through the cleared import form after cancelling review; no app UX changes.
-
-Four original PNGs were inspected. Cold saved-identity rows are below the viewport
-and are verified through the original native accessibility snapshot. A separate
-cleanup group restores the retained full public identity and original runtime focus.
-Both temporary app copies and runner are absent; retained metadata inventory and648
-source/product inputs match. Distinct signed Keychain groups exclude retained access;
-all53 copied executable section payloads match the original ordinary app.
-
-The Authenticate and delete action is not invoked. Actual system authentication
-cancel/failure/success, target ciphertext erasure and surviving live-session behavior
-remain required, with physical Android parity. A late file metadata query fails and
-supplies no ciphertext proof. No installed iOS executable-byte, database byte rollback
-or complete Keychain-erasure claim follows. ID06 stays partial; the full matrix remains
-8 of61 complete. Private originals and independent review: `iphone-identity-delete01`.
+Use [signer suites](../tests/native/signer-core/README.md),
+[configuration bridge checks](../tests/native/securestore-config/README.md) and
+[backup panel checks](../tests/native/identity-unit/ios-backup-panel/README.md)
+for their explicit source/OS-double scopes. Earlier legacy-vault runtime results
+do not establish acceptance of the new namespace. Physical at-rest protection,
+authentication/capture, backup/deletion, recovery and full Phase 2/3 route
+acceptance remain open; see [testing](testing.md).

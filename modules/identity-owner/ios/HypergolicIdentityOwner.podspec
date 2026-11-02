@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.version = package['version']
   s.summary = 'Process-lifetime trusted identity bootstrap admission'
   s.description = 'One synchronous process-static claim; no reset, storage or authorization API.'
-  s.license = { :type => 'UNLICENSED' }
+  s.license = { :type => 'MIT' }
   s.author = 'Hypergolic contributors'
   s.homepage = 'https://github.com/nostrocket/hypergolic'
   s.source = { :git => 'https://github.com/nostrocket/hypergolic.git' }

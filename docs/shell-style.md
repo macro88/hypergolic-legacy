@@ -44,11 +44,7 @@ A loaded napplet has no outer border or corner brackets. The outer stage inset i
 six points with two points below it; the host reserves a 14-point gutter on each
 side for the visible swipe tabs. The all-napplets cards, menus and other shell
 surfaces retain their square borders and corner brackets, alongside the orbital
-artwork and trusted request bands. This follows the owner's clarified distinction
-between a borderless loaded view and the framed shell navigation. At
-standard text size this removes about 74 points of vertical shell overhead and
-adds ten points of guest width compared with the first Glass layout; system safe
-areas and napplet content remain independent.
+artwork and trusted request bands. System safe areas and napplet content remain independent of these shell insets.
 
 Inset swipe tabs stay in the lower third. Each neutral 14-by-64-point tab has a
 44-by-88-point gesture target. Border and grip turn orange on contact, including a
@@ -83,47 +79,38 @@ grants or trust policy change.
 
 ## Native presentation fixture
 
-`tests/native/ui-style/index.tsx` composes real shell components with an isolated
-public identity and the real local runtime. It has no signer, secret import or
-publication. Its three fixture controls open an empty workspace, the bundled UX
-Lab workspace, and a presentation-only signing review. Ordinary production entry
-continues through `index.ts`.
+`tests/native/ui-style/index.tsx` composes real shell components, an isolated
+public identity and the local runtime. It has no signer, secret import or
+publication. Fixture controls select empty/UX Lab workspace and a presentation-only
+review. Ordinary production entry remains `index.ts`.
 
-The XCTest `ui-style` scenario uses `org.nostrocket.hypergolic.uistyle`. The Android
-driver in the same fixture directory accepts only an explicit emulator serial and
-the same isolated app ID. They exercise the empty state, invalid address feedback,
-grouped settings and masked import field, workspace navigation, the title menu,
-menu dismissal, close protection
-and a truthful sample review. Evidence includes screenshots and native hierarchy
-captures. These checks establish UI behavior in simulated devices; they do not
-establish protected-key storage, signing or physical-device acceptance.
+Use a separate disposable application ID and explicitly selected emulator or
+Simulator. Follow the native fixture build instructions in [testing](testing.md)
+and [development](development.md); never install a fixture over a retained app.
+The iOS scenario is `ui-style`. The Android driver requires an explicit target:
 
-For a native iOS fixture build, follow the separate-bundle-ID workflow in
-[development](development.md), using `ENTRY_FILE=tests/native/ui-style/index.tsx`.
-Run the existing iOS driver with scenario `ui-style`. Android fixture builds use a
-separate application ID and Expo's `jsMainModulePath` pointing to
-`tests/native/ui-style/index`; restore generated project files afterward. Metro
-serves that source entry. Run `python3 tests/native/ui-style/android.py --serial
-EMULATOR_SERIAL --output NEW_EVIDENCE_DIRECTORY --appearance dark` and repeat for
-light appearance and `--font-scale 1.5`. Keep evidence outside source.
+```sh
+python3 tests/native/ui-style/android.py --serial EMULATOR_SERIAL --output /tmp/ui-style-dark --appearance dark
+```
+
+Repeat with fresh outputs for light appearance and `--font-scale 1.5`. Check empty
+state, address errors, grouped settings, native masked entry, title-menu dismissal,
+workspace navigation, close protection and exact visible review content. Inspect
+screenshots and native hierarchy together. Automated captures are not visual
+acceptance until reviewed. Simulated presentation does not establish protected
+storage, signing or full Phase 2/3 device acceptance.
 
 ## Asset and dependency provenance
 
-Barlow originals come from `google/fonts/ofl/barlow`; JetBrains Mono comes from
-`JetBrains/JetBrainsMono/fonts/ttf`. Their original licenses are kept beside the
-fonts and packaged in both native products under `shell-notices`. The same folder
-includes Expo System UI's original MIT license.
+Barlow and JetBrains Mono originals retain their OFL licenses beside the fonts
+and in both products' `shell-notices`. Their source families are
+`google/fonts/ofl/barlow` and `JetBrains/JetBrainsMono/fonts/ttf`. Expo Font/System UI
+versions are owned by package.json and the lockfile; preserve original notices
+and the native/JavaScript manifest guards when updating them. See
+[dependency notices](native-dependency-notices.md).
 
-Expo Font 57.0.3 becomes an explicit dependency at its already installed version.
-Expo System UI 57.0.3 enables Android's automatic appearance setting. Its Android
-archive resolves AppCompat and AppCompat Resources to 1.7.1. The selected archive
-inventory records these exact hashes, retaining all other selected artifacts.
-Both new AndroidX archives contain no embedded license/notice files or native
-images; the existing AndroidX license text remains packaged. The existing native
-notice guards are unchanged.
-
-The normal Android and iOS Metro source maps each identify 61 package contributors,
-adding Expo Font's original MIT notice. The manifests record the reviewed Metro
-bundle and source-map hashes, 57 original notice files and four shared-notice
-packages. These are attribution receipts for exported JavaScript, not a statement
-that those bytes are a signed release APK or iPhone application.
+The original project logo stays in `assets/brand/hypergolic-logo.png`; preserve its
+square canvas, aspect ratio and colors. `app.json` owns derived launcher assets.
+The generator and font/image licenses belong with source. Historical package
+counts or exported JavaScript hashes do not establish the contents of a newly
+signed app. Runtime cases and remaining gates are in [testing](testing.md).

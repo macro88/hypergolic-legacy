@@ -17,7 +17,7 @@ may remain on the server and relay after a run.
 First run the no-network plan and the focused verifier/wire checks:
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 node tests/native/live-update-publication/cli.mjs plan
 node --experimental-strip-types --test tests/native/live-update-publication/*.test.mjs
 PYTHONPATH=tests/native python3 -B -m unittest tests/native/test_live_update_driver.py

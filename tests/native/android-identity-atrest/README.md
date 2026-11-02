@@ -10,7 +10,7 @@ replacement storage implementation is added.
 Build outside the source tree with the repository's local toolchain:
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 python3 tests/native/android-identity-atrest/build.py --output /tmp/storage-build
 python3 -m unittest discover -s tests/native/android-identity-atrest -p 'test_driver.py'
 python3 tests/native/android-identity-atrest/run.py --serial DEVICE_SERIAL \

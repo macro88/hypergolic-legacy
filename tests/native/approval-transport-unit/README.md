@@ -12,7 +12,7 @@ one claim, replay and stale-owner rejection, exact terminal reply correlation,
 malformed response denial, configuration domain admission and cleanup.
 
 ```sh
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 python3 tests/native/approval-transport-unit/runner.py \
   --build-root /private/tmp/hypergolic-approval-transport-unit
 ```

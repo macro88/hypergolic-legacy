@@ -1,11 +1,6 @@
-# Published artifact native registry contract (in progress)
+# Published artifact native registry
 
-The trusted JavaScript verifier establishes a signed kind-35129 manifest,
-coordinate and original HTML hash. First-open consent is a separate trusted
-shell flow still to be implemented. Native must independently
-establish byte integrity and host ownership before those bytes can enter a
-WebView. Native registry checks do not establish Nostr signature validity or
-publisher trust.
+The trusted loader verifies the signed kind-35129 manifest, exact publisher/`d` coordinate, original HTML hash and NIP-5A single-path aggregate. Native registries independently establish byte integrity and host ownership; they do not prove Nostr signature validity, publisher trust or user consent. Ordinary Settings loading and the workspace now use [published admission](published-network.md#published-admission-and-updates).
 
 The Android and iOS registries implement the following core contract. The Expo
 modules stage verified bytes through a bounded app-only transfer. Each native
@@ -25,9 +20,7 @@ artifact claims, then binds the bytes to its newly minted view generation.
 Replay, changed claims, expiry, backgrounding or session revocation fail closed.
 Claiming returns a private byte copy to the host only; React props and events
 carry the token and bounded claims, never HTML, a path or an arbitrary URL.
-The published host route remains separate from bundled fixtures. A Settings-only
-QA entry can verify and review one fixed, locally embedded signed artifact before
-an explicit Open tap. The ordinary workspace still cannot open published releases.
+The published host route remains separate from bundled fixtures; locally embedded signed QA artifacts do not prove remote retrieval.
 
 The trusted owner must explicitly register a live shell session before staging and
 revoke pending bytes on closure, identity change or backgrounding. A saved
@@ -50,42 +43,24 @@ before a later transfer. No claim function is exposed to JavaScript. A
 verifier-branded JavaScript adapter chunks a private copy and rechecks live
 ownership around every native call.
 
-The host claims the handle internally and exposes ordered 48 KiB chunks only to
-its exact top-level packaged document and native generation. The trusted runtime
-rechecks the original bytes and aggregate, inserts CSP before publisher markup,
-then mounts an opaque sandboxed guest with theme access only. The verifier
-requires the document to begin with doctype, html and head so no publisher
-content precedes CSP. Neither platform grants published capability authority
-through this tracer. The Android production-source JVM proof passes 189
-assertions with `javac -Xlint:all -Werror`; the Swift host proof passes 273
-checks with `swiftc -warnings-as-errors`. Chromium and WebKit pass the full 90
-runtime cases, including the published positive and adversarial bridge cases.
-Android Release and normal unsigned iOS Simulator Release app compilation pass.
-The isolated Android Release QA app verifies the fixed signature and original
-HTML, shows the exact public publisher, app identifier, event ID and theme-only
-access, then renders `fixture-loaded` through the native published host after
-Open. Closing removes the host; backgrounding removes the QA session. The
-isolated public-only iOS Simulator app built from `index.published.fixture.tsx`
-passes the same signed review, WKWebView render and close journey through XCTest.
-Both final screenshots show the styled guest marker with clear contrast. The
-Android source/APK-bound result is in the private
-`hypergolic-android-published-host-final` evidence directory; the iOS
-source/bundle-bound XCTest result is in `hypergolic-ios-published-host-final`.
-The fixture was signed with a disposable key that was discarded; it has no
-server hint and is never fetched or published. These are native host-path
-tests, not remote resolution, first-open consent, production identity on iOS,
-or normal workspace published loading.
+The host claims the handle internally and exposes ordered 48 KiB chunks only to its exact top-level packaged document and native generation. The runtime rechecks original bytes/aggregate, inserts leading CSP before publisher markup, and mounts an opaque sandboxed guest with only exact admitted grants. The verifier requires leading doctype, html and head so no publisher content precedes CSP. Each domain still needs its owning native operation policy. The theme-only signed host fixture is a narrower QA composition, not the current published-domain limit.
+
+## Testing
+
+Final Android/iOS acceptance remains open. See [testing](testing.md) for the unified requirement matrix, current quality gate, evidence limits and full standalone campaign.
+
+Run the owning proofs below. These exercise registry/transfer sources; normal first-open consent, protected identity, remote retrieval and full workspace lifecycle require their separate ordinary-app cases.
 
 ```sh
-source .tools/use-local-tools.sh
-python3 tests/native/android-published-artifact-registry/runner.py --output /private/tmp/hypergolic-android-registry-proof
+# Configure the pinned tools described in docs/development.md.
+python3 tests/native/android-published-artifact-registry/runner.py --output /tmp/hypergolic-android-registry-proof
 xcrun swiftc -warnings-as-errors modules/napplet-host/ios/PublishedArtifactRegistry.swift \
   tests/native/published-artifact-registry/PublishedArtifactRegistryProof.swift \
-  -o /private/tmp/hypergolic-ios-registry-proof
-/private/tmp/hypergolic-ios-registry-proof
+  -o /tmp/hypergolic-ios-registry-proof
+/tmp/hypergolic-ios-registry-proof
 xcrun swiftc -warnings-as-errors modules/napplet-host/ios/PublishedArtifactRegistry.swift \
   modules/napplet-host/ios/PublishedArtifactTransfer.swift \
   tests/native/published-artifact-transfer/PublishedArtifactTransferProof.swift \
-  -o /private/tmp/hypergolic-ios-transfer-proof
-/private/tmp/hypergolic-ios-transfer-proof
+  -o /tmp/hypergolic-ios-transfer-proof
+/tmp/hypergolic-ios-transfer-proof
 ```

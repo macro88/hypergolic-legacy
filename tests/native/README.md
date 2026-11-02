@@ -27,11 +27,9 @@ Evidence binds current installed APK hash, source working-file hashes, public de
 
 Still unproven by the combined native modes: pre-ready traffic and unregistered siblings; direct native origin/isMainFrame forgery; request-rate limits; stale-generation replay after teardown; other navigation/SSL failure triggers; user-gesture popup, download/chooser/media/SSL/cookie paths; full identity/storage/signing/published loading; physical-device behavior; release-mode hostile-artifact execution. Receiver silence is scoped to the exact local nonce URLs and time window. Wrong generation and oversized diagnostics are tested only through explicitly trusted-host fault injection. Native failure-teardown changes require rebuilding and installing the new APK; source inspection alone cannot close them.
 
-The first Android hierarchy observed with WebView 133 exposed the native WebView node but none of its fixture descendants. No accessibility setting, service, policy or source behavior is changed by this driver to conceal that result.
-
 Primary attachment API: [Playwright AndroidWebView.page](https://playwright.dev/docs/api/class-androidwebview#android-web-view-page). This is debug instrumentation, separate from planned release UI Automator and malicious-artifact tests.
 
-Subsequent Android WebView attachment made the virtual fixture tree appear without source or accessibility-setting changes; activation/timing remains to investigate. The counter aria-label exposes "Counter" without its numeric value on this device. When numeric text is absent, the driver records actual read-only DOM verification separately while retaining ADB control input; it does not infer a counter from unrelated visible numbers.
+When the counter's accessibility label omits its numeric value, the driver records separate read-only DOM verification while retaining actual ADB input. It does not infer a counter from unrelated visible numbers or change accessibility settings to conceal missing descendants.
 
 The hierarchy parser distinguishes the outer native WebView from Chromium’s nested virtual WebView by observed XML ancestry. It never chooses an ambiguous WebView based on guessed dimensions. Connection-time descendant visibility and post-attachment visibility are recorded separately.
 
@@ -70,3 +68,5 @@ does not install or modify the normal app.
 The [iPhone Simulator transport proof](ios-published-transport-simulator/README.md)
 runs the owning Swift HTTPS and WSS paths as standalone native binaries with
 a source-bound JSON receipt.
+
+Whole-app requirements and remaining acceptance are tracked in the [testing plan](../../docs/testing.md).

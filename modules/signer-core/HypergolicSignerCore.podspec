@@ -5,7 +5,7 @@ Pod::Spec.new do |s|
   s.version = package['version']
   s.summary = 'Native-owned identity vault and signing review'
   s.description = 'Protected native identities, secret entry and exact NIP-01 native review.'
-  s.license = { :type => 'UNLICENSED' }
+  s.license = { :type => 'MIT' }
   s.author = 'Hypergolic contributors'
   s.homepage = 'https://github.com/nostrocket/hypergolic'
   s.source = { :git => 'https://github.com/nostrocket/hypergolic.git' }

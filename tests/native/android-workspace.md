@@ -22,7 +22,7 @@ The latest cold-launched source uses Handles SHA256 caeb8648a5915dabc88ad5f79bf8
 ## Commands
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 PYTHONDONTWRITEBYTECODE=1 python3 tests/native/workspace_driver.py \
   --source "$PWD" \
   --serial "$HYPERGOLIC_ANDROID_SERIAL" --cold-launch \

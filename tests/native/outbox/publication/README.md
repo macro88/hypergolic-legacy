@@ -1,6 +1,6 @@
 # Native Outbox publication core proof
 
-Run `source .tools/use-local-tools.sh`, `source .tools/use-ios-tools.sh`, then `python3 tests/native/outbox/publication/run.py --output <fresh-external-directory>`.
+Configure the pinned Android and iOS tools from `docs/development.md`, then run `python3 tests/native/outbox/publication/run.py --output <fresh-external-directory>`.
 
 The runner compiles the actual Android module and exercises its immutable Kotlin plan on the host JVM. It compiles the actual Swift plan, approval registry and WSS publication owner with Swift 6 and warnings as errors. The Swift composition stub supplies only the static capability lease instance; assertions use the actual native lease and approval cores. Signed fixture inputs are public deterministic test events; no secret key is retained or event published.
 

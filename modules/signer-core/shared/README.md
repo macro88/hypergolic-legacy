@@ -1,6 +1,6 @@
 # Shared native signing primitive
 
-This disposable tracer uses bitcoin-core/secp256k1 v0.8.0 at
+The shared native signing core uses bitcoin-core/secp256k1 v0.8.0 at
 `6e2c8bc4ecdc6e71dbe7a368f360d8d453ce435d`. The unmodified source archive,
 MIT license and per-file hashes live under `../vendor/`. The compile manifest
 selects extrakeys, Schnorr and ECDH; recovery, MuSig, ElligatorSwift and

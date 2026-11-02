@@ -7,7 +7,7 @@ The three tests cover pre-presentation secret absence, native reveal and accessi
 Run against an explicit Simulator UDID and a fresh output directory:
 
 ```sh
-source .tools/use-ios-tools.sh
+# Select full Xcode as described in docs/development.md.
 python3 tests/native/identity-unit/ios-backup-panel/runner.py \
   --udid SIMULATOR_UDID \
   --output /private/tmp/hypergolic-ios-backup-panel-run

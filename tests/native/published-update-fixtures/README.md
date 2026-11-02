@@ -23,7 +23,7 @@ normal app. With the pinned local tools loaded, build, align, sign with the
 repository's disposable debug key, and verify the separate APK:
 
 ```sh
-source .tools/use-local-tools.sh
+# Configure the pinned tools described in docs/development.md.
 android/gradlew -p android :app:assembleRelease \
   -PreactNativeArchitectures=arm64-v8a --console=plain
 "$ANDROID_HOME/build-tools/36.0.0/zipalign" -P 16 -f 4 \
@@ -77,8 +77,8 @@ The normal app requires physical-device identity storage, so the Simulator
 fixture does not prove production iOS key protection.
 
 ```sh
-source .tools/use-local-tools.sh
-source .tools/use-ios-tools.sh
+# Configure the pinned tools described in docs/development.md.
+# Select full Xcode as described in docs/development.md.
 xcodebuild -workspace ios/Hypergolic.xcworkspace -scheme Hypergolic \
   -configuration Release -sdk iphonesimulator \
   -destination 'platform=iOS Simulator,id=EXPLICIT_SIMULATOR_UUID' \
