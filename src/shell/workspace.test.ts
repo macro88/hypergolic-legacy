@@ -75,7 +75,7 @@ test('bundled routing peer has a distinct native session identity despite its sh
   assert.throws(() => resolveBundledSession({...peer, appId: caller.appId}));
 });
 
-for (const archive of ['approval-lab-v1', 'approval-lab-v2'] as const) test(`saved Approval Lab ${archive} restores its exact artifact without changing new openings`, async () => {
+for (const archive of ['approval-lab-v1', 'approval-lab-v2', 'approval-lab-v3'] as const) test(`saved Approval Lab ${archive} restores its exact artifact without changing new openings`, async () => {
   const {bundledDescriptor, resolveBundledSession, assertWorkspaceAvailability} = await import('./fixtures.ts');
   const {BUNDLED_FIXTURES} = await import('../runtime/bundled-catalog.ts');
   const latest = bundledDescriptor('approval-lab', 8, '12345678-1234-4123-8123-123456789abc');

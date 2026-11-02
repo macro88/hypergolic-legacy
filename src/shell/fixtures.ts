@@ -1,7 +1,7 @@
 import { emptyWorkspace, focusNapplet, openNapplet, type NappletDescriptor, type Workspace } from './workspace.ts';
 import { BUNDLED_FIXTURES, type BundledFixture } from '../runtime/bundled-catalog.ts';
 
-export type BundledVariant = Exclude<BundledFixture, 'approval-lab-v1' | 'approval-lab-v2' | 'feed-lab-v1'> | 'state-lab-other-publisher';
+export type BundledVariant = Exclude<BundledFixture, 'approval-lab-v1' | 'approval-lab-v2' | 'approval-lab-v3' | 'feed-lab-v1'> | 'state-lab-other-publisher';
 const variants: readonly BundledVariant[] = ['close-lab', 'nap-support', 'routing-lab-peer', 'routing-lab', 'upload-lab', 'state-lab-other-publisher', 'resource-lab', 'feed-lab', 'approval-lab', 'state-lab-peer', 'state-lab', 'ux-lab'];
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 // Exact previous stateless Support fixture, with the same link/theme authority.
@@ -32,7 +32,7 @@ export function resolveBundledSession(session: NappletDescriptor) {
   const expected = bundledDescriptor(variant, number, instance);
   const compatibleSupport = variant === 'nap-support' && session.version === previousSupportVersion;
   const archivedFixture = variant === 'approval-lab'
-    ? (['approval-lab-v1', 'approval-lab-v2'] as const).find(key => session.version === BUNDLED_FIXTURES[key].aggregateHash)
+    ? (['approval-lab-v1', 'approval-lab-v2', 'approval-lab-v3'] as const).find(key => session.version === BUNDLED_FIXTURES[key].aggregateHash)
     : variant === 'feed-lab' && session.version === BUNDLED_FIXTURES['feed-lab-v1'].aggregateHash
       ? 'feed-lab-v1' : undefined;
   if (session.title !== expected.title || session.publisher !== expected.publisher || session.appId !== expected.appId ||

@@ -1,3 +1,4 @@
+import { updateFixturePublisherAppState } from './fixture-publisher-lifecycle';
 import {useEffect, useState, useSyncExternalStore} from 'react';
 import {ActivityIndicator, AppState, StyleSheet, Text, View} from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
@@ -13,7 +14,8 @@ export function FixturePublisherLab({service,format}: {service: FixturePublisher
   const [server,setServer]=useState(destinations.server);
   const [relays,setRelays]=useState(()=>destinations.relays.join('\n'));
   useEffect(()=>{
-    const listener=AppState.addEventListener('change',next=>{if(next!=='active')service.cancel();});
+    updateFixturePublisherAppState(service, AppState.currentState);
+    const listener=AppState.addEventListener('change',next=>updateFixturePublisherAppState(service,next));
     return ()=>{listener.remove();service.cancel();};
   },[service]);
   const busy=['preparing','uploading','publishing'].includes(state.phase);
@@ -29,7 +31,7 @@ export function FixturePublisherLab({service,format}: {service: FixturePublisher
       <Text style={styles.detail}>Manifest relays, one per line</Text>
       <TextInput testID="fixture-release-relays" accessibilityLabel="Fixture manifest relays" value={relays} onChangeText={setRelays}
         autoCapitalize="none" autoCorrect={false} maxLength={16*1024} multiline style={styles.input}/>
-      {Object.keys(BUNDLED_FIXTURES).flatMap(fixture => ['nap-support','approval-lab-v1','approval-lab-v2','feed-lab-v1'].includes(fixture) ? [] : [<View key={fixture}>
+      {Object.keys(BUNDLED_FIXTURES).flatMap(fixture => ['nap-support','approval-lab-v1','approval-lab-v2', 'approval-lab-v3','feed-lab-v1'].includes(fixture) ? [] : [<View key={fixture}>
         {action(`Review ${fixture}`,`fixture-release-prepare-${fixture}`,()=>{void service.prepare(fixture,server,relays.split(/\s+/).filter(Boolean));})}
       </View>])}
     </>}

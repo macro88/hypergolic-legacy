@@ -9,6 +9,7 @@ import subprocess
 ROOT = Path(__file__).resolve().parents[3]
 SOURCE = 'modules/napplet-host/android/src/main/java/org/nostrocket/hypergolic/host/NativeApprovalAuthority.java'
 TRANSPORT_SOURCES = [
+    'modules/napplet-host/android/src/main/java/org/nostrocket/hypergolic/host/NativeSigningHold.java',
     'modules/napplet-host/android/src/main/java/org/nostrocket/hypergolic/host/ApprovalLeaseRegistry.java',
     'modules/napplet-host/android/src/main/java/org/nostrocket/hypergolic/host/CapabilityLeaseRegistry.java',
 ]

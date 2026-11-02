@@ -32,6 +32,8 @@ final class UploadLeaseRegistry: @unchecked Sendable {
     let request: NativeUploadAuthority.Request
     var cursor = 0
     var claimed = false
+    var nativeSigningClaimed = false
+    var nativeHandoffPending = false
     var review: NativeUploadAuthority.Review?
     var grant: NativeUploadAuthority.Grant?
     init(_ session: Session, _ requestText: String, _ request: NativeUploadAuthority.Request) {
@@ -90,7 +92,31 @@ final class UploadLeaseRegistry: @unchecked Sendable {
       row.claimed = true; return Taken(registration: row.session.registration, request: row.requestText, uploadId: row.uploadId, review: review)
     }
   }
-  func isLive(_ token: String) -> Bool { lock.withLock { guard let row = rows[token] else { return false }; return row.claimed && authority.contains(row.request) } }
+  func signingCapture(_ token: String) -> Taken? {
+    lock.withLock {
+      guard let row = rows[token], row.claimed, !row.nativeSigningClaimed,
+        let review = row.review, approved(token) else { return nil }
+      return Taken(registration: row.session.registration, request: row.requestText, uploadId: row.uploadId, review: review)
+    }
+  }
+  func claimNativeSigning(_ token: String, expected: NativeUploadAuthority.Review) -> Bool {
+    lock.withLock {
+      guard let row = rows[token], row.claimed, !row.nativeSigningClaimed,
+        row.review === expected, approved(token) else { return false }
+      row.nativeSigningClaimed = true; return true
+    }
+  }
+  func isLive(_ token: String) -> Bool { lock.withLock { guard let row = rows[token] else { return false }; return !row.nativeHandoffPending && row.claimed && authority.contains(row.request) } }
+  func nativeSigningLifetime(_ token: String) -> Bool {
+    lock.withLock { guard let row = rows[token], row.claimed, row.nativeSigningClaimed else { return false }; return authority.contains(row.request) }
+  }
+  func pauseNativeSigning(_ token: String, paused: Bool) -> Bool {
+    lock.withLock {
+      guard let row = rows[token], row.claimed, row.nativeSigningClaimed, row.nativeHandoffPending != paused,
+        authority.pauseExecution(row.request, paused: paused) else { return false }
+      row.nativeHandoffPending = paused; return true
+    }
+  }
   func mayReview(_ token: String) -> Bool { lock.withLock { reviewable(token) } }
   func preview(_ token: String, offset: Int) -> Data? {
     lock.withLock {

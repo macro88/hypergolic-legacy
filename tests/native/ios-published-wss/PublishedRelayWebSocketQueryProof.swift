@@ -14,6 +14,9 @@ struct PublishedRelayWebSocketQueryProof {
   private static func urlAndRequestProof() throws {
     let allowed = try PublishedRelayWebSocketQuery.Request("wss://relay.example.org/nostr")
     try check(allowed.host == "relay.example.org" && allowed.port == 443 && allowed.target == "/nostr", "valid relay URL")
+    let original = try PublishedRelayWebSocketQuery.Request("wss://relay.example.org/a/../nostr")
+    try check(original.target == "/a/../nostr", "ordinary accepted path preserved")
+    try check(NativeSignerRelayPolicy.normalized("wss://relay.example.org/a/../nostr") == "wss://relay.example.org/nostr", "saved signer path normalized")
     let nonce = Data(0..<16)
     let wire = try allowed.upgrade(nonce: nonce)
     let text = String(decoding: wire, as: UTF8.self)
@@ -25,7 +28,7 @@ struct PublishedRelayWebSocketQueryProof {
       "wss://127.0.0.1/", "wss://relay.example.org/?q=1", "wss://relay.example.org/?",
       "wss://relay.example.org/#fragment", "wss://relay.example.org/#",
       "wss://user@relay.example.org/", "wss://relay.localdomain/", "wss://relay.example.123/",
-      "wss://relay.example.org/%0d%0aInjected:yes", "wss://relay.example.org:0/",
+      "wss://relay.example.org/%0d%0aInjected:yes", "wss://relay.example.org/%0a/../nostr", "wss://relay.example.org:0/",
     ] {
       do { _ = try PublishedRelayWebSocketQuery.Request(rejected); throw ProofFailure.failed("accepted URL: \(rejected)") }
       catch is ProofFailure { throw ProofFailure.failed("URL rejection assertion") }

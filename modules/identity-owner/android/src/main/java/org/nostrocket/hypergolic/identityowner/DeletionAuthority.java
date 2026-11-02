@@ -48,10 +48,24 @@ final class DeletionAuthority {
     private final long epoch, deadline;
     private final String session, target;
     private final Inventory inventory;
-    private final boolean backup;
-    private Attempt(DeletionAuthority authority, long deadline, String target, boolean backup) {
+    private final boolean backup, localRemoval;
+    private Attempt(DeletionAuthority authority, long deadline, String target, boolean backup, boolean localRemoval) {
       this.owner = authority.owner; this.epoch = authority.epoch; this.deadline = deadline;
-      this.session = authority.session; this.target = target; this.inventory = authority.inventory; this.backup = backup;
+      this.session = authority.session; this.target = target; this.inventory = authority.inventory; this.backup = backup; this.localRemoval = localRemoval;
+    }
+  }
+  /** Public account text captured from the reserved native attempt, never a mutable UI target. */
+  static final class Prompt {
+    final String title, explanation, description;
+    private Prompt(Attempt value) {
+      title = value.backup ? "Back up identity" : value.localRemoval ? "Remove local private key" : "Delete saved identity";
+      explanation = value.backup ? "Authenticate to reveal this identity’s private key"
+          : value.localRemoval ? "Authenticate to remove this identity’s local private key"
+          : "Authenticate to delete this identity and all its signing methods";
+      String operation = value.backup ? "Reveal the local private key for this account."
+          : value.localRemoval ? "Remove only the local private key. The account and its data remain. Back up this key before removing it."
+          : "Delete this saved account and all its signing methods.";
+      description = "Account public key:\n" + value.target + "\n\n" + operation;
     }
   }
   private static final class Grant {
@@ -140,12 +154,15 @@ final class DeletionAuthority {
     } finally { synchronized (this) { opening = false; } }
   }
   synchronized Attempt begin(String expectedSession, String target, String expectedSelected, long expectedRevision) {
-    return beginAction(expectedSession, target, expectedSelected, expectedRevision, false);
+    return beginAction(expectedSession, target, expectedSelected, expectedRevision, false, false);
   }
   synchronized Attempt beginBackup(String expectedSession, String target, String expectedSelected, long expectedRevision) {
-    return beginAction(expectedSession, target, expectedSelected, expectedRevision, true);
+    return beginAction(expectedSession, target, expectedSelected, expectedRevision, true, false);
   }
-  private Attempt beginAction(String expectedSession, String target, String expectedSelected, long expectedRevision, boolean backup) {
+  synchronized Attempt beginLocalRemoval(String expectedSession, String target, String expectedSelected, long expectedRevision) {
+    return beginAction(expectedSession, target, expectedSelected, expectedRevision, false, true);
+  }
+  private Attempt beginAction(String expectedSession, String target, String expectedSelected, long expectedRevision, boolean backup, boolean localRemoval) {
     available(); require(!opening && opaque(expectedSession) && key(target) && inventory != null && expectedSession.equals(session));
     require(inventory.selected.equals(expectedSelected) && inventory.revision == expectedRevision);
     compareCurrent(reader.read());
@@ -153,12 +170,16 @@ final class DeletionAuthority {
     if (attempt != null && now() >= attempt.deadline) attempt = null;
     if (backupLease != null && now() >= backupLease.deadline) backupLease = null;
     require(attempt == null && grant == null && backupLease == null && inventory.identities.containsKey(target));
-    require(backup ? target.equals(inventory.selected) : inventory.identities.size() >= 2 && !target.equals(inventory.selected));
-    attempt = new Attempt(this, deadline(AUTH_MILLIS), target, backup);
+    require(backup || localRemoval ? target.equals(inventory.selected) : inventory.identities.size() >= 2 && !target.equals(inventory.selected));
+    attempt = new Attempt(this, deadline(AUTH_MILLIS), target, backup, localRemoval);
     return attempt;
   }
   synchronized boolean canPresent(Attempt value) {
     return value != null && value == attempt && matches(value) && now() < value.deadline;
+  }
+  synchronized Prompt prompt(Attempt value) {
+    require(canPresent(value));
+    return new Prompt(value);
   }
   /** Native OS-auth callback only; complete exactly the reserved attempt, never a caller-selected ID. */
   synchronized String complete(Attempt value, boolean authenticated) {

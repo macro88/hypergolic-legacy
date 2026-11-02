@@ -51,6 +51,7 @@ public final class NativeUploadAuthority {
     long expires;
     Review review;
     Grant grant;
+    NativeSigningHold handoff;
     boolean signingClaimed, transferClaimed, dispatched;
     Row(SessionHandle session, String destination, String mimeType, int length, long expires) {
       this.session = session; this.destination = destination; this.mimeType = mimeType;
@@ -76,11 +77,21 @@ public final class NativeUploadAuthority {
   }
   public synchronized void setForeground(boolean active) {
     prune(); foreground = active;
-    if (!active) { for (Row row : requests.values()) row.clear(); requests.clear(); }
+    if (active) { for (Row row : requests.values()) if (row.handoff != null) row.handoff.foreground(); }
+    else requests.entrySet().removeIf(entry -> {
+      Row row = entry.getValue();
+      if (row.handoff != null) row.handoff.background();
+      if (retained(row)) return false;
+      row.clear(); return true;
+    });
   }
-  public synchronized void focus(SessionHandle session) { prune(); if (session == null || registered(session)) focused = session; }
+  public synchronized void focus(SessionHandle session) {
+    prune(); if (session != null && !registered(session)) return;
+    if (focused != session) cancelHeld();
+    focused = session;
+  }
   public synchronized boolean clearFocus(SessionHandle session) {
-    prune(); if (focused != session || session == null) return false; focused = null; return true;
+    prune(); if (focused != session || session == null) return false; cancelHeld(); focused = null; return true;
   }
   public synchronized void revoke(SessionHandle session) {
     prune(); if (!registered(session)) return;
@@ -160,13 +171,40 @@ public final class NativeUploadAuthority {
   public synchronized void cancel(RequestHandle request) { Row row = requests.remove(request); if (row != null) row.clear(); }
   public synchronized void finish(Grant grant) { prune(); if (grant != null && approved(grant) != null) cancel(grant.request); }
   private boolean registered(SessionHandle session) { return session != null && sessions.get(session.generation) == session; }
-  private Row live(RequestHandle request) { Row row = requests.get(request); return foreground && row != null && registered(row.session) ? row : null; }
+  private Row live(RequestHandle request) {
+    Row row = requests.get(request);
+    return foreground && row != null && registered(row.session) && (row.handoff == null || row.handoff.resumed(lastTime)) ? row : null;
+  }
+  private boolean retained(Row row) {
+    return row.handoff != null && row.handoff.active(lastTime) && registered(row.session) && row.session == focused && (row.handoff.resumed(lastTime) || !row.dispatched);
+  }
+  private void cancelHeld() {
+    requests.entrySet().removeIf(entry -> {
+      if (entry.getValue().handoff == null) return false;
+      entry.getValue().clear(); return true;
+    });
+  }
+  synchronized NativeSigningHold hold(Grant grant, long deadline) {
+    prune(); Row row = approved(grant);
+    if (row == null || !row.signingClaimed || row.transferClaimed || row.dispatched || deadline <= lastTime ||
+        requests.values().stream().anyMatch(value -> value.handoff != null)) return null;
+    row.handoff = new NativeSigningHold(Math.min(deadline, row.expires));
+    return row.handoff;
+  }
+  synchronized boolean held(Grant grant, NativeSigningHold expected) {
+    prune(); Row row = grant == null ? null : requests.get(grant.request);
+    return row != null && row.grant == grant && row.handoff == expected && retained(row);
+  }
+  synchronized boolean retained(RequestHandle request) { prune(); Row row = requests.get(request); return row != null && retained(row); }
+  synchronized boolean resume(Grant grant, NativeSigningHold expected) {
+    return held(grant, expected) && foreground && expected.resume(lastTime);
+  }
   private Row approved(Grant grant) { Row row = grant == null ? null : live(grant.request); return row != null && row.grant == grant ? row : null; }
   private void prune() {
     long sampled; try { sampled = clock.getAsLong(); } catch (RuntimeException failure) { sampled = -1; }
     final long now = sampled;
     if (now < 0 || now < lastTime) clockFailed = true; if (!clockFailed) lastTime = now;
-    requests.entrySet().removeIf(entry -> { Row row = entry.getValue(); if (!clockFailed && now < row.expires && registered(row.session)) return false; row.clear(); return true; });
+    requests.entrySet().removeIf(entry -> { Row row = entry.getValue(); if (!clockFailed && now < row.expires && registered(row.session) && (row.handoff == null || retained(row))) return false; row.clear(); return true; });
   }
   static boolean validDestination(String value) {
     try {

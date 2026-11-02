@@ -8,6 +8,7 @@ final class FixtureReleaseAuthority: @unchecked Sendable {
     let session: NativeUploadAuthority.Session; let request: NativeUploadAuthority.Request; let review: NativeUploadAuthority.Review
     var grant: NativeUploadAuthority.Grant?; var verified = false
     var manifestRequest: NativeApprovalRequestHandle?; var manifestGrant: NativeApprovalHandle?
+    var manifestSnapshot: String?; var nativeUploadClaimed = false; var nativeManifestClaimed = false; var nativeHandoffManifest: Bool?
     init(_ token: String, _ fixture: String, _ identity: String, _ server: String, _ tags: String, _ epoch: UInt64,
       _ session: NativeUploadAuthority.Session, _ request: NativeUploadAuthority.Request, _ review: NativeUploadAuthority.Review) {
       self.token=token; self.fixture=fixture; self.identity=identity; self.server=server; manifestTags=tags; self.epoch=epoch
@@ -44,9 +45,23 @@ final class FixtureReleaseAuthority: @unchecked Sendable {
     guard let review=uploads.seal(request) else {uploads.revoke(session);return nil}
     let row=Entry(token,fixture,user,server,tags,epoch,session,request,review);entry=row;return row
   }}
-  func current(_ token: String) -> Entry? { lock.withLock {
+  private func lifetime(_ token: String) -> Entry? { lock.withLock {
     guard available, foregrounded, let entry, entry.token == token, entry.identity == user, entry.epoch == epoch,
       entry.verified || uploads.contains(entry.request) else {return nil}; return entry
+  }}
+  func current(_ token: String) -> Entry? { lock.withLock { guard let row = lifetime(token), row.nativeHandoffManifest == nil else { return nil }; return row } }
+  func nativeSigningLifetime(_ token: String, manifest: Bool) -> Bool { lock.withLock {
+    guard let row = lifetime(token) else { return false }
+    if manifest { guard row.nativeManifestClaimed, let request = row.manifestRequest else { return false }; return manifests.signingLifetime(request) }
+    return row.nativeUploadClaimed && uploads.contains(row.request)
+  }}
+  func pauseNativeSigning(_ token: String, manifest: Bool, paused: Bool) -> Bool { lock.withLock {
+    guard let row = lifetime(token), nativeSigningLifetime(token, manifest: manifest),
+      paused ? row.nativeHandoffManifest == nil : row.nativeHandoffManifest == manifest else { return false }
+    let changed: Bool
+    if manifest { guard let request = row.manifestRequest else { return false }; changed = manifests.pauseExecution(request, paused: paused) }
+    else { changed = uploads.pauseExecution(row.request, paused: paused) }
+    guard changed else { return false }; row.nativeHandoffManifest = paused ? manifest : nil; return true
   }}
   func approveUpload(_ token: String) -> Bool { lock.withLock {
     guard let row=current(token), row.grant == nil, !row.verified, let grant=uploads.approve(row.request,expected:row.review) else {return false}
@@ -64,7 +79,9 @@ final class FixtureReleaseAuthority: @unchecked Sendable {
     guard let row=current(token), row.verified, row.manifestRequest == nil,
       let session=manifests.register(generation:UUID().uuidString.lowercased()) else {return false}
     manifestSession=session; _=manifests.setFocused(session); _=manifests.resumeReview()
-    row.manifestRequest=manifests.admit(session,snapshot:snapshot);return row.manifestRequest != nil
+    row.manifestRequest=manifests.admit(session,snapshot:snapshot)
+    if row.manifestRequest != nil { row.manifestSnapshot = snapshot }
+    return row.manifestRequest != nil
   }}
   func approveManifest(_ token: String) -> String? { lock.withLock {
     guard let row=current(token), let request=row.manifestRequest, row.manifestGrant == nil,
@@ -73,6 +90,17 @@ final class FixtureReleaseAuthority: @unchecked Sendable {
   }}
   func manifestApproved(_ token: String) -> Bool { lock.withLock {
     guard let row=current(token), let grant=row.manifestGrant else {return false};return manifests.isApproved(grant)
+  }}
+  func claimNativeSigning(_ token: String, manifest: Bool) -> Bool { lock.withLock {
+    guard let row = current(token) else { return false }
+    if manifest {
+      guard manifestApproved(token), !row.nativeManifestClaimed else { return false }
+      row.nativeManifestClaimed = true
+    } else {
+      guard uploadApproved(token), !row.nativeUploadClaimed else { return false }
+      row.nativeUploadClaimed = true
+    }
+    return true
   }}
   func cancel() { lock.withLock {
     if let entry {uploads.revoke(entry.session)}

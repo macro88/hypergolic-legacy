@@ -19,6 +19,9 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     var claimed = false
     var outboxPlan: NativeOutboxPlan?
     var approval: NativeApprovalHandle?
+    var signingSnapshot: String?
+    var nativeSigningClaimed = false
+    var nativeHandoffPending = false
   }
   private struct Delivery: Sendable {
     let reply: Reply
@@ -101,7 +104,7 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     let result = lock.withLock {
       deliveries = sweepLocked()
       guard let row = rows[token] else { return false }
-      return row.claimed && sessionLiveLocked(row) && authority.contains(row.request)
+      return !row.nativeHandoffPending && row.claimed && sessionLiveLocked(row) && authority.contains(row.request)
     }
     dispatch(deliveries)
     return result
@@ -111,9 +114,9 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     var deliveries: [Delivery] = []
     let result = lock.withLock {
       deliveries = sweepLocked()
-      guard let row = rows[token], row.claimed, sessionLiveLocked(row),
+      guard let row = rows[token], row.claimed, !row.nativeHandoffPending, sessionLiveLocked(row),
         !isOutbox(row) || row.outboxPlan != nil, let review = authority.currentReview() else { return false }
-      return review.request == row.request && review.snapshot == row.snapshot
+      return review.request == row.request && review.snapshot.utf8.elementsEqual(row.snapshot.utf8)
     }
     dispatch(deliveries)
     return result
@@ -123,9 +126,9 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     var deliveries: [Delivery] = []
     let result = lock.withLock {
       deliveries = sweepLocked()
-      guard var row = rows[token], row.claimed, row.approval == nil, sessionLiveLocked(row),
+      guard var row = rows[token], row.claimed, row.approval == nil, !row.nativeHandoffPending, sessionLiveLocked(row),
         !isOutbox(row) || row.outboxPlan != nil, let review = authority.currentReview(), review.request == row.request,
-        review.snapshot == row.snapshot, let approval = authority.approve(row.request) else { return false }
+        review.snapshot.utf8.elementsEqual(row.snapshot.utf8), let approval = authority.approve(row.request) else { return false }
       guard authority.take(approval) == row.snapshot else {
         _ = authority.cancel(approval)
         rows.removeValue(forKey: token)
@@ -140,6 +143,51 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     return result
   }
 
+
+  func prepareSigning(_ token: String, raw: String) -> Bool {
+    lock.withLock {
+      guard var row = rows[token], row.claimed, signingEligibleLocked(row),
+        let captured = try? NativeOutboxPlan.signingSnapshot(snapshot: row.snapshot, raw: raw),
+        row.outboxPlan == nil || row.outboxPlan?.destinations == captured.destinations else { return false }
+      if let existing = row.signingSnapshot { return existing.utf8.elementsEqual(captured.json.utf8) }
+      guard !row.nativeSigningClaimed else { return false }
+      row.signingSnapshot = captured.json; rows[token] = row; return true
+    }
+  }
+  func signingSnapshot(_ token: String) -> String? {
+    lock.withLock {
+      guard let row = rows[token], row.claimed, !row.nativeSigningClaimed,
+        signingEligibleLocked(row) else { return nil }
+      return row.signingSnapshot
+    }
+  }
+  func claimNativeSigning(_ token: String, expected: String) -> Bool {
+    lock.withLock {
+      guard var row = rows[token], row.claimed, !row.nativeSigningClaimed,
+        row.signingSnapshot.map({ $0.utf8.elementsEqual(expected.utf8) }) == true, signingEligibleLocked(row) else { return false }
+      row.nativeSigningClaimed = true; rows[token] = row; return true
+    }
+  }
+  private func signingEligibleLocked(_ row: Row) -> Bool {
+    guard sessionLiveLocked(row), authority.contains(row.request), !isOutbox(row) || row.outboxPlan != nil else { return false }
+    if let approval = row.approval { return authority.isApproved(approval) }
+    guard let review = authority.currentReview() else { return false }
+    return review.request == row.request && review.snapshot.utf8.elementsEqual(row.snapshot.utf8)
+  }
+  func isSigningLive(_ token: String) -> Bool {
+    lock.withLock {
+      guard let row = rows[token], row.claimed else { return false }
+      if row.nativeSigningClaimed { return sessionLiveLocked(row) && authority.signingLifetime(row.request) }
+      return signingEligibleLocked(row)
+    }
+  }
+  func pauseNativeSigning(_ token: String, paused: Bool) -> Bool {
+    lock.withLock {
+      guard var row = rows[token], row.nativeSigningClaimed, row.nativeHandoffPending != paused,
+        sessionLiveLocked(row), authority.pauseExecution(row.request, paused: paused) else { return false }
+      row.nativeHandoffPending = paused; rows[token] = row; return true
+    }
+  }
   func prepareOutbox(_ token: String, raw: String) -> Bool {
     lock.withLock {
       guard var row = rows[token], row.claimed, row.approval == nil, row.outboxPlan == nil,
@@ -150,7 +198,7 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
   }
   func reserveOutbox(_ token: String, group: String, wire: String, relay: String) throws -> NativeOutboxPlan.Send {
     try lock.withLock {
-      guard let row = rows[token], sessionLiveLocked(row), let approval = row.approval,
+      guard let row = rows[token], !row.nativeHandoffPending, sessionLiveLocked(row), let approval = row.approval,
         authority.isApproved(approval), let plan = row.outboxPlan else { throw NativeOutboxPlan.Failure.revoked }
       return try plan.reserve(group: group, wire: wire, relay: relay)
     }
@@ -158,7 +206,7 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
   /// Native revocation and exact EVENT enqueue share this lock.
   func sendOutbox(_ token: String, operation: NativeOutboxPlan.Send, send: () -> Void) throws {
     try lock.withLock {
-      guard let row = rows[token], sessionLiveLocked(row), let approval = row.approval,
+      guard let row = rows[token], !row.nativeHandoffPending, sessionLiveLocked(row), let approval = row.approval,
         authority.isApproved(approval), row.outboxPlan?.owns(operation) == true, !operation.wasAttempted,
         ContinuousClock.now < operation.deadline else { throw NativeOutboxPlan.Failure.revoked }
       operation.markAttempted(); send()
@@ -184,7 +232,7 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     var deliveries: [Delivery] = []
     let result = lock.withLock {
       deliveries = sweepLocked()
-      guard let row = rows[token], row.claimed, sessionLiveLocked(row),
+      guard let row = rows[token], row.claimed, !row.nativeHandoffPending, sessionLiveLocked(row),
         let approval = row.approval else { return false }
       return authority.isApproved(approval)
     }
@@ -209,7 +257,7 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
     var deliveries: [Delivery] = []
     lock.withLock {
       deliveries = sweepLocked()
-      guard let row = rows[token], row.claimed, sessionLiveLocked(row),
+      guard let row = rows[token], row.claimed, !row.nativeHandoffPending, sessionLiveLocked(row),
         let review = authority.currentReview(), review.request == row.request,
         authority.dismiss(row.request) else { return }
       rows.removeValue(forKey: token)
@@ -291,6 +339,17 @@ final class ApprovalTransportRegistry: @unchecked Sendable {
       _ = authority.teardown(session)
       for token in rows.filter({ $0.value.generation == generation }).keys { rows.removeValue(forKey: token) }
     }
+  }
+
+  func cancelAllSigningSources() {
+    let deliveries: [Delivery] = lock.withLock {
+      let deliveries = rows.values.filter { sessionLiveLocked($0) }.map { denial($0) }
+      for row in rows.values {
+        if let approval = row.approval { _ = authority.cancel(approval) } else { _ = authority.cancel(row.request) }
+      }
+      rows.removeAll(); return deliveries
+    }
+    dispatch(deliveries)
   }
 
   func sweep() {

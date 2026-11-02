@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {finalizeEvent,getPublicKey} from 'nostr-tools/pure';
 import {FixturePublisher,type FixtureReleasePort,type FixturePublisherEffects} from '../../src/fixture-release/publisher.ts';
+import { updateFixturePublisherAppState } from '../../src/shell/fixture-publisher-lifecycle.ts';
 import type {EventSnapshot} from '../../src/security/event-snapshot.ts';
 import type {UploadSnapshot} from '../../src/uploads/upload-snapshot.ts';
 import type {VerifiedSignedEvent} from '../../src/security/signed-event.ts';
@@ -59,7 +60,7 @@ function setup() {
     async publish(event,destinations,authority){authority.assertActive();state.publishes++;state.signed=event;if(state.realTransport)return publishEvent(event,destinations,authority,{WebSocket:AckWebSocket as never,timeoutMs:1000});return destinations.map(relay=>({relay:state.receiptRelay || new URL(relay).href,eventId:state.receiptId || event.id,status:state.relayAccepted?'accepted':'rejected',reason:''}));},
     source:{async query(_coordinate,destinations){state.queries++;if(destinations.includes(state.unavailableRelay))throw new Error("unavailable");return state.signed?[state.wrongStoredEvent?{...state.signed,content:'changed'}:state.signed]:[];},async readHtml(){throw new Error('unused');}},
   };
-  return {service:new FixturePublisher(native,effects),state,native};
+  return {service:new FixturePublisher(native,effects),state,native,effects};
 }
 async function uploadReady() {const fixture=setup();await fixture.service.prepare('feed-lab',server,relays);assert.equal(fixture.service.getSnapshot().phase,'upload-review');return fixture;}
 async function manifestReady() {const fixture=await uploadReady();await fixture.service.approveUpload(fixture.service.getSnapshot().review!);assert.equal(fixture.service.getSnapshot().phase,'manifest-review');return fixture;}
@@ -142,7 +143,7 @@ test('accepted receipts for an unapproved host, path or event do not start store
   assert.equal(service.getSnapshot().phase,'failed');assert.equal(state.queries,0);
 });
 
-for (const archive of ['approval-lab-v1', 'approval-lab-v2', 'feed-lab-v1']) test(`archived fixture ${archive} cannot prepare a fresh release or produce signing/network effects`, async () => {
+for (const archive of ['approval-lab-v1', 'approval-lab-v2', 'approval-lab-v3', 'feed-lab-v1']) test(`archived fixture ${archive} cannot prepare a fresh release or produce signing/network effects`, async () => {
   const {service, state} = setup();
   await service.prepare(archive, server, relays);
   assert.equal(service.getSnapshot().phase, 'failed');
@@ -152,4 +153,49 @@ for (const archive of ['approval-lab-v1', 'approval-lab-v2', 'feed-lab-v1']) tes
   assert.equal(state.puts, 0);
   assert.equal(state.signManifests, 0);
   assert.equal(state.publishes, 0);
+});
+
+
+test('fixture handoff preserves the signing stage and grants nothing to the next stage', async () => {
+  const { service, state, effects } = await uploadReady();
+  let complete!: () => void, status: 'pending' | 'resumed' | null = null;
+  state.waitForSign = new Promise<void>(resolve => { complete = resolve; });
+  effects.handoffState = source => { assert.deepEqual(source, { kind: 'fixture-upload', token }); return status; };
+  const pending = service.approveUpload(service.getSnapshot().review!);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  status = 'pending'; state.upload = false; service.background();
+  assert.equal(service.getSnapshot().phase, 'uploading'); assert.equal(state.puts, 0);
+  status = 'resumed'; state.upload = true; complete();
+  await new Promise<void>(resolve => setImmediate(resolve)); assert.equal(state.puts, 0);
+  service.foreground(); await pending;
+  assert.equal(service.getSnapshot().phase, 'manifest-review'); assert.equal(state.puts, 1);
+  service.background(); service.foreground();
+  assert.equal(service.getSnapshot().phase, 'idle'); assert.equal(state.signManifests, 0); assert.equal(state.publishes, 0);
+});
+
+test('explicit fixture cancellation remains unconditional during a native handoff', async () => {
+  const { service, state, effects } = await uploadReady();
+  let complete!: () => void;
+  state.waitForSign = new Promise<void>(resolve => { complete = resolve; });
+  effects.handoffState = () => 'pending';
+  const pending = service.approveUpload(service.getSnapshot().review!);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  service.background(); service.cancel(); complete(); await pending;
+  assert.equal(state.puts, 0); assert.equal(state.signManifests, 0); assert.equal(state.publishes, 0);
+});
+
+
+test('fixture Settings remount synchronizes current foreground state before preparation', async () => {
+  const { service, state } = setup();
+  updateFixturePublisherAppState(service, 'active');
+  updateFixturePublisherAppState(service, 'background'); service.cancel();
+  // Foreground happened while the Lab was unmounted: the mount receives only currentState.
+  updateFixturePublisherAppState(service, 'active');
+  await service.prepare('feed-lab', server, relays);
+  assert.equal(service.getSnapshot().phase, 'upload-review');
+  assert.equal(state.signUploads, 0); assert.equal(state.puts, 0);
+  service.cancel(); updateFixturePublisherAppState(service, 'background');
+  await service.prepare('feed-lab', server, relays);
+  assert.equal(service.getSnapshot().phase, 'failed');
+  assert.equal(state.signUploads, 0); assert.equal(state.puts, 0);
 });

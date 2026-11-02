@@ -1,3 +1,4 @@
+import { publicFixtureSigningMethods } from '../public-signing-methods';
 import { registerRootComponent } from 'expo';
 import * as SQLite from 'expo-sqlite';
 import { useEffect, useState } from 'react';
@@ -11,7 +12,7 @@ import { ApprovalSheet } from '../../../src/shell/ApprovalSheet';
 import { useShellStyles, type ShellPalette, type ShellFonts } from '../../../src/shell/theme';
 import { emptyWorkspace } from '../../../src/shell/workspace';
 import { initialTestWorkspace, assertWorkspaceAvailability } from '../../../src/shell/fixtures';
-import { formatNpub, publicKeyFromNsec } from '../../../src/security/identity-crypto';
+import { formatNpub } from '../../../src/security/public-identity';
 import { IdentityTransition } from '../../../src/security/identity-transition';
 import { VaultError, type VaultSnapshot } from '../../../src/security/identity-vault';
 import type { TrustedIdentityOwner } from '../../../src/security/trusted-identity-owner';
@@ -36,11 +37,12 @@ async function openFixture(): Promise<TrustedIdentityOwner> {
   const platform = Platform.OS === 'ios' ? 'ios' : 'android';
   const database = await openShellDatabase(SQLite, platform);
   const vault = {
+    ...publicFixtureSigningMethods(() => identity),
     getSnapshot: () => identity,
     select: async (): Promise<VaultSnapshot> => { throw new VaultError('NOT_FOUND'); },
-    importNsec: async (): Promise<VaultSnapshot> => { throw new VaultError('INVALID_NSEC'); },
+    prepareImport: async () => null, cancelImport: () => {}, commitImport: async (): Promise<VaultSnapshot> => { throw new VaultError('AUTHORIZATION_DENIED'); },
   };
-  const transition = await IdentityTransition.open({ vault, database, publicKeyFromNsec, seed: emptyWorkspace, assertAvailable: assertWorkspaceAvailability });
+  const transition = await IdentityTransition.open({ vault, database, seed: emptyWorkspace, assertAvailable: assertWorkspaceAvailability });
   const runtime = createRuntimeOwner(database, transition, loadNativeCapabilityPort());
   return { transition, runtime, formatNpub, relaySettings: await openNativeRelaySettings(SQLite, platform), resourceSettings: null };
 }

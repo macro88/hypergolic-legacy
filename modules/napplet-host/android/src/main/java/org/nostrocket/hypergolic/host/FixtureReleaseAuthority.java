@@ -16,6 +16,10 @@ final class FixtureReleaseAuthority {
     boolean verified;
     NativeApprovalAuthority.RequestHandle manifestRequest;
     NativeApprovalAuthority.ApprovalHandle manifestGrant;
+    String manifestSnapshot;
+    boolean nativeManifestSigned,nativeUploadSigned;
+    NativeSigningHold handoff;
+    boolean handoffManifest;
     Entry(String token, String fixture, String identity, String server, String tags, long epoch,
       NativeUploadAuthority.SessionHandle session, NativeUploadAuthority.RequestHandle request, NativeUploadAuthority.Review review) {
       this.token=token; this.fixture=fixture; this.identity=identity; this.server=server; manifestTags=tags;
@@ -36,7 +40,10 @@ final class FixtureReleaseAuthority {
     if (!available || epoch!=this.epoch || !user.equals(this.user)) cancel();
     this.user=user; this.epoch=epoch; this.available=available; return true;
   }
-  synchronized void foreground(boolean active) { foreground=active; uploads.setForeground(active); manifests.setForeground(active); if(!active)cancel(); }
+  synchronized void foreground(boolean active) {
+    foreground=active; uploads.setForeground(active); manifests.setForeground(active);
+    if (!active && !held()) cancel();
+  }
   synchronized Entry prepare(String fixture, byte[] bytes, String expectedHash, String server, String tags) {
     if(!available || !foreground || fixture==null || !fixture.matches("[a-z][a-z0-9-]{0,63}") || bytes==null ||
       bytes.length<1 || bytes.length>2*1024*1024 || expectedHash==null || !expectedHash.equals(hash(bytes)) ||
@@ -55,7 +62,7 @@ final class FixtureReleaseAuthority {
     entry=new Entry(token,fixture,user,server,tags,epoch,session,request,review);return entry;
   }
   synchronized Entry current(String token) {
-    return available && foreground && entry!=null && entry.token.equals(token) && entry.identity.equals(user) && entry.epoch==epoch &&
+    return available && foreground && entry!=null && (entry.handoff==null || resumed()) && entry.token.equals(token) && entry.identity.equals(user) && entry.epoch==epoch &&
       (entry.verified || uploads.contains(entry.request)) ? entry : null;
   }
   synchronized boolean approveUpload(String token) {
@@ -67,13 +74,14 @@ final class FixtureReleaseAuthority {
   synchronized boolean verifyRetrieved(String token, byte[] retrieved) {
     var row=current(token);if(row==null || !uploadApproved(token) || !uploads.wasDispatched(row.grant) || retrieved==null || retrieved.length!=row.review.size ||
       !hash(retrieved).equals(row.review.sha256))return false;
-    row.verified=true;uploads.finish(row.grant);return true;
+    row.verified=true;uploads.finish(row.grant);row.handoff=null;return true;
   }
   synchronized boolean prepareManifest(String token,String snapshot) {
-    var row=current(token);if(row==null || !row.verified || row.manifestRequest!=null)return false;
+    var row=current(token);if(row==null || !row.verified || row.manifestRequest!=null || !available || !foreground)return false;
+    row.handoff=null;
     manifestSession=manifests.register(UUID.randomUUID().toString());if(manifestSession==null)return false;
     manifests.setFocused(manifestSession);manifests.resumeReview();row.manifestRequest=manifests.admit(manifestSession,snapshot);
-    return row.manifestRequest!=null;
+    if(row.manifestRequest!=null)row.manifestSnapshot=snapshot;return row.manifestRequest!=null;
   }
   synchronized String approveManifest(String token) {
     var row=current(token);if(row==null || row.manifestRequest==null || row.manifestGrant!=null)return null;
@@ -81,6 +89,36 @@ final class FixtureReleaseAuthority {
     return row.manifestGrant==null?null:manifests.take(row.manifestGrant);
   }
   synchronized boolean manifestApproved(String token) {var row=current(token);return row!=null && manifests.isApproved(row.manifestGrant);}
+  synchronized boolean claimNativeSigning(String token,Entry expected,boolean manifest) {
+    Entry row=current(token);if(row!=expected)return false;
+    if(manifest) { if(!manifestApproved(token) || row.nativeManifestSigned)return false;row.nativeManifestSigned=true; }
+    else { if(!uploadApproved(token) || row.nativeUploadSigned)return false;row.nativeUploadSigned=true; }
+    return true;
+  }
+  synchronized NativeSigningHold holdSigning(String token, Entry expected, boolean manifest, long deadline) {
+    Entry row=current(token);
+    if(row!=expected || row.handoff!=null || (manifest ? !row.nativeManifestSigned : !row.nativeUploadSigned)) return null;
+    row.handoff=manifest ? manifests.hold(row.manifestGrant,deadline) : uploads.hold(row.grant,deadline);
+    row.handoffManifest=manifest;
+    return row.handoff;
+  }
+  private boolean held() {
+    return entry!=null && entry.handoff!=null && (entry.handoffManifest ? manifests.held(entry.manifestGrant,entry.handoff) : uploads.held(entry.grant,entry.handoff));
+  }
+  private boolean resumed() {
+    return held() && foreground && (entry.handoffManifest ? manifests.isApproved(entry.manifestGrant) : uploads.isApproved(entry.grant));
+  }
+  synchronized boolean signingHeld(String token, Entry expected, boolean manifest, NativeSigningHold hold) {
+    return entry==expected && entry.token.equals(token) && entry.handoff==hold && entry.handoffManifest==manifest && held();
+  }
+  synchronized boolean resumeSigning(String token, Entry expected, boolean manifest, NativeSigningHold hold) {
+    return signingHeld(token,expected,manifest,hold) && foreground &&
+      (manifest ? manifests.resume(entry.manifestGrant,hold) : uploads.resume(entry.grant,hold));
+  }
+  synchronized void cancel(String token, boolean manifest) {
+    if (entry != null && entry.token.equals(token) && entry.verified == manifest) cancel();
+  }
+  synchronized void cancel(String token) { if (entry != null && entry.token.equals(token)) cancel(); }
   synchronized void cancel() {
     if(entry!=null)uploads.revoke(entry.session);
     if(manifestSession!=null)manifests.teardown(manifestSession);

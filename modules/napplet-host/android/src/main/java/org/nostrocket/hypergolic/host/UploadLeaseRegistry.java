@@ -14,7 +14,8 @@ final class UploadLeaseRegistry {
   static final class Taken {
     final String registration, request, uploadId;
     final NativeUploadAuthority.Review review;
-    Taken(Row row) { registration = row.session.registration; request = row.requestText; uploadId = row.uploadId; review = row.review; }
+    final Object marker;
+    Taken(Row row) { marker=row; registration = row.session.registration; request = row.requestText; uploadId = row.uploadId; review = row.review; }
   }
   static final class Transfer {
     final NativeUploadAuthority authority;
@@ -45,6 +46,8 @@ final class UploadLeaseRegistry {
     final NativeUploadAuthority.RequestHandle request;
     int cursor;
     boolean claimed;
+    boolean nativeSigned;
+    NativeSigningHold handoff;
     NativeUploadAuthority.Review review;
     NativeUploadAuthority.Grant grant;
     Row(Session session, String requestText, NativeUploadAuthority.RequestHandle request) {
@@ -96,6 +99,27 @@ final class UploadLeaseRegistry {
     if (row == null || row.claimed || row.review == null || !authority.contains(row.request)) return null;
     row.claimed = true; return new Taken(row);
   }
+  synchronized Taken signingCapture(String token) {
+    Row row=rows.get(token);return row!=null && isApproved(token) && !row.nativeSigned?new Taken(row):null;
+  }
+  synchronized boolean signingCurrent(String token,Object marker) { return rows.get(token)==marker && isApproved(token); }
+  synchronized boolean claimNativeSigning(String token,Object marker) {
+    Row row=rows.get(token);if(row!=marker || !isApproved(token) || row.nativeSigned)return false;row.nativeSigned=true;return true;
+  }
+  synchronized NativeSigningHold holdSigning(String token, Object marker, long deadline) {
+    Row row = rows.get(token);
+    if (row != marker || !row.nativeSigned || row.handoff != null) return null;
+    row.handoff = authority.hold(row.grant, deadline);
+    return row.handoff;
+  }
+  synchronized boolean signingHeld(String token, Object marker, NativeSigningHold expected) {
+    Row row = rows.get(token);
+    return row == marker && row.nativeSigned && row.handoff == expected && authority.held(row.grant, expected);
+  }
+  synchronized boolean resumeSigning(String token, Object marker, NativeSigningHold expected) {
+    Row row = rows.get(token);
+    return signingHeld(token, marker, expected) && authority.resume(row.grant, expected);
+  }
   synchronized boolean isLive(String token) { Row row = rows.get(token); return row != null && row.claimed && authority.contains(row.request); }
   synchronized boolean mayReview(String token) {
     Row row = rows.get(token); return row != null && row.claimed && row.review != null && authority.mayReview(row.request, row.review);
@@ -136,7 +160,7 @@ final class UploadLeaseRegistry {
     var invalid = new ArrayList<Invalid>();
     for (String token : new ArrayList<>(rows.keySet())) {
       Row row = rows.get(token);
-      if (sessions.get(row.session.generation) == row.session && authority.contains(row.request)) continue;
+      if (sessions.get(row.session.generation) == row.session && (authority.contains(row.request) || authority.retained(row.request))) continue;
       boolean dispatched = authority.wasDispatched(row.grant); invalid.add(new Invalid(token, row, dispatched)); remove(token, row);
     }
     return invalid;

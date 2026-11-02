@@ -44,9 +44,44 @@ enum CapabilityTransport { static let leases = CapabilityLeaseRegistry() }
       "[\"OK\",\"\(id)\",true,\"sto\tred\"]"
     ] { deniedAck(id, text) }
   }
+  static func exactUnicodeSource(_ fixture: [String: Any]) throws {
+    let composed = "\u{00e9}", decomposed = "e\u{0301}"
+    check(composed == decomposed); check(!composed.utf8.elementsEqual(decomposed.utf8))
+    var envelope = try JSONSerialization.jsonObject(with: Data((fixture["snapshot"] as! String).utf8)) as! [String: Any]
+    var request = try JSONSerialization.jsonObject(with: Data((envelope["request"] as! String).utf8)) as! [String: Any]
+    var source = request["event"] as! [String: Any]; source["content"] = composed; source["tags"] = [["t", composed]]
+    request["event"] = source; envelope["request"] = try wire(request)
+    let original = try wire(envelope), pubkey = (fixture["primary"] as! [String: Any])["pubkey"] as! String
+    func review(_ event: [String: Any]) throws -> [String: Any] {
+      let canonical: [Any] = [0, pubkey, event["created_at"]!, event["kind"]!, event["tags"]!, event["content"]!]
+      let hash = SHA256.hash(data: try JSONSerialization.data(withJSONObject: canonical, options: .withoutEscapingSlashes)).map { String(format: "%02x", $0) }.joined()
+      return ["event": event, "selectedPubkey": pubkey, "destinations": (fixture["plan"] as! [String: Any])["event"].flatMap { ($0 as? [String: Any])?["destinations"] }!, "hash": hash]
+    }
+    let exactReview = try review(source)
+    _ = try NativeOutboxPlan.signingSnapshot(snapshot: original, raw: wire(exactReview)); check(true)
+    var exactPlan = fixture["plan"] as! [String: Any]; exactPlan["event"] = exactReview
+    _ = try NativeOutboxPlan.capture(snapshot: original, raw: wire(exactPlan)); check(true)
+    for field in ["content", "tags"] {
+      var altered = source; altered[field] = field == "content" ? decomposed as Any : [["t", decomposed]] as Any
+      let changedReview = try review(altered); var changedPlan = exactPlan; changedPlan["event"] = changedReview
+      denied { _ = try NativeOutboxPlan.signingSnapshot(snapshot: original, raw: wire(changedReview)) }
+      denied { _ = try NativeOutboxPlan.capture(snapshot: original, raw: wire(changedPlan)) }
+    }
+    let escapedReview = try wire(exactReview).replacingOccurrences(of: composed, with: "\\u00e9")
+    _ = try NativeOutboxPlan.signingSnapshot(snapshot: original, raw: escapedReview); check(true)
+    let leases = CapabilityLeaseRegistry(), registry = ApprovalTransportRegistry(leases: leases, schedule: { _, _ in })
+    check(leases.register("unicode-owner")); check(registry.register("unicode-owner")); registry.setForeground(true); registry.setFocused("unicode-owner", active: true)
+    let token = registry.admit("unicode-owner", snapshot: original, wireId: "native-outbox-publication", reply: { _ in })!
+    check(registry.take(token) != nil); check(registry.prepareOutbox(token, raw: try wire(exactPlan)))
+    check(registry.prepareSigning(token, raw: try wire(exactReview)))
+    let frozen = registry.signingSnapshot(token)!
+    check(!registry.claimNativeSigning(token, expected: frozen.replacingOccurrences(of: composed, with: decomposed)))
+    check(registry.claimNativeSigning(token, expected: frozen))
+  }
   static func main() throws {
     let data = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
     let fixture = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+    try exactUnicodeSource(fixture)
     let snapshot = fixture["snapshot"] as! String, raw = try wire(fixture["plan"]!)
     let primary = try wire(fixture["primary"]!), list = try wire(fixture["list"]!)
     let plan = try NativeOutboxPlan.capture(snapshot: snapshot, raw: raw)

@@ -2,7 +2,7 @@ import {useState, useSyncExternalStore} from 'react';
 import { StyleSheet, Text, View} from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import type {IdentityListAccess} from '../identity/identity-permissions';
-import {formatNpub} from '../security/identity-crypto';
+import {formatNpub} from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 export function IdentityListSettings({service, user}: {service: IdentityListAccess | null; user: string}) {
   const { styles } = useShellStyles(createStyles);

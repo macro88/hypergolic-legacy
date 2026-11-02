@@ -3,7 +3,7 @@ import {OutboxReview} from './OutboxReview';
 import { useRef, useState } from 'react';
 import { AccessibilityInfo, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
-import { formatNpub } from '../security/identity-crypto.ts';
+import { formatNpub } from '../security/public-identity.ts';
 import type { ApprovalItem } from '../security/approval-service.ts';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

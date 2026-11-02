@@ -106,6 +106,7 @@ export function createNativeUploadPort(module: UploadModule): UploadNativePort {
       });
       return () => listener?.remove();
     },
+    signingSource: lease => Object.freeze({ kind: 'upload', token: tokenFor(lease) }),
     isLive: lease => module.isUploadLive(tokenFor(lease)), mayReview: lease => module.mayReviewUpload(tokenFor(lease)),
     readPreview: (lease, offset) => {
       if (!Number.isSafeInteger(offset) || offset < 0 || offset % UPLOAD_LIMITS.chunkBytes !== 0) throw new UploadError('policy denied');

@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useState, useSyncExternalStore }
 import { FlatList, Modal, StyleSheet, Text, View, type ListRenderItemInfo } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import type { UploadService, UploadPresentation } from '../uploads/upload-service.ts';
+import { signerFailureMessage } from '../security/signing-methods.ts';
 import type { UploadRecoveryService, UploadRecoveryRecord } from '../uploads/upload-recovery.ts';
 import type { Workspace } from './workspace.ts';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
@@ -61,6 +62,8 @@ function Recovery({service, blocked}: {service: UploadRecoveryService; blocked: 
 function outcomeText(item: UploadPresentation['outcomes'][number]): string {
   if (item.result.status === 'complete') return 'Upload confirmed by server.';
   if (item.result.error === 'outcome unknown') return 'Upload outcome unknown. A copy may remain on the server. Check the same server before retrying.';
+  if (item.signingFailure === 'SIGNER_UNCERTAIN') return 'Your signer may have signed the upload authorization, but this file was not sent.';
+  if (item.signingFailure) return signerFailureMessage(item.signingFailure) + ' This file was not sent.';
   return 'Upload stopped: ' + item.result.error + '.';
 }
 export function UploadProgress({service, snapshot, workspace, blocked, reviewing}: {
@@ -70,7 +73,7 @@ export function UploadProgress({service, snapshot, workspace, blocked, reviewing
   const outcome = snapshot.outcomes.at(-1);
   return <View pointerEvents="box-none" style={styles.progress}>
     {snapshot.active.map(item => <View key={item.id} testID="upload-progress" style={styles.card}>
-      <Text accessibilityLiveRegion="polite" style={styles.text}>Uploading from {workspace?.sessions.find(session => session.id === item.origin.sessionId)?.title ?? 'Napplet'}: {item.bytesSent.toLocaleString()} / {item.bytesTotal.toLocaleString()} bytes sent. Waiting for server confirmation.</Text>
+      <Text accessibilityLiveRegion="polite" style={styles.text}>Upload from {workspace?.sessions.find(session => session.id === item.origin.sessionId)?.title ?? 'Napplet'}: {item.phase === 'authorizing' ? 'Waiting for authorization.' : `${item.bytesSent.toLocaleString()} / ${item.bytesTotal.toLocaleString()} bytes sent.${item.bytesSent === item.bytesTotal ? ' Waiting for server confirmation.' : ''}`}</Text>
       <Pressable testID="upload-cancel" accessibilityRole="button" accessibilityLabel="Cancel upload" onPress={() => service?.cancel(item.id)} style={styles.cancel}><Text style={styles.cancelText}>Cancel upload</Text></Pressable>
     </View>)}
     {outcome && !blocked && !reviewing && <Pressable testID="upload-outcome" accessibilityRole="button" accessibilityLabel={outcomeText(outcome)} accessibilityHint="Dismiss upload result" onPress={() => service?.dismissOutcome(outcome.id)}>

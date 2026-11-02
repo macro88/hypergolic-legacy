@@ -49,19 +49,21 @@
     "test:outbox": "node --experimental-strip-types --test tests/outbox/*.test.ts",
     "test:native-webp": "node scripts/test-native-webp.mjs",
     "test:native-dav1d": "node scripts/test-native-dav1d.mjs",
-    "test:native-codec-patches": "node --test tests/native/codecs/patch-integration.cjs && ruby tests/native/codecs/patch-hook.rb && ruby tests/native/codecs/notice-packaging.rb"
+    "test:native-codec-patches": "node --test tests/native/codecs/patch-integration.cjs && ruby tests/native/codecs/patch-hook.rb && ruby tests/native/codecs/notice-packaging.rb",
+    "test:signer": "node --experimental-strip-types --test tests/security/native-signer-contract.test.ts tests/security/native-vault.test.ts tests/security/native-android-signer.test.ts",
+    "test:signer:native": "python3 tests/native/signer-core/run.py"
   },
   "dependencies": {
     "applesauce-core": "6.2.0",
     "applesauce-relay": "6.2.1",
     "expo": "57.0.20",
-    "expo-build-properties": "57.0.17",
+    "expo-build-properties": "57.0.22",
     "expo-crypto": "57.0.2",
-    "expo-font": "57.0.3",
+    "expo-font": "57.0.4",
     "expo-image": "57.0.4",
     "expo-secure-store": "57.0.3",
     "expo-sqlite": "57.0.2",
-    "expo-system-ui": "57.0.3",
+    "expo-system-ui": "57.0.4",
     "nostr-tools": "2.24.0",
     "react": "19.2.3",
     "react-native": "0.86.3",
@@ -82,28 +84,58 @@
   },
   "pnpm": {
     "overrides": {
-      "fast-uri@3.1.7": "3.1.8",
-      "ip-address@10.7.0": "10.7.1",
+      "fast-uri@3.1.7": "3.1.9",
+      "ip-address@10.7.0": "10.7.4",
       "brace-expansion@5.0.9": "5.0.12",
       "xcode>uuid": "11.1.1",
       "source-map-js": "1.2.2",
       "proxy-addr": "2.0.8",
       "compression": "1.8.2",
       "shell-quote@1.10.0": "1.11.0",
-      "@modelcontextprotocol/sdk@1.30.0": "1.31.0"
+      "@modelcontextprotocol/sdk@1.30.0": "1.32.0",
+      "hono@4": "4.13.11",
+      "zod@4": "4.6.6",
+      "@expo/cli@57.0.22>zod": "4.6.6",
+      "qs@6.16.0": "6.16.1",
+      "body-parser@2.3.0": "2.4.0",
+      "@hono/node-server@2.1.1": "2.1.3",
+      "@opengsd/gsd-core@1.13.0>fallow": "3.34.0",
+      "@expo/config@57.0.9>deepmerge": "-",
+      "@babel/core@7.29.7>semver": "7.8.5",
+      "@babel/helper-compilation-targets@7.29.7>semver": "7.8.5",
+      "@babel/helper-create-class-features-plugin@7.29.7>semver": "7.8.5",
+      "@babel/helper-create-regexp-features-plugin@7.29.7>semver": "7.8.5",
+      "@babel/plugin-transform-runtime@7.29.7>semver": "7.8.5",
+      "babel-plugin-polyfill-corejs2@0.4.17>semver": "7.8.5"
     },
     "patchedDependencies": {
       "node-forge@1.4.0": "patches/node-forge@1.4.0.patch",
-      "braces@3.0.3": "tools/quality/patches/braces@3.0.3.patch"
+      "braces@3.0.3": "tools/quality/patches/braces@3.0.3.patch",
+      "expo-secure-store@57.0.3": "patches/expo-secure-store@57.0.3.patch",
+      "expo-modules-jsi@57.0.8": "patches/expo-modules-jsi@57.0.8.patch",
+      "@expo/config@57.0.9": "patches/expo-config-safe-merge.patch"
+    },
+    "packageExtensions": {
+      "@expo/config@57.0.9": {
+        "dependencies": {
+          "@fastify/deepmerge": "3.2.4"
+        }
+      }
     }
   },
   "expo": {
     "autolinking": {
       "ios": {
         "buildFromSource": [
-          "^expo-image$"
+          "^expo-image$",
+          "^expo-secure-store$",
+          "^ExpoSecureStore$"
         ]
-      }
+      },
+      "buildFromSource": [
+        "^expo-secure-store$",
+        "^ExpoSecureStore$"
+      ]
     }
   }
 }

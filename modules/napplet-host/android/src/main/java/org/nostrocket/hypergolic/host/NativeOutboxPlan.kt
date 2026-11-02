@@ -26,10 +26,14 @@ internal class NativeOutboxPlan private constructor(
     if (deadline == null) deadline = now + 15_000
     return Send(relay, JSONObject(wire).getString("id"), "[\"EVENT\",$signed]", deadline!!)
   }
+  internal fun matchesSigning(event: JSONObject,user: String,relays: List<String>,eventId: String): Boolean =
+    identity==user && template==unsigned(event,true) && destinations==relays && hash==eventId
   class Send(val relay: String, val eventId: String, val frame: String, val deadline: Long) {
     @Volatile var attempted = false
   }
   companion object {
+    internal fun signingTemplate(event: JSONObject): String = unsigned(event,true)
+    internal fun signingHash(event: JSONObject,user: String): String = eventHash(event,user)
     fun transportUrl(relay: String): String = if (java.net.URI(relay).rawPath == "/") relay.dropLast(1) else relay
     fun capture(snapshot: String, raw: String): NativeOutboxPlan {
       require(UploadJsonBounds.accepts(raw, NativeApprovalAuthority.MAX_BYTES))

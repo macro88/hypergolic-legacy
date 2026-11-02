@@ -1,15 +1,15 @@
 {
   "schema": 1,
   "productionSources": {
-    "modules/napplet-host/ios/NativeApprovalAuthority.swift": "fb7d946e3d7c1b27326084df090fbb4a64e120b34bbe73a2af46301cf3a6c7b0",
+    "modules/napplet-host/ios/NativeApprovalAuthority.swift": "25d1029dd7856be15e17cdd28db9314be8e7b85faba94c7d55a4eef711941ee6",
     "modules/napplet-host/ios/CapabilityLeaseRegistry.swift": "d9776b85a2c1719f2d5164cedd81d97ef1a683d53a45ba33f1dc9f4925a86ba6",
-    "modules/napplet-host/ios/CapabilityTransport.swift": "be21394557811333249d426ffa2054cf75bdd2d5dd8bc99a4215f5c5e532223c",
-    "modules/napplet-host/ios/ApprovalTransport.swift": "8f9f52bdbffb71d67bb74ba0d2b468be02574a427a7a10f8aa4008fd89e9e8a5",
-    "modules/napplet-host/ios/NativeOutboxPlan.swift": "c9a90f5ecfdc610b5f8c240ecec768771bf60c2de52dce0684c267927278bf7c",
+    "modules/napplet-host/ios/CapabilityTransport.swift": "c332c964e631c368f73affc696339b133bed398fe4ed705b0a8a9de24040a180",
+    "modules/napplet-host/ios/ApprovalTransport.swift": "e70edea8f712e017459e9652e4edcedeaedf7767e5452eea152875e966294d48",
+    "modules/napplet-host/ios/NativeOutboxPlan.swift": "9f05fb11a7df9cf9b2fa90d36c57403205d0e906bcc6f0e7f01432ea2be620af",
     "modules/napplet-host/ios/PublishedRelayWebSocketClientFrames.swift": "8bc1af1653d83f2756f582f059d782fae16e1b2f69d4de36fbdebb755bedbed7"
   },
   "testSources": {
-    "Tests/ApprovalTransportTests.swift": "76f30af73b1a68df5007822742a484f7e1cf49f45b74ca6b80c33c3d8e83f672"
+    "Tests/ApprovalTransportTests.swift": "94c274c75fd4b09424850a299931a947cb392f70ad9946e5fedf412ee32d73bf"
   },
   "harnessFiles": {
     "README.md": "ddf01fe64bad9241d8726918f8d93d4357e40c2660029ce0d8888172adcdc31c",

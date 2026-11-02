@@ -44,6 +44,61 @@ public final class UploadRegistryProof {
     String expiry = registry.begin("a", "expired", "request", png.length, SERVER); check(expiry != null);
     clock.set(NativeUploadAuthority.REVIEW_MS); check(!registry.seal("a", expiry)); check(registry.drainInvalid().size() == 1);
     check(registry.wasDispatched("missing"));
+    signingBridge(png);
     System.out.println("{\"language\":\"Java\",\"uploadRegistryChecks\":"+checks+",\"failed\":0}");
+  }
+
+  private static void signingBridge(byte[] png) {
+    for (String outcome : new String[]{"resume", "cancel", "revoke", "expiry"}) {
+      var clock = new AtomicLong(0);
+      var registry = new UploadLeaseRegistry(clock::get);
+      check(registry.register("bridge", ID, "native bridge origin", true));
+      check(registry.register("foreign", ID, "foreign origin", true));
+      registry.foreground(true); registry.focus("bridge", true);
+      String token = registry.begin("bridge", "one", "native bridge request", png.length, SERVER);
+      check(token != null); check(registry.append("bridge", token, 0, png) == png.length); check(registry.seal("bridge", token));
+      var taken = registry.take(token); check(taken != null);
+      String foreign = registry.begin("foreign", "one", "foreign request", png.length, SERVER);
+      check(foreign != null); check(registry.append("foreign", foreign, 0, png) == png.length); check(registry.seal("foreign", foreign));
+      var other = registry.take(foreign); check(other != null);
+      // Sealing/taking a review does not grant native signing before file approval.
+      check(registry.signingCapture(token) == null); check(!registry.signingCurrent(token, taken.marker));
+      check(!registry.claimNativeSigning(token, taken.marker));
+      check(registry.approve(token));
+      var captured = registry.signingCapture(token); check(captured != null && captured.marker == taken.marker && captured.review == taken.review);
+      check(registry.signingCurrent(token, captured.marker)); check(!registry.signingCurrent(token, other.marker));
+      check(!registry.claimNativeSigning(token, other.marker)); check(registry.signingCapture(token) != null);
+      check(registry.claimSigning(token)); check(registry.claimNativeSigning(token, captured.marker));
+      check(!registry.claimNativeSigning(token, captured.marker)); check(registry.signingCapture(token) == null);
+      check(registry.holdSigning(token, other.marker, 120_000) == null);
+      var hold = registry.holdSigning(token, captured.marker, 120_000); check(hold != null);
+      check(registry.holdSigning(token, captured.marker, 120_000) == null);
+      check(registry.signingHeld(token, captured.marker, hold)); check(!registry.signingHeld(token, other.marker, hold));
+      check(!registry.signingHeld(token, captured.marker, new NativeSigningHold(hold.deadline)));
+      check(!registry.resumeSigning(token, captured.marker, hold));
+      check(!registry.isApproved(token)); check(!registry.signingCurrent(token, captured.marker)); check(!registry.claimSigning(token));
+      registry.foreground(false);
+      check(registry.signingHeld(token, captured.marker, hold)); check(!registry.resumeSigning(token, captured.marker, hold));
+      check(registry.drainInvalid().stream().noneMatch(row -> row.token.equals(token)));
+      if (outcome.equals("resume")) {
+        clock.set(hold.deadline - 1); registry.foreground(true);
+        check(!registry.resumeSigning(token, other.marker, hold)); check(registry.resumeSigning(token, captured.marker, hold));
+        check(!registry.resumeSigning(token, captured.marker, hold)); check(registry.isApproved(token));
+        check(registry.signingCurrent(token, captured.marker)); check(registry.signingCapture(token) == null);
+        check(!registry.claimNativeSigning(token, captured.marker)); check(!registry.claimSigning(token));
+        check(registry.finish(token));
+      } else {
+        if (outcome.equals("cancel")) registry.cancel(token);
+        else if (outcome.equals("revoke")) registry.revoke("bridge");
+        else clock.set(hold.deadline);
+        registry.foreground(true);
+        check(!registry.signingHeld(token, captured.marker, hold)); check(!registry.resumeSigning(token, captured.marker, hold));
+        check(!registry.isApproved(token)); check(!registry.signingCurrent(token, captured.marker));
+        check(registry.signingCapture(token) == null); check(!registry.claimNativeSigning(token, captured.marker));
+        check(registry.holdSigning(token, captured.marker, 120_000) == null);
+        check(registry.drainInvalid().stream().anyMatch(row -> row.token.equals(token) && !row.dispatched));
+      }
+      check(!registry.isLive(token)); check(registry.signingCapture(token) == null);
+    }
   }
 }

@@ -3,7 +3,7 @@ import {AppState, FlatList, Modal, StyleSheet, Text, View} from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import type {NotificationSettingsService} from '../presentation/notify-settings';
 import type {NotifyPermission} from '../presentation/notify-permissions';
-import {formatNpub} from '../security/identity-crypto';
+import {formatNpub} from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function PermissionRow({permission, busy, revoke}: {permission: NotifyPermission; busy: boolean; revoke(permission: NotifyPermission): void}) {
   const { styles } = useShellStyles(createStyles);

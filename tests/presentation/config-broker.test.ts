@@ -92,7 +92,7 @@ test('cancelled saved identity selection retains configuration schema, values an
  const protectedStore=new Integrated();t.after(()=>protectedStore.sqlite.cleanup());
  const native=await protectedStore.owner();await native.vault.open();await native.vault.importNsec('nsec1fixture-2');await native.vault.select(pubkey(1));
  const storage=await workspaceStore(t);
- const identity=await IdentityTransition.open({vault:native.vault,database:storage.database,seed:initialTestWorkspace,assertAvailable:assertBundledWorkspace,publicKeyFromNsec:()=>pubkey(2)});
+ const identity=await IdentityTransition.open({vault:native.vault,database:storage.database,seed:initialTestWorkspace,assertAvailable:assertBundledWorkspace});
  const authority=identity.sessionAuthority(),h=await setup(t,authority.assertActive);t.after(bindRoutingOwner(identity,h));
  await h.register();await h.dispatch({type:'config.subscribe'}).promise;
  await h.broker.open(h.source.generation);

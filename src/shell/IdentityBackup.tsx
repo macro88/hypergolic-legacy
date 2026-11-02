@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type JSX } from 'react';
-import { ActivityIndicator, AppState, Platform, Text, View, type AppStateStatus } from 'react-native';
-import type { IdentityActions } from '../security/identity-actions';
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react';
+import { ActivityIndicator, Platform, Text, View } from 'react-native';
+import type { IdentitySettingsActions } from '../security/native-identity-actions';
 import type { IdentitySession } from '../security/identity-transition';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 
 type ActionProps = Readonly<{ title: string; testID: string; onPress: () => void; subdued?: boolean }>;
 type BackupProps = Readonly<{
-  actions: IdentityActions;
+  actions: IdentitySettingsActions;
   session: IdentitySession;
   npub: string;
   reviewing: boolean;
@@ -34,16 +34,9 @@ export function IdentityBackup({ actions, session, npub, reviewing, onReview, on
     try { actions.endSettings(); } catch { /* The local epoch is already revoked. */ }
     setBusy(false); onClose();
   }, [actions, onClose]);
-  const onAppStateChange = useEffectEvent((next: AppStateStatus) => {
-    if (next === 'background') close();
-  });
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', onAppStateChange);
-    return () => {
-      subscription.remove();
-      generation.current += 1;
-      try { actions.cancelBackup(); } catch { /* Parent Settings cleanup also ends native authority. */ }
-    };
+  useEffect(() => () => {
+    generation.current += 1;
+    try { actions.cancelBackup(); } catch { /* Parent Settings cleanup also ends native authority. */ }
   }, [actions, session]);
   const show = () => {
     if (busy || (!reviewing && available !== true)) return;

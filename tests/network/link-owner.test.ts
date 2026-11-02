@@ -11,12 +11,12 @@ test('actual identity transition synchronizes native denial before vault mutatio
   const native = await protectedStore.owner(); await native.vault.open();
   const storage = await setup(t), calls: {user: string; epoch: number; available: boolean}[] = [];
   const transition = await IdentityTransition.open({vault: native.vault, database: storage.database, seed: initialTestWorkspace,
-    assertAvailable: assertBundledWorkspace, publicKeyFromNsec: () => pubkey(2)});
+    assertAvailable: assertBundledWorkspace});
   const release = bindLinkOwner(transition, {synchronizeLinkOwner(user, epoch, available) {
     if (!available) assert.equal(native.vault.getSnapshot().selectedPubkey, pubkey(1));
     calls.push({user, epoch, available});
   }});
-  const change = transition.prepareImport('nsec1fixture-2'); assert(change);
+  const change = await transition.prepareImport(); assert(change);
   assert.deepEqual(calls.at(-1), {user: pubkey(1), epoch: 0, available: false});
   await transition.confirm(change);
   assert.deepEqual(calls.at(-1), {user: pubkey(2), epoch: 1, available: true});

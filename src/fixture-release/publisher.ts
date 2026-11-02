@@ -1,3 +1,5 @@
+import { SigningForeground, signingHandoffState, type SigningHandoffReader } from '../security/signing-handoff.ts';
+import type { NativeSigningSource } from '../security/native-vault-contract.ts';
 import {naddrEncode} from 'nostr-tools/nip19';
 import {BUNDLED_FIXTURES} from '../runtime/bundled-catalog.ts';
 import {captureEventSnapshot, type EventSnapshot} from '../security/event-snapshot.ts';
@@ -21,7 +23,7 @@ export interface FixtureReleasePort {
   isFixtureManifestApproved(token: string): boolean;
   cancelFixtureRelease(): void;
 }
-export interface FixturePublisherEffects {
+export interface FixturePublisherEffects extends SigningHandoffReader {
   owner(): Readonly<{user: string; epoch: number; assertActive(): void}>;
   hash(bytes: Uint8Array<ArrayBuffer>): Promise<string>;
   now(): number;
@@ -35,7 +37,7 @@ export type FixtureReleaseReview = Readonly<{fixture: string; identity: string; 
 export type FixturePublisherState = Readonly<{phase: 'idle'|'preparing'|'upload-review'|'uploading'|'manifest-review'|'publishing'|'complete'|'failed';
   review: FixtureReleaseReview | null; result: string}>;
 type Pending = {token: string; bytes: Uint8Array<ArrayBuffer>; review: FixtureReleaseReview;
-  owner: ReturnType<FixturePublisherEffects['owner']>; abort: AbortController; manifest: EventSnapshot | null};
+  owner: ReturnType<FixturePublisherEffects['owner']>; abort: AbortController; signingSource: NativeSigningSource | null; manifest: EventSnapshot | null};
 const deny = (): never => {throw new Error('Fixture release denied');};
 function object(raw: string): Record<string, unknown> {
   if(typeof raw !== 'string' || raw.length > 1024*1024)deny();
@@ -49,13 +51,14 @@ function exact(value: Record<string,unknown>, keys: readonly string[]): void {
 }
 function fixtureCatalog(fixture: string) {
   const id = fixture === 'routing-lab-peer' ? 'routing-lab' : fixture;
-  if(!Object.hasOwn(BUNDLED_FIXTURES,id) || id === 'nap-support' || id === 'approval-lab-v1' || id === 'approval-lab-v2' || id === 'feed-lab-v1')return deny();
+  if(!Object.hasOwn(BUNDLED_FIXTURES,id) || id === 'nap-support' || id === 'approval-lab-v1' || id === 'approval-lab-v2' || id === 'approval-lab-v3' || id === 'feed-lab-v1')return deny();
   return BUNDLED_FIXTURES[id as keyof typeof BUNDLED_FIXTURES];
 }
 /** Trusted shell tool: prepared bytes come only from the native sealed catalog, never a guest or picker. */
 export class FixturePublisher {
   private state: FixturePublisherState = Object.freeze({phase:'idle',review:null,result:''});
   private pending: Pending | null = null;
+  private readonly foregroundState = new SigningForeground();
   private readonly listeners = new Set<()=>void>();
   private readonly native: FixtureReleasePort;
   private readonly effects: FixturePublisherEffects;
@@ -65,16 +68,24 @@ export class FixturePublisher {
   private update(phase: FixturePublisherState['phase'], review: FixtureReleaseReview|null, result=''): void {
     this.state=Object.freeze({phase,review,result});for(const listener of this.listeners)listener();
   }
+  foreground(): void { this.foregroundState.setActive(true); }
+  background(): void {
+    this.foregroundState.setActive(false);
+    if (!this.pending?.signingSource || signingHandoffState(this.effects, this.pending.signingSource) !== 'pending') this.cancel();
+  }
   cancel(): void {
     this.pending?.abort.abort();this.pending?.bytes.fill(0);this.pending=null;
     this.native.cancelFixtureRelease();this.update('idle',null);
   }
   private active(pending: Pending): void {
     const actual=this.effects.owner();pending.owner.assertActive();actual.assertActive();
-    if(this.pending!==pending || pending.abort.signal.aborted || actual.user!==pending.owner.user || actual.epoch!==pending.owner.epoch)deny();
+    if(!this.foregroundState.active || this.pending!==pending || pending.abort.signal.aborted || actual.user!==pending.owner.user || actual.epoch!==pending.owner.epoch)deny();
   }
   private authority(pending: Pending, stage: 'upload'|'manifest'): EffectAuthority {
-    return Object.freeze({signal:pending.abort.signal,assertActive:()=>{
+    return Object.freeze({nativeSource: Object.freeze({kind: stage === 'upload' ? 'fixture-upload' : 'fixture-manifest', token: pending.token}), signal:pending.abort.signal,awaitForeground:()=>{
+      if(!this.foregroundState.active && signingHandoffState(this.effects,pending.signingSource ?? undefined)!=='resumed')deny();
+      return this.foregroundState.wait(pending.abort.signal);
+    },assertActive:()=>{
       this.active(pending);
       if(!(stage==='upload'?this.native.isFixtureUploadApproved(pending.token):this.native.isFixtureManifestApproved(pending.token)))deny();
     }});
@@ -100,7 +111,7 @@ export class FixturePublisher {
       const token=string(raw.token);if(!/^[0-9a-f-]{36}$/.test(token))deny();
       const bytes=new TextEncoder().encode(string(raw.html));if(bytes.length!==raw.size)deny();
       const review=Object.freeze({fixture,identity:owner.user,server,sha256:expected.sha256,size:bytes.length,mimeType:'text/html' as const,relays});
-      pending={token,bytes,review,owner,abort:new AbortController(),manifest:null};this.pending=pending;
+      pending={token,bytes,review,owner,abort:new AbortController(),signingSource:null,manifest:null};this.pending=pending;
       if(await this.effects.hash(new Uint8Array(bytes))!==expected.sha256)deny();this.active(pending);
       this.update('upload-review',review);
     } catch {this.fail(pending,'The sealed fixture could not be prepared. Nothing was signed or sent.');}
@@ -113,7 +124,9 @@ export class FixturePublisher {
       const authority=this.authority(pending,'upload');authority.assertActive();
       const snapshot=await captureUploadSnapshot(pending.bytes,review.identity,review.server,review.mimeType,this.effects.now()-1,this.effects.hash);
       authority.assertActive();if(snapshot.sha256!==review.sha256 || snapshot.size!==review.size)deny();
-      const signed=await this.effects.signUpload(snapshot,authority);authority.assertActive();
+      pending.signingSource=authority.nativeSource!;
+      const signed=await this.effects.signUpload(snapshot,authority);await authority.awaitForeground?.();
+      pending.signingSource=null;authority.assertActive();
       const credential=captureUploadAuthorization(snapshot,signed,this.effects.now());
       const result=object(await this.native.putFixtureUpload(pending.token,credential.token));this.active(pending);
       if(result.ok!==true || result.retrievedSha256!==review.sha256 || result.retrievedSize!==review.size) {
@@ -142,7 +155,10 @@ export class FixturePublisher {
       const claimed=object(raw), exactSnapshot=captureEventSnapshot(claimed.event,review.identity,review.relays);
       if(claimed.identity!==review.identity || JSON.stringify(claimed.relays)!==JSON.stringify(review.relays) || exactSnapshot.hash!==snapshot.hash)deny();
       const authority=this.authority(pending,'manifest');authority.assertActive();
-      const event=validateSignedEvent(snapshot,await this.effects.signManifest(snapshot,authority));authority.assertActive();
+      pending.signingSource=authority.nativeSource!;
+      const signed=await this.effects.signManifest(snapshot,authority);await authority.awaitForeground?.();
+      pending.signingSource=null;authority.assertActive();
+      const event=validateSignedEvent(snapshot,signed);
       const receipts=await this.effects.publish(event,review.relays,authority);authority.assertActive();
       const approvedRelays=new Set(snapshot.destinations);
       if(!receipts.some(receipt=>approvedRelays.has(receipt.relay) && receipt.eventId===event.id && receipt.status==='accepted'))deny();

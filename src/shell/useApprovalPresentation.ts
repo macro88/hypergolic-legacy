@@ -1,4 +1,6 @@
 import {useState} from 'react';
+import { VaultError } from '../security/identity-vault-model';
+import { isSignerFailureCode, signerFailureMessage } from '../security/signing-methods';
 import type {ApprovalItem,ApprovalService} from '../security/approval-service';
 import type {OutboxPublicationReceipt} from '../outbox/publication-receipt';
 import type {RelayOutcome} from '../network/relay-service';
@@ -19,7 +21,10 @@ export function useApprovalPresentation(service:ApprovalService,epoch:number){
   void service.approve(item.id).then(results=>{
    const receipt=service.outboxReceipt(results),outcome=receipt?null:publicationStatus(results);
    setStored(current=>current===pending?{...pending,held:null,busy:false,receipt,outcome}:current);
-  }).catch(()=>{setStored(current=>current===pending?{...pending,held:null,busy:false,outcome:'Approval was not completed.'}:current);});
+  }).catch(error=>{
+   const outcome=error instanceof VaultError&&isSignerFailureCode(error.code)?signerFailureMessage(error.code):'Approval was not completed.';
+   setStored(current=>current===pending?{...pending,held:null,busy:false,outcome}:current);
+  });
  };
  return {held:state?.held??null,busy:state?.busy??false,receipt:state?.receipt??null,outcome:state?.outcome??null,approve,
   dismissReceipt:()=>setStored(current=>current===state&&current?{...current,receipt:null}:current),

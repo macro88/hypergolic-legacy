@@ -15,7 +15,7 @@ import {CONFIG_STORE_SERVICE} from '../../../src/presentation/config-store';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import {initializeNativeRandom} from '../../../src/security/crypto-bootstrap';
-import {formatNpub,publicKeyFromNsec} from '../../../src/security/identity-crypto';
+import {formatNpub} from '../../../src/security/public-identity';
 import {IdentityTransition} from '../../../src/security/identity-transition';
 import {VaultError,type VaultSnapshot} from '../../../src/security/identity-vault';
 import type {TrustedIdentityOwner} from '../../../src/security/trusted-identity-owner';
@@ -51,9 +51,9 @@ async function openFixture():Promise<TrustedIdentityOwner>{
  let snapshot=makeSnapshot(row.selected,row.revision);
  const vault={getSnapshot:()=>snapshot,async select(pubkey:string){if(!USERS.includes(pubkey))throw new VaultError('NOT_FOUND');
   const next=makeSnapshot(pubkey,snapshot.revision+1);await qa.runAsync('UPDATE qa SET selected=?,revision=? WHERE id=1',pubkey,next.revision);snapshot=next;return next;},
-  async importNsec():Promise<VaultSnapshot>{throw new VaultError('INVALID_NSEC');}};
+  async prepareImport(){return null;},cancelImport(){},async commitImport():Promise<VaultSnapshot>{throw new VaultError('AUTHORIZATION_DENIED');}};
  const database=await openShellDatabase(SQLite,platform);
- const transition=await IdentityTransition.open({vault,database,publicKeyFromNsec,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
+ const transition=await IdentityTransition.open({vault,database,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
  bindLinkOwner(transition,requireNativeModule<NativeLinkOwner>('HypergolicNappletHost'));
  const query={async query(){return [];}};
  const nativeModule=requireNativeModule<NativeRoutingOwner>('HypergolicNappletHost');bindRoutingOwner(transition,nativeModule);

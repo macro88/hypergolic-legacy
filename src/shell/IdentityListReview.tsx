@@ -4,7 +4,7 @@ import {AppState, Modal, ScrollView, StyleSheet, Text, View} from 'react-native'
 import { ShellPressable as Pressable } from './ShellPressable';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {IdentityListAccess, IdentityListAccessSnapshot} from '../identity/identity-permissions';
-import {formatNpub} from '../security/identity-crypto';
+import {formatNpub} from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 const empty: IdentityListAccessSnapshot = Object.freeze({grants: [], denied: [], review: null, busy: false, error: null});
 const subscribe = () => () => {}, getEmpty = () => empty;

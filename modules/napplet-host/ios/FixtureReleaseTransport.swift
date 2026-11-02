@@ -3,7 +3,7 @@ import UIKit
 
 final class FixtureReleaseTransport: @unchecked Sendable {
   static let shared = FixtureReleaseTransport()
-  private let owner = FixtureReleaseAuthority(clock: {Int64(ProcessInfo.processInfo.systemUptime*1000)})
+  let owner = FixtureReleaseAuthority(clock: {Int64(ProcessInfo.processInfo.systemUptime*1000)})
   private let https = PublishedHTTPSBridgeOwner()
   private var observers: [NSObjectProtocol] = []
   private init() {

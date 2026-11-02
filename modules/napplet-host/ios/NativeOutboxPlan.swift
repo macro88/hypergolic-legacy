@@ -39,15 +39,35 @@ final class NativeOutboxPlan: @unchecked Sendable {
     guard destinations.contains(relay), ["primary", "relay-list"].contains(group) else { throw Failure.invalid }
     let value = try Self.object(wire), signed = try Self.signed(value, identity: identity)
     if group == "primary" {
-      guard try Self.unsigned(value) == template, value["id"] as? String == hash,
-        primary == nil || primary == signed else { throw Failure.invalid }
+      guard Self.bytesEqual(try Self.unsigned(value), template), value["id"] as? String == hash,
+        primary == nil || primary.map({ Self.bytesEqual($0, signed) }) == true else { throw Failure.invalid }
       primary = signed
-    } else { guard ancillary != nil, ancillary == signed, primary != nil else { throw Failure.invalid } }
+    } else { guard ancillary != nil, ancillary.map({ Self.bytesEqual($0, signed) }) == true, primary != nil else { throw Failure.invalid } }
     guard consumed.insert(group + "\n" + relay).inserted, let id = value["id"] as? String else { throw Failure.replay }
     if deadline == nil { deadline = ContinuousClock.now.advanced(by: .seconds(15)) }
     return Send(ownerId, relay, id, "[\"EVENT\"," + signed + "]", deadline!)
   }
   func owns(_ operation: Send) -> Bool { operation.ownerId == ownerId }
+  static func signingSnapshot(snapshot: String, raw: String) throws -> (json: String, destinations: [String]) {
+    let envelope = try object(snapshot), review = try object(raw)
+    guard let registration = envelope["registration"] as? [String: Any],
+      let identity = registration["user"] as? String, hex(identity, 64),
+      let requestRaw = envelope["request"] as? String else { throw Failure.invalid }
+    let request = try object(requestRaw)
+    guard ["relay.publish", "outbox.publish"].contains(request["type"] as? String ?? ""),
+      let original = request["event"] as? [String: Any], let event = review["event"] as? [String: Any] else { throw Failure.invalid }
+    try fields(review, ["event", "selectedPubkey", "destinations", "hash"])
+    let originalTemplate = try unsigned(original, strict: true), capturedTemplate = try unsigned(event, strict: true)
+    let capturedHash = try eventHash(event, identity: identity)
+    guard review["selectedPubkey"] as? String == identity, bytesEqual(originalTemplate, capturedTemplate),
+      review["hash"] as? String == capturedHash,
+      let destinations = review["destinations"] as? [String], (1...16).contains(destinations.count),
+      Set(destinations).count == destinations.count else { throw Failure.invalid }
+    for destination in destinations { try relayURL(destination) }
+    var capturedEvent = event; capturedEvent["pubkey"] = identity
+    let encoded: [String: Any] = ["registration": registration, "event": capturedEvent, "destinations": destinations]
+    return (String(decoding: try JSONSerialization.data(withJSONObject: encoded, options: [.sortedKeys, .withoutEscapingSlashes]), as: UTF8.self), destinations)
+  }
   static func capture(snapshot: String, raw: String) throws -> NativeOutboxPlan {
     let envelope = try object(snapshot), plan = try object(raw)
     guard let registration = envelope["registration"] as? [String: Any],
@@ -62,7 +82,7 @@ final class NativeOutboxPlan: @unchecked Sendable {
       event["selectedPubkey"] as? String == identity else { throw Failure.invalid }
     try fields(event, ["event", "selectedPubkey", "destinations", "hash"])
     let template = try unsigned(source, strict: true), kind = try integer(source["kind"], maximum: 65535)
-    guard try unsigned(captured, strict: true) == template, kind != 22242, kind != 24242 else { throw Failure.invalid }
+    guard bytesEqual(try unsigned(captured, strict: true), template), kind != 22242, kind != 24242 else { throw Failure.invalid }
     let hash = try eventHash(captured, identity: identity)
     guard event["hash"] as? String == hash, let destinations = event["destinations"] as? [String],
       (1...16).contains(destinations.count), Set(destinations).count == destinations.count,
@@ -83,6 +103,7 @@ final class NativeOutboxPlan: @unchecked Sendable {
       ancillary == nil || ("[\"EVENT\"," + ancillary! + "]").utf8.count <= PublishedRelayWebSocketClientFrames.maxTextBytes else { throw Failure.invalid }
     return NativeOutboxPlan(id, destinations, template, identity, hash, ancillary)
   }
+  private static func bytesEqual(_ a: String, _ b: String) -> Bool { a.utf8.elementsEqual(b.utf8) }
   private static func object(_ raw: String) throws -> [String: Any] {
     guard boundedJSON(raw), let data = raw.data(using: .utf8),
       let value = try JSONSerialization.jsonObject(with: data) as? [String: Any] else { throw Failure.invalid }

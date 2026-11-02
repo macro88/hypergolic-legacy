@@ -20,6 +20,9 @@ public final class ApprovalLeaseRegistry {
     boolean claimed;
     boolean requiresPlan;
     Object preparedPlan;
+    Object signingMetadata;
+    boolean nativeSigned;
+    NativeSigningHold handoff;
     NativeApprovalAuthority.ApprovalHandle approval;
     Row(String generation, String snapshot, NativeApprovalAuthority.RequestHandle request) {
       this.generation = generation; this.snapshot = snapshot; this.request = request;
@@ -62,7 +65,7 @@ public final class ApprovalLeaseRegistry {
   }
   public synchronized boolean isLive(String token) {
     Row row = rows.get(token);
-    return row != null && row.claimed && sessions.containsKey(row.generation) && authority.contains(row.request);
+    return row != null && row.claimed && sessions.containsKey(row.generation) && authority.contains(row.request) && !authority.pending(row.approval);
   }
   public synchronized boolean mayReview(String token) {
     Row row = rows.get(token);
@@ -85,6 +88,32 @@ public final class ApprovalLeaseRegistry {
     Row row = rows.get(token);
     if (plan == null || !isLive(token) || !row.requiresPlan || row.preparedPlan != null || row.approval != null) return false;
     row.preparedPlan = plan; return true;
+  }
+  public synchronized boolean prepareSigning(String token,Object metadata) {
+    Row row=rows.get(token);
+    if(row==null || metadata==null || !isLive(token) || row.approval!=null || row.signingMetadata!=null)return false;
+    row.signingMetadata=metadata;return true;
+  }
+  public synchronized Object signingPrepared(String token) { Row row=rows.get(token);return row==null || !isLive(token)?null:row.signingMetadata; }
+  public synchronized boolean signingFresh(String token,Object metadata) {
+    Row row=rows.get(token);return row!=null && isApproved(token) && row.signingMetadata==metadata && !row.nativeSigned;
+  }
+  public synchronized boolean claimNativeSigning(String token,Object metadata) {
+    if(!signingFresh(token,metadata))return false;rows.get(token).nativeSigned=true;return true;
+  }
+  synchronized NativeSigningHold holdSigning(String token, Object metadata, long deadline) {
+    Row row = rows.get(token);
+    if (row == null || !row.nativeSigned || row.signingMetadata != metadata || row.handoff != null) return null;
+    row.handoff = authority.hold(row.approval, deadline);
+    return row.handoff;
+  }
+  synchronized boolean signingHeld(String token, Object metadata, NativeSigningHold expected) {
+    Row row = rows.get(token);
+    return row != null && row.nativeSigned && row.signingMetadata == metadata && row.handoff == expected && authority.held(row.approval, expected);
+  }
+  synchronized boolean resumeSigning(String token, Object metadata, NativeSigningHold expected) {
+    Row row = rows.get(token);
+    return signingHeld(token, metadata, expected) && authority.resume(row.approval, expected);
   }
   public synchronized Object prepared(String token) {
     Row row = rows.get(token); return row == null ? null : row.preparedPlan;

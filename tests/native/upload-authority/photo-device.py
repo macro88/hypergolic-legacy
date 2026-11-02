@@ -5,7 +5,7 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[3];HOST=ROOT/'modules/napplet-host/android/src/main/java/org/nostrocket/hypergolic/host'
 p=argparse.ArgumentParser(description=__doc__);p.add_argument('--serial',required=True);p.add_argument('--fixtures',required=True,type=Path);p.add_argument('--output',required=True,type=Path);a=p.parse_args();a.output.mkdir(parents=True,exist_ok=False)
 assert a.serial.startswith('emulator-');sdk=ROOT/'.tools/android-sdk';adb=str(sdk/'platform-tools/adb');remote='/data/local/tmp/hg-photo-'+uuid.uuid4().hex
-sources=[HOST/(name+'.java') for name in ['NativeUploadAuthority','UploadFileProfile','UploadPngProfile','UploadPngMetadata','UploadExifMetadata','UploadPhotoContainer','UploadPhotoPreparation']]+[Path(__file__).with_name('UploadPhotoDeviceProof.java')]
+sources=[HOST/(name+'.java') for name in ['NativeSigningHold','NativeUploadAuthority','UploadFileProfile','UploadPngProfile','UploadPngMetadata','UploadExifMetadata','UploadPhotoContainer','UploadPhotoPreparation']]+[Path(__file__).with_name('UploadPhotoDeviceProof.java')]
 sha=lambda b:hashlib.sha256(b).hexdigest()
 report={'status':'running','scope':__doc__,'sourceBefore':{str(f.relative_to(ROOT)):sha(f.read_bytes()) for f in sources}}
 def run(*cmd):return subprocess.check_output(cmd,cwd=ROOT,stderr=subprocess.STDOUT,text=True)

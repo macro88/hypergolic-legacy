@@ -5,10 +5,16 @@ import Security
 public struct SystemKeychain: KeychainBackend {
   // Expo SecureStore's exact no-auth service suffix: preserve its receipt discovery address.
   public static let service = "org.nostrocket.hypergolic.identity.v1:no-auth"
-  public init() {}
+  private let keychainService: String
+  public init() { keychainService = Self.service }
+  private init(service: String) { keychainService = service }
+  /// Fixed native signer namespace. It is never selectable through an Expo argument.
+  public static func nativeSignerStore() -> SystemKeychain {
+    SystemKeychain(service: "org.nostrocket.hypergolic.native-signer.v1:no-auth")
+  }
   private func query(_ item: KeychainItem) -> [String: Any] {
     [kSecClass as String: kSecClassGenericPassword,
-     kSecAttrService as String: Self.service,
+     kSecAttrService as String: keychainService,
      kSecAttrAccount as String: Data(item.rawValue.utf8),
      kSecAttrGeneric as String: Data(item.rawValue.utf8),
      kSecAttrSynchronizable as String: false,

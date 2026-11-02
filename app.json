@@ -56,7 +56,8 @@
           "configureAndroidBackup": true
         }
       ],
-      "./plugins/withNativeCodecPatches.cjs"
+      "./plugins/withNativeCodecPatches.cjs",
+      "./plugins/withSceneLifecycle.cjs"
     ],
     "userInterfaceStyle": "automatic"
   }

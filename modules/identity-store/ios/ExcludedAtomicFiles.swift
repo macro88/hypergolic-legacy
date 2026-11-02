@@ -38,16 +38,27 @@ public struct ExcludedAtomicFiles: EncryptedFiles {
   private let root: URL
   private let policy: any FilePolicy
   private let entropy: any EntropySource
-  private let maximumBytes = 2081
+  private let maximumBytes: Int
 
-  init(root: URL, policy: any FilePolicy, entropy: any EntropySource) throws {
-    guard root.isFileURL, root.lastPathComponent == "IdentitySecrets-v1" else { throw StoreFailure.invalidInput }
-    self.root = root.standardizedFileURL; self.policy = policy; self.entropy = entropy
+  init(root: URL, policy: any FilePolicy, entropy: any EntropySource, maximumBytes: Int = 2081) throws {
+    guard root.isFileURL,
+      root.lastPathComponent == "IdentitySecrets-v1" && maximumBytes == 2081 ||
+      root.lastPathComponent == "NativeSigner-v1" && maximumBytes == 16_384 else { throw StoreFailure.invalidInput }
+    self.root = root.standardizedFileURL; self.policy = policy; self.entropy = entropy; self.maximumBytes = maximumBytes
   }
   public static func applicationStore() throws -> ExcludedAtomicFiles {
     #if os(iOS)
     let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
     return try ExcludedAtomicFiles(root: base.appendingPathComponent("IdentitySecrets-v1", isDirectory: true), policy: SystemFilePolicy(), entropy: SystemEntropy())
+    #else
+    throw StoreFailure.unavailable
+    #endif
+  }
+  public static func applicationSignerStore() throws -> ExcludedAtomicFiles {
+    #if os(iOS)
+    let base = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+    return try ExcludedAtomicFiles(root: base.appendingPathComponent("NativeSigner-v1", isDirectory: true),
+      policy: SystemFilePolicy(), entropy: SystemEntropy(), maximumBytes: 16_384)
     #else
     throw StoreFailure.unavailable
     #endif

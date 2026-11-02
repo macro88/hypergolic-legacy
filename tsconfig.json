@@ -6,6 +6,7 @@
   },
   "include": [
     "index.ts",
+    "index.signer.fixture.tsx",
     "src/**/*.ts",
     "src/**/*.tsx",
     "tests/native/published-update-fixtures/**/*.tsx",

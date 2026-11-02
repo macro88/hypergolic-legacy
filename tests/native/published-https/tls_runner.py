@@ -93,6 +93,7 @@ def main() -> None:
             ])
         subprocess.run([
             *compiler, "-module-cache-path", str(output / "swift-modules"), "-o", str(binary),
+            *(str(NATIVE / source) for source in ["NativeUploadAuthority.swift", "UploadFileProfile.swift", "UploadPngMetadata.swift", "UploadPngProfile.swift"]),
             str(NATIVE / "PublicAddressPolicy.swift"),
             str(NATIVE / "PublishedHTTPResponse.swift"),
             str(NATIVE / "PublishedPinnedHTTPS.swift"), str(PROOF),

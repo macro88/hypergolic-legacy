@@ -171,3 +171,21 @@ test('aislop score coverage adds supported tests without counting fixtures, stor
     'src/thing.ts', 'fixtures/thing.test.ts', 'stories/thing.stories.tsx', 'android/native.test.ts',
   ]), ['src/motion.test.ts', 'runtime/tests/runtime.spec.ts', 'tests/native/test_driver.py']);
 });
+
+
+test('aislop coverage includes native C test names and other supported language tests', () => {
+  assert.deepEqual(slopTestFiles([
+    'modules/signer-core/tests/primitive_test.c',
+    'modules/signer-core/tests/nip44/nip44_test.c',
+    'tests/test_parser.cpp', 'tests/parser_tests.cc', 'tests/parser_test.go',
+    'tests/test_parser.java', 'tests/ParserTests.cs', 'tests/Parser.Tests.cs', 'Tests/Parser.cs',
+    'tests/parser.spec.rs', 'tests/test_parser.rb', 'tests/parser_test.php',
+    'vendor/primitive_test.c', 'tests/primitive.c', 'tests/primitive_test.kt',
+  ]), [
+    'modules/signer-core/tests/primitive_test.c',
+    'modules/signer-core/tests/nip44/nip44_test.c',
+    'tests/test_parser.cpp', 'tests/parser_tests.cc', 'tests/parser_test.go',
+    'tests/test_parser.java', 'tests/ParserTests.cs', 'tests/Parser.Tests.cs', 'Tests/Parser.cs',
+    'tests/parser.spec.rs', 'tests/test_parser.rb', 'tests/parser_test.php',
+  ]);
+});

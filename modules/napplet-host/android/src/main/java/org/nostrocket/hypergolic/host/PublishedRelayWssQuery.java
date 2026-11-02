@@ -2,6 +2,7 @@ package org.nostrocket.hypergolic.host;
 
 import org.nostrocket.hypergolic.host.PublishedRelayWssIo.DeadlineInput;
 import org.nostrocket.hypergolic.host.PublishedRelayWssIo.AbortMonitor;
+import org.nostrocket.hypergolic.host.PublishedRelayResponseClassifier.ResponseCollector;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,6 +27,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.LongSupplier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -45,8 +47,8 @@ public final class PublishedRelayWssQuery {
   private static final int MAX_URL_CHARS = 2_048;
   private static final int MAX_HANDSHAKE_BYTES = PublishedRelayWebSocketHandshake.MAX_HEADER_BYTES;
   private static final byte[] CRLFCRLF = new byte[] {'\r', '\n', '\r', '\n'};
-  private static final SecureRandom RANDOM = new SecureRandom();
-  private static final ThreadPoolExecutor DNS = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
+  static final SecureRandom RANDOM = new SecureRandom();
+  static final ThreadPoolExecutor DNS = new ThreadPoolExecutor(1, 1, 0L, TimeUnit.MILLISECONDS,
       new ArrayBlockingQueue<>(4), task -> { Thread thread = new Thread(task, "napplet-relay-dns"); thread.setDaemon(true); return thread; });
 
   private PublishedRelayWssQuery() {}
@@ -198,7 +200,7 @@ public final class PublishedRelayWssQuery {
       throws IOException {
     return PublishedHttpsTransport.checkedAddresses(answers, policy);
   }
-  private static InetAddress[] resolve(String hostname, Deadline deadline, AbortMonitor abort,
+  static InetAddress[] resolve(String hostname, Deadline deadline, AbortMonitor abort,
       PublishedHttpsTransport.HostResolver resolver, ThreadPoolExecutor executor) throws IOException {
     abort.check();
     FutureTask<InetAddress[]> lookup = new FutureTask<>(() -> resolver.resolve(hostname));
@@ -222,7 +224,7 @@ public final class PublishedRelayWssQuery {
     }
   }
 
-  private static SSLSocket connect(RelayUrl relay, InetAddress[] addresses,
+  static SSLSocket connect(RelayUrl relay, InetAddress[] addresses,
       PublishedHttpsTransport.AddressPolicy policy, AbortMonitor abort, Deadline deadline,
       SSLSocketFactory socketFactory, HostnameVerifier hostnameVerifier) throws IOException {
     IOException last = null;
@@ -261,12 +263,12 @@ public final class PublishedRelayWssQuery {
     throw last == null ? new IOException("No vetted relay address connected") : last;
   }
 
-  private static SSLSocketFactory defaultFactory() throws IOException {
+  static SSLSocketFactory defaultFactory() throws IOException {
     try { return SSLContext.getDefault().getSocketFactory(); }
     catch (GeneralSecurityException failure) { throw new IOException("Default TLS unavailable", failure); }
   }
 
-  private static void sendHandshake(OutputStream output, RelayUrl relay, byte[] nonce) throws IOException {
+  static void sendHandshake(OutputStream output, RelayUrl relay, byte[] nonce) throws IOException {
     String key = java.util.Base64.getEncoder().encodeToString(nonce);
     String request = "GET " + relay.path + " HTTP/1.1\r\n" +
         "Host: " + relay.hostHeader + "\r\n" +
@@ -281,7 +283,7 @@ public final class PublishedRelayWssQuery {
     output.flush();
   }
 
-  private static byte[] readHandshake(InputStream input, AbortMonitor abort) throws IOException {
+  static byte[] readHandshake(InputStream input, AbortMonitor abort) throws IOException {
     ByteArrayOutputStream bytes = new ByteArrayOutputStream(512);
     int match = 0;
     while (bytes.size() < MAX_HANDSHAKE_BYTES) {
@@ -369,59 +371,25 @@ public final class PublishedRelayWssQuery {
   static final class Deadline {
     volatile long expiresAt;
     volatile boolean persistent;
-    private Deadline() { expiresAt = System.nanoTime() + TOTAL_TIMEOUT_MS * 1_000_000L; }
+    private final LongSupplier nowNanos;
+    private Deadline() { nowNanos = System::nanoTime; expiresAt = nowNanos.getAsLong() + TOTAL_TIMEOUT_MS * 1_000_000L; }
+    private Deadline(long absoluteElapsedMs, LongSupplier elapsedClock) {
+      nowNanos = () -> TimeUnit.MILLISECONDS.toNanos(elapsedClock.getAsLong());
+      expiresAt = TimeUnit.MILLISECONDS.toNanos(absoluteElapsedMs);
+    }
     static Deadline start() { return new Deadline(); }
+    static Deadline atElapsed(long absoluteElapsedMs, LongSupplier elapsedClock) {
+      if (absoluteElapsedMs <= 0 || elapsedClock == null) throw new IllegalArgumentException("Invalid relay deadline");
+      return new Deadline(absoluteElapsedMs, elapsedClock);
+    }
     void persistent() { persistent = true; expiresAt = Long.MAX_VALUE; }
     int remainingMs() throws SocketTimeoutException {
-      long remaining = expiresAt - System.nanoTime();
+      long remaining = expiresAt - nowNanos.getAsLong();
       if (remaining <= 0) throw new SocketTimeoutException("Relay query timed out");
       return (int) Math.max(1L, Math.min(Integer.MAX_VALUE, (remaining + 999_999L) / 1_000_000L));
     }
     int timeoutMs(int maximum) throws SocketTimeoutException { return Math.min(remainingMs(), maximum); }
-    boolean expired() { return System.nanoTime() >= expiresAt; }
-  }
-
-  static final class ResponseCollector {
-    private final TextStopPolicy stopPolicy;
-    private final ArrayList<String> messages = new ArrayList<>();
-    private int totalBytes;
-    private int eventCount;
-    private boolean complete;
-    ResponseCollector(TextStopPolicy stopPolicy) { this.stopPolicy = stopPolicy; }
-    void preflight(List<PublishedRelayWebSocketFrames.Event> batch) throws IOException {
-      int textCount = 0;
-      int textBytes = 0;
-      for (PublishedRelayWebSocketFrames.Event event : batch) {
-        if ("error".equals(event.type)) throw new IOException("Invalid relay WebSocket frame: " + event.detail);
-        if ("text".equals(event.type)) {
-          textCount++;
-          textBytes += event.text.getBytes(StandardCharsets.UTF_8).length;
-        }
-      }
-      if (textCount > MAX_TEXT_MESSAGES - messages.size() || textBytes > MAX_TEXT_BYTES - totalBytes) {
-        throw new IOException("Relay query exceeded response bounds");
-      }
-    }
-    boolean accept(String text) throws IOException {
-      if (complete || text == null || messages.size() >= MAX_TEXT_MESSAGES) {
-        throw new IOException("Relay query exceeded response bounds");
-      }
-      int length = text.getBytes(StandardCharsets.UTF_8).length;
-      if (length > PublishedRelayWebSocketFrames.MAX_BYTES || length > MAX_TEXT_BYTES - totalBytes) {
-        throw new IOException("Relay query exceeded response bounds");
-      }
-      totalBytes += length;
-      messages.add(text);
-      final TextKind kind;
-      try { kind = stopPolicy.classify(text); }
-      catch (RuntimeException invalid) { throw new IOException("Relay text validation failed", invalid); }
-      if (kind == null) throw new IOException("Relay text validation failed");
-      if (kind == TextKind.EVENT && ++eventCount > MAX_EVENTS) throw new IOException("Relay query exceeded event limit");
-      complete = kind == TextKind.EOSE;
-      return complete;
-    }
-    boolean complete() { return complete; }
-    List<String> result() { return Collections.unmodifiableList(new ArrayList<>(messages)); }
+    boolean expired() { return nowNanos.getAsLong() >= expiresAt; }
   }
 
 }

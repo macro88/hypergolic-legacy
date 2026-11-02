@@ -83,7 +83,7 @@ public final class PublishedRelayWssQueryProof {
   }
 
   private static void collector() throws Exception {
-    PublishedRelayWssQuery.ResponseCollector collector = new PublishedRelayWssQuery.ResponseCollector(
+    PublishedRelayResponseClassifier.ResponseCollector collector = new PublishedRelayResponseClassifier.ResponseCollector(
         text -> text.startsWith("[\"EVENT\"") ? PublishedRelayWssQuery.TextKind.EVENT :
             text.equals("[\"EOSE\",\"test-sub\"]") ? PublishedRelayWssQuery.TextKind.EOSE : PublishedRelayWssQuery.TextKind.OTHER);
     check(!collector.accept("[\"EVENT\",\"test-sub\",{}]"));
@@ -99,29 +99,29 @@ public final class PublishedRelayWssQueryProof {
     mixedRead[eoseFrame.length + 1] = 0;
     PublishedRelayWebSocketFrames decoder = new PublishedRelayWebSocketFrames();
     List<PublishedRelayWebSocketFrames.Event> batch = decoder.feed(mixedRead);
-    PublishedRelayWssQuery.ResponseCollector batchCollector = new PublishedRelayWssQuery.ResponseCollector(
+    PublishedRelayResponseClassifier.ResponseCollector batchCollector = new PublishedRelayResponseClassifier.ResponseCollector(
         text -> PublishedRelayWssQuery.TextKind.EOSE);
     try { batchCollector.preflight(batch); throw new AssertionError("Malformed trailing frame was not preflighted"); }
     catch (IOException expected) { checks++; }
     check(!batchCollector.complete());
 
-    PublishedRelayWssQuery.ResponseCollector aggregate = new PublishedRelayWssQuery.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.OTHER);
+    PublishedRelayResponseClassifier.ResponseCollector aggregate = new PublishedRelayResponseClassifier.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.OTHER);
     String payload = repeat('x', 66_000);
     for (int i = 0; i < 31; i++) check(!aggregate.accept(payload));
     try { aggregate.accept(payload); throw new AssertionError("Aggregate response over limit accepted"); }
     catch (IOException expected) { checks++; }
 
-    PublishedRelayWssQuery.ResponseCollector count = new PublishedRelayWssQuery.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.EVENT);
+    PublishedRelayResponseClassifier.ResponseCollector count = new PublishedRelayResponseClassifier.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.EVENT);
     for (int i = 0; i < PublishedRelayWssQuery.MAX_EVENTS; i++) check(!count.accept("x"));
     try { count.accept("x"); throw new AssertionError("Text count over limit accepted"); }
     catch (IOException expected) { checks++; }
 
-    PublishedRelayWssQuery.ResponseCollector eventAndEose = new PublishedRelayWssQuery.ResponseCollector(
+    PublishedRelayResponseClassifier.ResponseCollector eventAndEose = new PublishedRelayResponseClassifier.ResponseCollector(
         text -> text.equals("eose") ? PublishedRelayWssQuery.TextKind.EOSE : PublishedRelayWssQuery.TextKind.EVENT);
     for (int i = 0; i < PublishedRelayWssQuery.MAX_EVENTS; i++) check(!eventAndEose.accept("event"));
     check(eventAndEose.accept("eose"));
 
-    PublishedRelayWssQuery.ResponseCollector perFrame = new PublishedRelayWssQuery.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.OTHER);
+    PublishedRelayResponseClassifier.ResponseCollector perFrame = new PublishedRelayResponseClassifier.ResponseCollector(text -> PublishedRelayWssQuery.TextKind.OTHER);
     try { perFrame.accept(repeat('x', PublishedRelayWebSocketFrames.MAX_BYTES + 1)); throw new AssertionError("Oversized text accepted"); }
     catch (IOException expected) { checks++; }
     expectUnmodifiable(collector.result());

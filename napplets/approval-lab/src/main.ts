@@ -243,8 +243,9 @@ function invalidateActive(reason: 'identity' | 'pagehide'): void {
 
 function acceptIdentity(value: string): void {
   invalidateActive('identity');
-  publicKey = /^[0-9a-f]{64}$/.test(value) ? value : '';
+  publicKey = value.length === 64 && /^[0-9a-f]{64}$/.test(value) ? value : '';
   element('identity').textContent = publicKey;
+  element('identity').setAttribute('aria-label', publicKey ? `Selected public identity: ${publicKey}` : 'No identity selected');
   element('identity-status').textContent = publicKey ? 'Identity connected' : 'No identity selected';
   updateControls();
 }

@@ -1,3 +1,4 @@
+import { publicFixtureSigningMethods } from '../public-signing-methods';
 /** Isolated QA: real shared shell/admission/persistence; public disposable signer and local source. */
 import {registerRootComponent, requireNativeModule} from 'expo';
 import {digest, CryptoDigestAlgorithm} from 'expo-crypto';
@@ -8,7 +9,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
 import {finalizeEvent, getPublicKey} from 'nostr-tools/pure';
 import {initializeNativeRandom} from '../../../src/security/crypto-bootstrap';
-import {formatNpub, publicKeyFromNsec} from '../../../src/security/identity-crypto';
+import {formatNpub} from '../../../src/security/public-identity';
 import {IdentityTransition} from '../../../src/security/identity-transition';
 import {VaultError, type VaultSnapshot} from '../../../src/security/identity-vault';
 import type {TrustedIdentityOwner} from '../../../src/security/trusted-identity-owner';
@@ -41,10 +42,10 @@ async function openFixture(): Promise<TrustedIdentityOwner> {
   const uploadSettings = await openNativeUploadSettings(SQLite, module);
   await uploadSettings.replace('https://files.example.com:19943');
   const database = await openShellDatabase(SQLite, Platform.OS);
-  const vault = Object.freeze({getSnapshot: () => publicIdentity,
+  const vault = Object.freeze({...publicFixtureSigningMethods(() => publicIdentity),getSnapshot: () => publicIdentity,
     select: async (): Promise<VaultSnapshot> => {throw new VaultError('NOT_FOUND');},
-    importNsec: async (): Promise<VaultSnapshot> => {throw new VaultError('INVALID_NSEC');}});
-  const transition = await IdentityTransition.open({vault, database, publicKeyFromNsec,
+    prepareImport: async () => null, cancelImport: () => {}, commitImport: async (): Promise<VaultSnapshot> => {throw new VaultError('AUTHORIZATION_DENIED');}});
+  const transition = await IdentityTransition.open({vault, database,
     seed: emptyWorkspace, assertAvailable: assertWorkspaceAvailability});
   let runtime: RuntimeOwner | null = null;
   const approvals = new ApprovalService(loadNativeApprovalPort(), createApprovalOwner(transition, origin => {

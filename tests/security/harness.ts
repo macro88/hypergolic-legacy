@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import assert from 'node:assert/strict';
-import { IdentityVault, type VaultDependencies, type EncryptedSecrets } from '../../src/security/identity-vault.ts';
+import { IdentityVault, VaultError, type VaultDependencies, type EncryptedSecrets } from '../../src/security/identity-vault.ts';
 import { createProtectedSecrets, secretStorageKey, VAULT_SERVICE, type NativePlatform, type ProtectedOptions, type SecureStoreModule } from '../../src/security/android-encrypted-secrets.ts';
 import { IDENTITY_DATABASE, openIdentityMetadata, type SQLiteConnection, type SQLiteModule } from '../../src/security/identity-metadata.ts';
 import type { SQLiteValue } from '../../src/storage/sqlite.ts';
@@ -114,6 +114,46 @@ export class Integrated {
         return { assertActive: () => { if (!this.authActive) throw new Error('revoked test grant'); } };
       },
     };
-    return { database, secrets, vault: new IdentityVault(dependencies) };
+    const legacy = new IdentityVault(dependencies);
+    let target = 2;
+    const candidates = new WeakMap<object, number>();
+    const vault = Object.assign(legacy, {
+      async getSigningMethods(account: string): Promise<import('../../src/security/signing-methods.ts').SigningMethodsSnapshot> {
+        const current = legacy.getSnapshot();
+        if (!current.identities.some(identity => identity.pubkey === account)) throw new VaultError('NOT_FOUND');
+        return { vaultId: current.vaultId, revision: current.revision, pubkey: account,
+          selectedMethod: 'local' as const, methods: [{ kind: 'local' as const }] };
+      },
+      async prepareRemoteConnection(): Promise<Readonly<{ handle: string; pubkey: string }> | null> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      async prepareRemoteRefresh(_account: string): Promise<Readonly<{ handle: string; pubkey: string }> | null> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      cancelRemoteRefresh(_candidate: object) {},
+      async commitRemoteRefresh(_candidate: object): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      cancelAction() {},
+      cancelRemotePreparation() {},
+      isRemotePreparationHandoffPending(): boolean { return false; },
+      cancelRemoteConnection(_candidate: object) {},
+      async commitRemoteConnection(_candidate: object): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      async prepareAndroidSigner(): Promise<Readonly<{ handle: string; pubkey: string }> | null> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      cancelAndroidSigner(_candidate: object) {},
+      async commitAndroidSigner(_candidate: object): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      async selectSigningMethod(_account: string, _method: 'local' | 'nip46' | 'nip55'): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      async disconnectSigningMethod(_account: string, _method: 'nip46' | 'nip55'): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      async deleteLocalKey(_account: string): Promise<ReturnType<IdentityVault['getSnapshot']>> { throw new VaultError('SIGNER_UNSUPPORTED'); },
+      setImportTarget(value: number) { target = value; },
+      async prepareImport(): Promise<Readonly<{ handle: string; pubkey: string }>> {
+        if (!Number.isInteger(target) || target < 1) throw new VaultError('INVALID_NSEC');
+        const candidate = Object.freeze({ handle: `native_test_candidate_${target}`, pubkey: pubkey(target) });
+        candidates.set(candidate, target);
+        return candidate;
+      },
+      cancelImport(candidate: object) { candidates.delete(candidate); },
+      async commitImport(candidate: object) {
+        const value = candidates.get(candidate);
+        if (value === undefined) throw new VaultError('AUTHORIZATION_DENIED');
+        candidates.delete(candidate);
+        return legacy.importNsec(`nsec1fixture-${value}`);
+      },
+    });
+    return { database, secrets, vault };
   }
 }

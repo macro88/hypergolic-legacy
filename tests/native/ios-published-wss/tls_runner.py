@@ -24,7 +24,7 @@ SOURCES = [
 
     "PublicAddressPolicy.swift", "PublishedHTTPResponse.swift", "PublishedPinnedHTTPS.swift",
     "PublishedRelayWebSocketHandshake.swift", "PublishedRelayWebSocketFrames.swift",
-    "PublishedRelayWebSocketClientFrames.swift", "PublishedRelayWebSocketQuery.swift", "PublishedRelayEnvelope.swift",
+    "PublishedRelayWebSocketClientFrames.swift", "PublishedRelayWebSocketQuery.swift", "NativeSignerRelayPolicy.swift", "PublishedRelayEnvelope.swift",
 ]
 
 

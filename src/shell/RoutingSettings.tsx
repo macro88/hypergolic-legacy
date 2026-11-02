@@ -3,7 +3,7 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import type { CatalogHandler, CatalogSnapshot } from '../routing/routing-catalog';
 import type { RoutingSettingsService } from '../routing/routing-settings';
-import { formatNpub } from '../security/identity-crypto';
+import { formatNpub } from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function Action({id, title, disabled, onPress}: {id: string; title: string; disabled: boolean; onPress(): void}) {
   const { styles } = useShellStyles(createStyles);

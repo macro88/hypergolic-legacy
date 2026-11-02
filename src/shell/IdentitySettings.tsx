@@ -1,3 +1,7 @@
+import { backgroundIdentitySettings } from './identity-settings-lifecycle';
+import { SignerSettings } from './SignerSettings';
+import { identityChangeCopy } from './identity-change-copy';
+import { NativeSignerCheck } from './NativeSignerCheck';
 import { SettingsSection } from './SettingsSection';
 import {FixturePublisherLab} from './FixturePublisherLab';
 import {NotificationSettings} from './NotificationSettings';
@@ -5,14 +9,14 @@ import { RoutingSettings } from './RoutingSettings';
 import {IdentityListSettings} from './IdentityListSettings';
 import { UploadSettings } from './UploadSettings';
 import { ResourceSettings } from './ResourceSettings';
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { ActivityIndicator, AppState, Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useEffectEvent, useState, useSyncExternalStore } from 'react';
+import { ActivityIndicator, AppState, ScrollView, StyleSheet, Text, View, type AppStateStatus } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
-import { ShellTextInput as TextInput } from './ShellTextInput';
 import type { SettingsActions } from './Shell';
 import type { IdentityChange, IdentitySession, IdentityTransition } from '../security/identity-transition';
-import type { IdentityActions } from '../security/identity-actions';
-import { VaultError } from '../security/identity-vault';
+import type { IdentitySettingsActions } from '../security/native-identity-actions';
+import { VaultError } from '../security/identity-vault-model';
+import { isSignerFailureCode, signerFailureMessage } from '../security/signing-methods';
 import { useIdentityOwner } from './IdentityOwnerContext';
 import { IdentityBackup } from './IdentityBackup';
 import { RelaySettings } from './RelaySettings';
@@ -27,52 +31,48 @@ function Action({ title, testID, onPress, subdued = false }: { title: string; te
     <Text style={subdued ? styles.subduedText : styles.actionText}>{title}</Text>
   </Pressable>;
 }
-function importMessage(error: unknown): string {
-  if (error instanceof VaultError && error.code === 'LIMIT_REACHED') return 'The saved identity limit has been reached.';
-  return 'Enter a valid nsec secret key. Your identity has not changed.';
-}
 function ImportIdentity({ transition, onClose }: { transition: IdentityTransition; onClose: () => void }) {
   const { styles, colors } = useShellStyles(createStyles);
-  const [form, setForm] = useState({ input: '', error: '' });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const onAppStateChange = useEffectEvent((next: AppStateStatus) => {
+    if (next !== 'active') { transition.cancelImportPreparation(); onClose(); }
+  });
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', next => { if (next !== 'active') onClose(); });
-    return () => subscription.remove();
-  }, [onClose]);
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => { subscription.remove(); transition.cancelImportPreparation(); };
+  }, [transition]);
   const review = () => {
-    Keyboard.dismiss();
-    const input = form.input;
-    setForm({ input: '', error: '' });
-    try {
-      const pending = transition.prepareImport(input);
-      if (pending === null) onClose();
-    } catch (error) { setForm({ input: '', error: importMessage(error) }); }
+    if (busy) return;
+    setBusy(true); setError('');
+    void transition.prepareImport().then(pending => { if (pending === null) onClose(); }).catch(failure => {
+      setError(failure instanceof VaultError && failure.code === 'LIMIT_REACHED'
+        ? 'The saved identity limit has been reached.' : 'Import was not completed. Your identity is unchanged.');
+    }).finally(() => setBusy(false));
   };
   return <View style={styles.group}>
     <Text accessibilityRole="header" style={styles.title}>Import identity</Text>
-    <Text style={styles.detail}>Enter your nsec to use an existing identity. Your current identity will remain saved on this device.</Text>
-    <TextInput testID="identity-import-input" accessibilityLabel="Secret key" secureTextEntry autoCapitalize="none" autoCorrect={false}
-      autoComplete="off" importantForAutofill="no" textContentType="none" maxLength={256} value={form.input}
-      onChangeText={input => setForm({ input, error: '' })} placeholder="nsec…" placeholderTextColor={colors.muted}
-      style={styles.input} returnKeyType="done" onSubmitEditing={review} />
-    {form.error !== '' && <Text testID="identity-import-error" accessibilityLiveRegion="polite" style={styles.detail}>{form.error}</Text>}
-    <Action title="Continue" testID="identity-import-review" onPress={review} />
-    <Action title="Cancel" testID="identity-import-cancel" onPress={onClose} subdued />
+    <Text style={styles.detail}>Enter your nsec in the next screen. Your current identity will remain saved on this device.</Text>
+    {error !== '' && <Text testID="identity-import-error" accessibilityLiveRegion="polite" style={styles.detail}>{error}</Text>}
+    {busy ? <ActivityIndicator color={colors.accent} /> : <Action title="Enter secret key" testID="identity-import-review" onPress={review} />}
+    <Action title="Cancel" testID="identity-import-cancel" onPress={() => { transition.cancelImportPreparation(); onClose(); }} subdued />
   </View>;
 }
 function ConfirmIdentity({ pending, transition, npub }: { pending: IdentityChange; transition: IdentityTransition; npub: string }) {
   const { styles } = useShellStyles(createStyles);
+  const copy = identityChangeCopy(pending, transition.getSnapshot().session.vault.selectedPubkey);
   return <View style={styles.group}>
-    <Text accessibilityRole="header" style={styles.title}>Switch identity?</Text>
+    <Text accessibilityRole="header" style={styles.title}>{copy.title}</Text>
     <Text selectable testID="identity-change-npub" style={styles.npub}>{npub}</Text>
-    <Text style={styles.detail}>Every open napplet will restart with this identity’s saved data. Unsaved work will be lost and pending signing requests will be cancelled.</Text>
-    <Action title="Keep current identity" testID="identity-change-cancel" onPress={() => transition.cancel(pending)} subdued />
-    <Action title={pending.kind === 'import' ? 'Import and switch' : 'Switch identity'} testID="identity-change-confirm"
+    <Text style={styles.detail}>{copy.detail}</Text>
+    <Action title="Keep current settings" testID="identity-change-cancel" onPress={() => transition.cancel(pending)} subdued />
+    <Action title={copy.approve} testID="identity-change-confirm"
       onPress={() => { void transition.confirm(pending).catch(() => undefined); }} />
   </View>;
 }
 type DeletionReview = Readonly<{ pubkey: string; session: IdentitySession }>;
 function DeleteIdentity({ review, transition, actions, npub, busy, onClose }: {
-  review: DeletionReview; transition: IdentityTransition; actions: IdentityActions;
+  review: DeletionReview; transition: IdentityTransition; actions: IdentitySettingsActions;
   npub: string; busy: boolean; onClose: () => void;
 }) {
   const { styles, colors } = useShellStyles(createStyles);
@@ -92,7 +92,7 @@ function DeleteIdentity({ review, transition, actions, npub, busy, onClose }: {
   return <View style={styles.group}>
     <Text accessibilityRole="header" style={styles.title}>{busy ? 'Confirm on your device' : 'Delete saved identity?'}</Text>
     <Text selectable testID="identity-delete-npub" style={styles.npub}>{npub}</Text>
-    <Text style={styles.detail}>This removes the secret key from this device. You will need a separate backup to use this identity again. Your currently selected identity and open napplets stay as they are.</Text>
+    <Text style={styles.detail}>This removes this account’s local key and saved signer connections from this device. Keep a separate backup of any local key you need to restore. Your currently selected identity and open napplets stay as they are.</Text>
     {busy ? <>
       <ActivityIndicator color={colors.accent} />
       <Action title="Cancel deletion" testID="identity-delete-cancel-auth" onPress={() => { transition.cancelDeletion(review.session); try { actions.cancelDeletion(); } catch { /* Revoked locally before native cleanup. */ } }} subdued />
@@ -104,6 +104,7 @@ function DeleteIdentity({ review, transition, actions, npub, busy, onClose }: {
   </View>;
 }
 function failureMessage(failure: ReturnType<IdentityTransition['getSnapshot']>['failure']): string {
+  if (isSignerFailureCode(failure)) return signerFailureMessage(failure);
   if (failure === 'LIMIT_REACHED') return 'The saved identity limit has been reached.';
   if (failure === 'DELETION_REJECTED') return 'Deletion was not approved. Your saved identities and open napplets are unchanged.';
   if (failure === 'DELETION_PENDING') return 'Deletion is paused. Authenticate again to finish removing the identity.';
@@ -156,9 +157,9 @@ function SettingsHome({session, onBackup, onCloseBackup, onDelete, onImport, onS
       </View>
       <PublishedNappletSettings available={Boolean(runtime)} openPublished={openPublished} publishedSessions={publishedSessions} checkPublishedUpdate={checkPublishedUpdate} />
       <View style={styles.sections}>
-      <SettingsSection title="Identity" detail="Saved identities, import and backup" id="identity">
-      {actions && <IdentityBackup actions={actions} session={session} npub={formatNpub(session.vault.selectedPubkey)} reviewing={false}
-        onReview={onBackup} onClose={onCloseBackup} Action={Action} />}
+      <SettingsSection title="Identity" detail="Accounts, signing methods and backup" id="identity">
+      <SignerSettings transition={transition} session={session} actions={actions} format={formatNpub}
+        onBackup={onBackup} onCloseBackup={onCloseBackup} />
       <SavedIdentities session={session} transition={transition} format={formatNpub} canDelete={Boolean(actions)}
         onDelete={onDelete} />
       <Action title="Import identity" testID="settings-import-identity" onPress={onImport} />
@@ -174,6 +175,7 @@ function SettingsHome({session, onBackup, onCloseBackup, onDelete, onImport, onS
       <IdentityListSettings service={listAccess ?? null} user={session.vault.selectedPubkey} />
       </SettingsSection>
       <SettingsSection title="Developer tools" detail="Test napplets and compatibility" id="developer">
+      <NativeSignerCheck />
       {runtime && <Action title="Open NAP Support" testID="settings-open-nap-support" onPress={() => openStateLab('nap-support')} subdued />}
       {runtime && <>
         <Text accessibilityRole="header" style={styles.title}>Signed host test</Text>
@@ -210,15 +212,14 @@ export function IdentitySettings({ openBundledTest, openStateLab, openPublished,
   useEffect(() => {
     const subscription = AppState.addEventListener('change', next => {
       if (next !== 'background') return; // iOS system authentication may temporarily make the app inactive.
-      transition.cancelDeletion(transition.getSnapshot().session);
-      try { actions?.cancelBackup(); } catch { /* Native backup authority is independently revoked by endSettings. */ }
-      try { actions?.endSettings(); } catch { /* Local session is already invalidated. */ }
+      backgroundIdentitySettings(transition, actions);
       closeDeletion();
       setBackupReview(false);
       setSignedLab(false);
     });
     return () => {
       subscription.remove();
+      transition.cancelChange();
       transition.cancelDeletion(transition.getSnapshot().session);
       try { actions?.cancelBackup(); } catch { /* Local backup revocation runs before native cleanup. */ }
       try { actions?.endSettings(); } catch { /* Native lifetime independently revokes grants. */ }
@@ -243,7 +244,7 @@ export function IdentitySettings({ openBundledTest, openStateLab, openPublished,
     <ActivityIndicator color={colors.accent} /><Text style={styles.title}>Finishing identity action…</Text>
   </View>;
   if (state.phase === 'switching') return <View style={styles.body}>
-    <ActivityIndicator color={colors.accent} /><Text accessibilityRole="header" style={styles.title}>Switching identity…</Text>
+    <ActivityIndicator color={colors.accent} /><Text accessibilityRole="header" style={styles.title}>Updating account…</Text>
   </View>;
   if (state.pending) return <ScrollView automaticallyAdjustKeyboardInsets contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
     <ConfirmIdentity pending={state.pending} transition={transition} npub={formatNpub(state.pending.pubkey)} />

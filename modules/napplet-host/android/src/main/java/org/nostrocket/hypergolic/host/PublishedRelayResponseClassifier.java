@@ -2,6 +2,11 @@ package org.nostrocket.hypergolic.host;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import org.nostrocket.hypergolic.host.PublishedRelayWssQuery.TextKind;
+import org.nostrocket.hypergolic.host.PublishedRelayWssQuery.TextStopPolicy;
 
 /** Strict bounded NIP-01 response envelope classifier for one active subscription. */
 public final class PublishedRelayResponseClassifier implements PublishedRelayWssQuery.TextStopPolicy {
@@ -231,5 +236,48 @@ public final class PublishedRelayResponseClassifier implements PublishedRelayWss
       if (c >= 'A' && c <= 'F') return c - 'A' + 10;
       return -1;
     }
+  }
+
+  static final class ResponseCollector {
+    private final TextStopPolicy stopPolicy;
+    private final ArrayList<String> messages = new ArrayList<>();
+    private int totalBytes;
+    private int eventCount;
+    private boolean complete;
+    ResponseCollector(TextStopPolicy stopPolicy) { this.stopPolicy = stopPolicy; }
+    void preflight(List<PublishedRelayWebSocketFrames.Event> batch) throws IOException {
+      int textCount = 0;
+      int textBytes = 0;
+      for (PublishedRelayWebSocketFrames.Event event : batch) {
+        if ("error".equals(event.type)) throw new IOException("Invalid relay WebSocket frame: " + event.detail);
+        if ("text".equals(event.type)) {
+          textCount++;
+          textBytes += event.text.getBytes(StandardCharsets.UTF_8).length;
+        }
+      }
+      if (textCount > PublishedRelayWssQuery.MAX_TEXT_MESSAGES - messages.size() || textBytes > PublishedRelayWssQuery.MAX_TEXT_BYTES - totalBytes) {
+        throw new IOException("Relay query exceeded response bounds");
+      }
+    }
+    boolean accept(String text) throws IOException {
+      if (complete || text == null || messages.size() >= PublishedRelayWssQuery.MAX_TEXT_MESSAGES) {
+        throw new IOException("Relay query exceeded response bounds");
+      }
+      int length = text.getBytes(StandardCharsets.UTF_8).length;
+      if (length > PublishedRelayWebSocketFrames.MAX_BYTES || length > PublishedRelayWssQuery.MAX_TEXT_BYTES - totalBytes) {
+        throw new IOException("Relay query exceeded response bounds");
+      }
+      totalBytes += length;
+      messages.add(text);
+      final TextKind kind;
+      try { kind = stopPolicy.classify(text); }
+      catch (RuntimeException invalid) { throw new IOException("Relay text validation failed", invalid); }
+      if (kind == null) throw new IOException("Relay text validation failed");
+      if (kind == TextKind.EVENT && ++eventCount > PublishedRelayWssQuery.MAX_EVENTS) throw new IOException("Relay query exceeded event limit");
+      complete = kind == TextKind.EOSE;
+      return complete;
+    }
+    boolean complete() { return complete; }
+    List<String> result() { return Collections.unmodifiableList(new ArrayList<>(messages)); }
   }
 }

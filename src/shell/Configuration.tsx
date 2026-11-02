@@ -7,7 +7,7 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {ConfigBroker, ConfigReview} from '../presentation/config-broker';
 import {CONFIG_LIMITS, configSecretFields, type ConfigSchema, type ConfigValue} from '../presentation/config-schema';
 import {ShellStorageError} from '../storage/ports';
-import {formatNpub} from '../security/identity-crypto';
+import {formatNpub} from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 type Field = {path: readonly string[]; schema: ConfigSchema; section: string};
 const fieldKey = (path: readonly string[]) => JSON.stringify(path);

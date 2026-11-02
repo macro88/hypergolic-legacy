@@ -50,6 +50,7 @@ final class NativeUploadAuthority: @unchecked Sendable {
     var review: Review?
     var grant: Grant?
     var signingClaimed = false
+    var executionPaused = false
     var transferClaimed = false
     var dispatched = false
     init(_ request: Request, _ session: Session, _ destination: String, _ mimeType: String, _ length: Int, _ expires: Int64) {
@@ -137,6 +138,13 @@ final class NativeUploadAuthority: @unchecked Sendable {
       let review = Review(row); row.review = review; return review
     }
   }
+  func pauseExecution(_ request: Request, paused: Bool) -> Bool {
+    lock.withLock {
+      prune(); guard let row = live(request), row.session === focused, !row.dispatched,
+        row.executionPaused != paused else { return false }
+      row.executionPaused = paused; return true
+    }
+  }
   func contains(_ request: Request) -> Bool { lock.withLock { prune(); return live(request) != nil } }
   func mayReview(_ request: Request, expected: Review) -> Bool {
     lock.withLock { prune(); return reviewable(request, expected) }
@@ -194,10 +202,10 @@ final class NativeUploadAuthority: @unchecked Sendable {
     guard foreground, let row = requests[ObjectIdentifier(request)], registered(row.session) else { return nil }; return row
   }
   private func approved(_ grant: Grant) -> Row? {
-    guard grant.owner == owner, let row = live(grant.request), row.grant === grant else { return nil }; return row
+    guard grant.owner == owner, let row = live(grant.request), row.grant === grant, !row.executionPaused else { return nil }; return row
   }
   private func reviewable(_ request: Request, _ expected: Review) -> Bool {
-    guard let row = live(request) else { return false }; return row.session === focused && row.review === expected && row.grant == nil
+    guard let row = live(request) else { return false }; return !row.executionPaused && row.session === focused && row.review === expected && row.grant == nil
   }
   private func prune() {
     let now = clock(); if now < 0 || now < lastTime { clockFailed = true }; if !clockFailed { lastTime = now }

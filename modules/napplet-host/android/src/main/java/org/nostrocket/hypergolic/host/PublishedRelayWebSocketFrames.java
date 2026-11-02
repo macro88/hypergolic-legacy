@@ -34,6 +34,18 @@ public final class PublishedRelayWebSocketFrames {
     }
   }
 
+  private final int maxBytes;
+  private long completedFrames;
+  private int consumedInput;
+  public PublishedRelayWebSocketFrames() { maxBytes = MAX_BYTES; }
+  /** Package-only larger bound for the native signer transport. */
+  PublishedRelayWebSocketFrames(int maxBytes) {
+    if (maxBytes < 1 || maxBytes > 8 * 1024 * 1024) throw new IllegalArgumentException("Invalid frame bound");
+    this.maxBytes = maxBytes;
+  }
+  long completedFrameCount() { return completedFrames; }
+  int consumedInputBytes() { return consumedInput; }
+
   private enum State { BASE, EXTENDED, PAYLOAD }
   private State state = State.BASE;
   private final byte[] base = new byte[2];
@@ -45,6 +57,7 @@ public final class PublishedRelayWebSocketFrames {
   private boolean failed, closed;
 
   public List<Event> feed(byte[] input) {
+    consumedInput = 0;
     ArrayList<Event> events = new ArrayList<>();
     if (input == null || input.length > MAX_READ) { fail(events, "read-too-large"); return events; }
     if (failed || closed) { fail(events, "closed"); return events; }
@@ -63,6 +76,7 @@ public final class PublishedRelayWebSocketFrames {
         if (frameRead == frameLength) finishFrame(events);
       }
     }
+    consumedInput = i;
     return events;
   }
 
@@ -88,21 +102,22 @@ public final class PublishedRelayWebSocketFrames {
     long length = 0;
     for (int j = 0; j < extNeeded; j++) length = (length << 8) | (extended[j] & 255L);
     if ((extNeeded == 2 && length < 126) || (extNeeded == 8 && length < 65_536)) { fail(events, "noncanonical-length"); return; }
-    if (length > MAX_BYTES) { fail(events, "frame-too-large"); return; }
+    if (length > maxBytes) { fail(events, "frame-too-large"); return; }
     frameLength = (int) length; headerSize += extNeeded; acceptLength(events);
   }
 
   private void acceptLength(List<Event> events) {
-    if (headerSize + frameLength > MAX_BYTES) { fail(events, "frame-too-large"); return; }
+    if (headerSize + frameLength > maxBytes) { fail(events, "frame-too-large"); return; }
     if (opcode < 8) {
       int prior = opcode == 1 ? 0 : messageBytes;
-      if (frameLength > MAX_BYTES - prior) { fail(events, "message-too-large"); return; }
+      if (frameLength > maxBytes - prior) { fail(events, "message-too-large"); return; }
     }
     framePayload = new byte[frameLength]; frameRead = 0; state = State.PAYLOAD;
     if (frameLength == 0) finishFrame(events);
   }
 
   private void finishFrame(List<Event> events) {
+    completedFrames++;
     try {
       if (opcode == 1 || opcode == 0) {
         if (opcode == 1) { message = new ByteArrayOutputStream(Math.min(frameLength, 4096)); messageBytes = 0; }

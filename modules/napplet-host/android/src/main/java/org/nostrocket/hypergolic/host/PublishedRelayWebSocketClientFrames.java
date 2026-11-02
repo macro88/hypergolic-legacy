@@ -23,10 +23,22 @@ public final class PublishedRelayWebSocketClientFrames {
 
   /** Deterministic proof overload. The mask is copied into the frame and must be exactly four bytes. */
   public static byte[] textReq(String text, byte[] mask) {
-    if (text == null || text.length() > MAX_TEXT_BYTES) throw invalid();
+    return boundedText(text, mask, MAX_TEXT_BYTES, MAX_RAW_BYTES);
+  }
+
+  /** Package-only larger frame profile; ordinary public methods retain their caps. */
+  static byte[] textReq(String text, int maxBytes) {
+    return textReq(text, randomMask(), maxBytes);
+  }
+  static byte[] textReq(String text, byte[] mask, int maxBytes) {
+    if (maxBytes < 1 || maxBytes > 8 * 1024 * 1024) throw invalid();
+    return boundedText(text, mask, maxBytes, maxBytes);
+  }
+  private static byte[] boundedText(String text, byte[] mask, int maxText, int maxRaw) {
+    if (text == null || text.length() > maxText) throw invalid();
     byte[] payload = strictUtf8(text);
-    if (payload.length > MAX_TEXT_BYTES) throw invalid();
-    return encode(0x1, payload, mask);
+    if (payload.length > maxText) throw invalid();
+    return encode(0x1, payload, mask, maxText, maxRaw);
   }
 
   /** Encodes a pong that echoes the payload of a received ping. */
@@ -58,16 +70,21 @@ public final class PublishedRelayWebSocketClientFrames {
   }
 
   private static byte[] encode(int opcode, byte[] payload, byte[] mask) {
-    int lengthBytes = payload.length <= 125 ? 0 : 2;
+    return encode(opcode, payload, mask, MAX_TEXT_BYTES, MAX_RAW_BYTES);
+  }
+  private static byte[] encode(int opcode, byte[] payload, byte[] mask, int maxText, int maxRaw) {
+    int lengthBytes = payload.length <= 125 ? 0 : payload.length <= 65_535 ? 2 : 8;
     int payloadOffset = 2 + lengthBytes + 4;
-    if (mask == null || mask.length != 4 || payload.length + payloadOffset > MAX_RAW_BYTES) throw invalid();
-    if (payload.length > MAX_TEXT_BYTES || payload.length > MAX_CONTROL_BYTES && opcode >= 8) throw invalid();
+    if (mask == null || mask.length != 4 || payload.length + payloadOffset > maxRaw) throw invalid();
+    if (payload.length > maxText || payload.length > MAX_CONTROL_BYTES && opcode >= 8) throw invalid();
     byte[] output = new byte[payload.length + payloadOffset];
     output[0] = (byte) (0x80 | opcode);
-    output[1] = (byte) (0x80 | (lengthBytes == 0 ? payload.length : 126));
-    if (lengthBytes != 0) {
+    output[1] = (byte) (0x80 | (lengthBytes == 0 ? payload.length : lengthBytes == 2 ? 126 : 127));
+    if (lengthBytes == 2) {
       output[2] = (byte) ((payload.length >>> 8) & 0xff);
       output[3] = (byte) (payload.length & 0xff);
+    } else if (lengthBytes == 8) {
+      for (int i = 0; i < 8; i++) output[2 + i] = (byte) ((long) payload.length >>> ((7 - i) * 8));
     }
     System.arraycopy(mask, 0, output, 2 + lengthBytes, 4);
     for (int i = 0; i < payload.length; i++) output[payloadOffset + i] = (byte) (payload[i] ^ mask[i & 3]);

@@ -5,7 +5,7 @@ import { ShellPressable as Pressable } from './ShellPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { CatalogHandler } from '../routing/routing-catalog';
 import type { RoutingReviewItem, RoutingReviewService, RoutingReviewRequest } from '../routing/routing-review';
-import { formatNpub } from '../security/identity-crypto';
+import { formatNpub } from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 const subscribe = () => () => {}, empty = () => null;
 export function RoutingReview({service, blocked = false}: {service: RoutingReviewService | null; blocked?: boolean}) {

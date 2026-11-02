@@ -5,6 +5,8 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools/pure';
 import type { ApprovalOrigin } from '../../src/security/approval-service.ts';
 import { UploadService, type UploadNativePort, type UploadLease, type TakenUpload, type UploadResult, type UploadEffects } from '../../src/uploads/upload-service.ts';
 import { UploadError, UPLOAD_LIMITS } from '../../src/uploads/upload-contract.ts';
+import { VaultError } from '../../src/security/identity-vault-model.ts';
+import { SIGNER_FAILURE_CODES } from '../../src/security/signing-methods.ts';
 
 const secret = new Uint8Array(32); secret[31] = 2;
 const hash = async (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -27,6 +29,7 @@ class Native implements UploadNativePort {
   }
   state(lease: UploadLease) {const value = this.states.get(lease); if (!value) throw new Error('foreign lease'); return value;}
   take(token: string) {const value = this.tokens.get(token) ?? null; this.tokens.delete(token); return value;}
+  signingSource(lease: UploadLease) { return { kind: 'upload' as const, token: this.state(lease).taken.uploadId }; }
   isLive(lease: UploadLease) {return this.state(lease).live;}
   mayReview(lease: UploadLease) {const value = this.state(lease); return value.live && !value.approved && value.taken.origin.sessionId === this.focused;}
   readPreview(lease: UploadLease, offset: number) {assert(this.mayReview(lease)); this.reads++; return this.state(lease).bytes.slice(offset, offset + UPLOAD_LIMITS.chunkBytes);}
@@ -236,4 +239,207 @@ test('dismissing an uncertain upload result retains the session close safeguard'
   service.dismissOutcome(outcome.id); assert.equal(service.getSnapshot().outcomes.length, 0);
   assert.equal(service.hasCloseRisk('one'), true); assert.equal(service.hasCloseRisk('other'), false);
   service.revisionChanged(2); assert.equal(service.hasCloseRisk('one'), false);
+});
+
+
+test('signer failures stay in trusted upload presentation and never dispatch or retry', async () => {
+  for (const code of SIGNER_FAILURE_CODES) {
+    const native = new Native(); await native.issue('one'); let calls = 0;
+    const service = make(native, {sign: async () => {calls++; throw new VaultError(code);}});
+    const id = await ready(service, native), result = await service.approve(id);
+    assert.equal(result.error, 'upload failed'); assert.equal(native.puts, 0); assert.equal(calls, 1);
+    assert.equal(service.getSnapshot().outcomes.at(-1)?.signingFailure, code);
+    assert.deepEqual(native.results, [result]);
+    assert.deepEqual(Object.keys(result).sort(), ['error', 'ok', 'rail', 'status', 'uploadId']);
+    await assert.rejects(service.approve(id)); assert.equal(calls, 1);
+  }
+});
+
+test('untrusted signer errors and upload transport failures cannot impersonate signer feedback', async () => {
+  for (const error of [{code: 'SIGNER_UNCERTAIN', message: 'untrusted diagnostic'}, new Error('untrusted diagnostic')]) {
+    const native = new Native(); await native.issue('one');
+    const service = make(native, {sign: async () => {throw error;}});
+    await service.approve(await ready(service, native));
+    assert.equal(service.getSnapshot().outcomes.at(-1)?.signingFailure, null);
+    assert.equal(JSON.stringify(service.getSnapshot()).includes('untrusted diagnostic'), false);
+    assert.equal(native.puts, 0);
+  }
+  const native = new Native(); await native.issue('one');
+  native.putOverride = async () => {throw new VaultError('SIGNER_UNCERTAIN');};
+  const service = make(native), result = await service.approve(await ready(service, native));
+  assert.equal(result.error, 'outcome unknown'); assert.equal(native.puts, 1);
+  assert.equal(service.getSnapshot().outcomes.at(-1)?.signingFailure, null);
+});
+
+test('cancelling an outstanding signature retains its uncertainty without sending the file', async () => {
+  for (const action of ['cancel', 'background'] as const) {
+    const native = new Native(); await native.issue('one'); const signing = deferred<unknown>();
+    const service = make(native, {sign: async () => signing.promise});
+    const id = await ready(service, native), pending = service.approve(id);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    if (action === 'cancel') service.cancel(id); else service.background();
+    const outcome = service.getSnapshot().outcomes.at(-1)!;
+    assert.equal(outcome.signingFailure, 'SIGNER_UNCERTAIN');
+    assert.equal(outcome.result.status, 'cancelled'); assert.equal(native.puts, 0);
+    signing.resolve(null); assert.equal(await pending, outcome.result);
+    assert.equal(native.results.length, 1); assert.equal(native.puts, 0);
+    assert.equal(service.getSnapshot().outcomes.at(-1), outcome);
+    service.foreground(); assert.equal(service.getSnapshot().active.length, 0);
+  }
+});
+
+test('cancellation before signing starts has no signer uncertainty', async () => {
+  const native = new Native(); await native.issue('one'); const hashing = deferred<string>();
+  let hashes = 0, signs = 0;
+  const service = make(native, {sha256: async bytes => ++hashes === 1 ? hash(bytes) : hashing.promise,
+    sign: async () => {signs++; return null;}});
+  const id = await ready(service, native), pending = service.approve(id);
+  await new Promise<void>(resolve => setImmediate(resolve)); service.cancel(id);
+  assert.equal(service.getSnapshot().outcomes.at(-1)?.signingFailure, null);
+  hashing.resolve(await hash(new Uint8Array([1, 2, 3]))); await pending;
+  assert.equal(signs, 0); assert.equal(native.puts, 0);
+});
+
+test('late signer failure cannot restore a dismissed result or a closed account scope', async () => {
+  for (const action of ['dismiss', 'close', 'revision'] as const) {
+    const native = new Native(); await native.issue('one'); const signing = deferred<unknown>();
+    const service = make(native, {sign: async () => {await signing.promise; throw new VaultError('SIGNER_UNCERTAIN');}});
+    const id = await ready(service, native), pending = service.approve(id);
+    await new Promise<void>(resolve => setImmediate(resolve)); service.cancel(id);
+    if (action === 'dismiss') service.dismissOutcome(id);
+    else if (action === 'close') service.close('one'); else service.revisionChanged(2);
+    signing.resolve(null); await pending;
+    assert.equal(service.getSnapshot().outcomes.length, 0); assert.equal(native.results.length, 1);
+    assert.equal(native.puts, 0);
+  }
+});
+
+
+test('upload handoff retains only undispatched signing and waits for the JS foreground event', async () => {
+  const native = new Native(), taken = await native.issue('one'), gate = deferred<unknown>();
+  let status: 'pending' | 'resumed' | null = null, captured: Parameters<UploadEffects['sign']>[0] | null = null;
+  const service = make(native, {
+    handoffState(source) { assert.deepEqual(source, { kind: 'upload', token: taken.uploadId }); return status; },
+    sign: async snapshot => { captured = snapshot; return gate.promise; },
+  });
+  const pending = service.approve(await ready(service, native));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  status = 'pending'; native.state(taken.lease).live = false; service.background(); service.refresh();
+  assert.equal(service.getSnapshot().active.length, 1); assert.equal(native.puts, 0);
+  const snapshot = captured!; status = 'resumed'; native.state(taken.lease).live = true;
+  gate.resolve(JSON.parse(JSON.stringify(finalizeEvent({ ...snapshot.authorization,
+    tags: snapshot.authorization.tags.map(tag => [...tag]) }, secret))));
+  await new Promise<void>(resolve => setImmediate(resolve)); assert.equal(native.puts, 0);
+  service.refresh(); assert.equal(service.getSnapshot().active.length, 1); assert.equal(native.puts, 0);
+  service.foreground(); assert.equal((await pending).status, 'complete'); assert.equal(native.puts, 1);
+});
+
+for (const action of ['cancel', 'close', 'revision', 'query-error', 'native-revoke', 'second-background'] as const) {
+  test(`upload handoff ${action} prevents a late credential from reaching the file sender`, async () => {
+    const native = new Native(), taken = await native.issue('one'), gate = deferred<unknown>();
+    let status: 'pending' | 'resumed' | null = null, queryError = false;
+    const service = make(native, { handoffState() { if (queryError) throw new Error('Unavailable'); return status; },
+      sign: async () => gate.promise });
+    const id = await ready(service, native), pending = service.approve(id);
+    await new Promise<void>(resolve => setImmediate(resolve));
+    status = 'pending'; native.state(taken.lease).live = false; service.background(); service.refresh();
+    assert.equal(service.getSnapshot().active.length, 1);
+    if (action === 'cancel') service.cancel(id);
+    if (action === 'close') service.close('one');
+    if (action === 'revision') service.revisionChanged(2);
+    if (action === 'query-error') { queryError = true; service.refresh(); }
+    if (action === 'native-revoke') { status = 'resumed'; service.foreground(); }
+    if (action === 'second-background') { status = 'resumed'; native.state(taken.lease).live = true; service.foreground(); service.background(); }
+    gate.resolve(null); assert.equal((await pending).ok, false); assert.equal(native.puts, 0);
+    assert.equal(service.getSnapshot().active.length, 0);
+  });
+}
+
+
+test('foreground-delivery timeout retains signer uncertainty without sending the file', async () => {
+  const native = new Native(), taken = await native.issue('one'), gate = deferred<unknown>();
+  let status: 'pending' | 'resumed' | null = null, captured: Parameters<UploadEffects['sign']>[0] | null = null;
+  const service = make(native, { handoffState: () => status,
+    sign: async snapshot => { captured = snapshot; return gate.promise; } });
+  const pending = service.approve(await ready(service, native));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  status = 'pending'; native.state(taken.lease).live = false; service.background();
+  status = 'resumed'; native.state(taken.lease).live = true;
+  const snapshot = captured!;
+  gate.resolve(JSON.parse(JSON.stringify(finalizeEvent({ ...snapshot.authorization,
+    tags: snapshot.authorization.tags.map(tag => [...tag]) }, secret))));
+  const result = await pending;
+  assert.equal(result.ok, false); assert.equal(native.puts, 0); assert.equal(native.results.length, 1);
+  assert.equal(service.getSnapshot().outcomes[0]?.signingFailure, 'SIGNER_UNCERTAIN');
+  assert.equal(native.state(taken.lease).live, false);
+});
+
+
+test('upload authorization status: preparation and native signing precede transfer even with zero bytes sent', async () => {
+  const native = new Native(); await native.issue('one');
+  const hashing = deferred<string>(), signing = deferred<unknown>(), transfer = deferred<unknown>();
+  let hashes = 0, captured: Parameters<UploadEffects['sign']>[0] | null = null;
+  const service = make(native, {sha256: async bytes => ++hashes === 1 ? hash(bytes) : hashing.promise,
+    sign: async snapshot => {captured = snapshot; return signing.promise;}});
+  native.putOverride = async () => transfer.promise;
+  const pending = service.approve(await ready(service, native));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  assert.equal(service.getSnapshot().active[0]?.phase, 'authorizing'); assert.equal(captured, null); assert.equal(native.puts, 0);
+  hashing.resolve(await hash(new Uint8Array([1, 2, 3])));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const authorizing = service.getSnapshot(); assert.equal(authorizing.active[0]?.phase, 'authorizing'); assert.equal(native.puts, 0);
+  const snapshot = captured!; signing.resolve(JSON.parse(JSON.stringify(finalizeEvent({...snapshot.authorization,
+    tags: snapshot.authorization.tags.map(tag => [...tag])}, secret))));
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const transferring = service.getSnapshot(); assert.notEqual(transferring, authorizing);
+  assert.equal(transferring.active[0]?.phase, 'transferring'); assert.equal(transferring.active[0]?.bytesSent, 0); assert.equal(native.puts, 1);
+  transfer.resolve({url: 'https://files.example.org/' + snapshot.sha256 + '.bin', sha256: snapshot.sha256,
+    size: snapshot.size, type: snapshot.mimeType, uploaded: 1});
+  assert.equal((await pending).status, 'complete');
+});
+
+test('upload authorization status: native denial matches cancellation without overwriting earlier source revocation', async () => {
+  for (const refreshFirst of [false, true]) {
+    const native = new Native(), taken = await native.issue('one'), gate = deferred<void>();
+    const service = make(native, {sign: async () => {await gate.promise; throw new VaultError('AUTHORIZATION_DENIED');}});
+    const pending = service.approve(await ready(service, native));
+    await new Promise<void>(resolve => setImmediate(resolve));
+    native.state(taken.lease).live = false;
+    if (refreshFirst) service.refresh();
+    const prior = service.getSnapshot().outcomes.at(-1); gate.resolve();
+    const result = await pending, outcome = service.getSnapshot().outcomes.at(-1)!;
+    assert.equal(result.status, 'cancelled'); assert.equal(result.error, 'user cancelled');
+    assert.equal(outcome.result, result); assert.equal(native.puts, 0); assert.deepEqual(native.results, [result]);
+    if (refreshFirst) {assert.equal(outcome, prior); assert.equal(outcome.signingFailure, 'SIGNER_UNCERTAIN');}
+    else assert.equal(outcome.signingFailure, null);
+  }
+});
+
+test('upload authorization status: denied signing with lost or possible dispatch evidence stays unknown', async () => {
+  for (const evidence of ['dispatched', 'unavailable', 'malformed'] as const) {
+    const native = new Native(), taken = await native.issue('one');
+    const service = make(native, {sign: async () => {
+      if (evidence === 'dispatched') native.state(taken.lease).dispatched = true;
+      else native.wasDispatched = () => {if (evidence === 'unavailable') throw new Error('Unavailable'); return undefined as unknown as boolean;};
+      throw new VaultError('AUTHORIZATION_DENIED');
+    }});
+    const result = await service.approve(await ready(service, native));
+    assert.equal(result.status, 'failed'); assert.equal(result.error, 'outcome unknown', evidence);
+    assert.equal(service.getSnapshot().outcomes.at(-1)?.result, result); assert.equal(native.puts, 0);
+  }
+});
+
+test('upload authorization status: transfer failure cannot impersonate a native signing denial', async () => {
+  const native = new Native(); await native.issue('one');
+  native.putOverride = async state => {state.dispatched = false; throw new VaultError('AUTHORIZATION_DENIED');};
+  const service = make(native), result = await service.approve(await ready(service, native));
+  assert.equal(result.status, 'failed'); assert.equal(result.error, 'upload failed'); assert.equal(native.puts, 1);
+});
+
+test('upload authorization status: cancelling the transfer-stage announcement cannot dispatch a file', async () => {
+  const native = new Native(); await native.issue('one'); const service = make(native), id = await ready(service, native);
+  const unsubscribe = service.subscribe(() => {if (service.getSnapshot().active[0]?.phase === 'transferring') service.cancel(id);});
+  const result = await service.approve(id); unsubscribe();
+  assert.equal(result.status, 'cancelled'); assert.equal(result.error, 'user cancelled');
+  assert.equal(native.puts, 0); assert.deepEqual(native.results, [result]);
 });

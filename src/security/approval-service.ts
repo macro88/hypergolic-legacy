@@ -1,3 +1,4 @@
+import { SigningForeground, signingHandoffState, type SigningHandoffReader } from './signing-handoff.ts';
 import {OutboxApprovalPreparation,type OutboxPublicationPlanner} from '../outbox/approval-preparation.ts';
 import type {OutboxPublishRequest} from '../outbox/publication-contract.ts';
 import type {OutboxPublicationPlan} from '../outbox/publication-plan.ts';
@@ -5,6 +6,7 @@ import {captureOutboxPublicationReceipt,type OutboxPublicationReceipt} from '../
 import { captureEventSnapshot, type EventSnapshot } from './event-snapshot.ts';
 import { validateSignedEvent, type VerifiedSignedEvent } from './signed-event.ts';
 import {captureRelayOutcomes} from './relay-outcomes.ts';
+import type { NativeSigningSource } from './native-vault-contract.ts';
 import type { RelayOutcome } from '../network/relay-service.ts';
 
 export type ApprovalOrigin = Readonly<{ sessionId: string; generation: string; epoch: number; user: string; publisher: string; appId: string; version: string; instanceId: string }>;
@@ -15,6 +17,8 @@ export interface NativeApprovalLeasePort {
   prepareOutbox?(lease:NativeApprovalLease,plan:OutboxPublicationPlan):boolean;
   failOutbox?(lease:NativeApprovalLease,error:string):void;
   publishOutbox?(lease:NativeApprovalLease,group:'primary'|'relay-list',event:VerifiedSignedEvent,destinations:readonly string[],execution:EffectAuthority):Promise<readonly RelayOutcome[]>;
+  prepareSigning?(lease: NativeApprovalLease, snapshot: EventSnapshot): boolean;
+  signingSource?(lease: NativeApprovalLease): NativeSigningSource;
   isLive(lease: NativeApprovalLease): boolean;
   mayReview(lease: NativeApprovalLease): boolean;
   approveOnce(lease: NativeApprovalLease): boolean;
@@ -24,15 +28,15 @@ export interface NativeApprovalLeasePort {
   resume(): void;
   finish(lease: NativeApprovalLease, response?: string | null): void;
 }
-export type EffectAuthority = Readonly<{ assertActive(): void; signal: AbortSignal }>;
-export interface ApprovalEffects {
+export type EffectAuthority = Readonly<{ assertActive(): void; signal: AbortSignal; nativeSource?: NativeSigningSource; awaitForeground?(): Promise<void> }>;
+export interface ApprovalEffects extends SigningHandoffReader {
   sign(snapshot: EventSnapshot, execution: EffectAuthority): Promise<unknown>;
   publishEvent(event: VerifiedSignedEvent, destinations: readonly string[], execution: EffectAuthority): Promise<readonly RelayOutcome[]>;
 }
 export interface TrustedApprovalOwner { assertActive(origin: ApprovalOrigin,domain?:'outbox'): void }
 export type ApprovalItem = Readonly<{ id: string; origin: ApprovalOrigin; event: EventSnapshot; outbox?:OutboxPublicationPlan }>;
 export type ApprovalSnapshot = Readonly<{ focusedSessionId: string | null; reviewPaused: boolean; current: ApprovalItem | null; pending: number; pendingSessionIds: readonly string[] }>;
-type Entry = ApprovalItem & { requestId: string; lease: NativeApprovalLease; controller: AbortController | null; publicationStarted?: boolean };
+type Entry = ApprovalItem & { requestId: string; lease: NativeApprovalLease; controller: AbortController | null; signingPending?: boolean; publicationStarted?: boolean };
 const PER_SESSION = 4, GLOBAL = 16;
 let nextPresentationId = 0;
 
@@ -56,7 +60,7 @@ export class ApprovalService {
   private listeners = new Set<() => void>();
   private focusedSessionId: string | null = null;
   private reviewPaused = false;
-  private foregrounded = true;
+  private readonly foregroundState = new SigningForeground();
   private snapshot: ApprovalSnapshot;
   private readonly preparing:OutboxApprovalPreparation;
   private readonly closeRisks = new Map<string, number>();
@@ -64,7 +68,7 @@ export class ApprovalService {
   constructor(native: NativeApprovalLeasePort, owner: TrustedApprovalOwner, effects: ApprovalEffects,planner?:OutboxPublicationPlanner) {
     this.native = native; this.owner = owner; this.effects = effects;
     this.snapshot = Object.freeze({ focusedSessionId: null, reviewPaused: false, current: null, pending: 0, pendingSessionIds: Object.freeze([]) });
-    this.preparing=new OutboxApprovalPreparation(native,owner,planner,()=>this.foregrounded,(taken,plan)=>{
+    this.preparing=new OutboxApprovalPreparation(native,owner,planner,()=>this.foregroundState.active,(taken,plan)=>{
       if(nextPresentationId>=Number.MAX_SAFE_INTEGER)denied();
       this.entries.push({requestId:taken.requestId,id:`approval_${++nextPresentationId}`,origin:captureOrigin(taken.origin),event:plan.event,outbox:plan,lease:taken.lease,controller:null});
     },()=>this.publish());
@@ -73,7 +77,7 @@ export class ApprovalService {
   getSnapshot = (): ApprovalSnapshot => this.snapshot;
   private publish() {
     let shown: ApprovalItem | null = null;
-    try { shown = current(this.entries, this.focusedSessionId, this.reviewPaused || !this.foregrounded, this.native); } catch { shown = null; }
+    try { shown = current(this.entries, this.focusedSessionId, this.reviewPaused || !this.foregroundState.active, this.native); } catch { shown = null; }
     const next = Object.freeze({ focusedSessionId: this.focusedSessionId, reviewPaused: this.reviewPaused, current: shown, pending: this.entries.length+this.preparing.origins().length, pendingSessionIds: Object.freeze([...new Set([...this.entries.map(entry => entry.origin.sessionId),...this.preparing.origins().map(origin=>origin.sessionId)])]) });
     if (next.focusedSessionId === this.snapshot.focusedSessionId && next.reviewPaused === this.snapshot.reviewPaused && next.pending === this.snapshot.pending && next.current?.id === this.snapshot.current?.id && next.pendingSessionIds.join() === this.snapshot.pendingSessionIds.join()) return;
     this.snapshot = next;
@@ -91,7 +95,7 @@ export class ApprovalService {
   outboxReceipt(results:readonly RelayOutcome[]):OutboxPublicationReceipt|null{return this.receipts.get(results)??null;}
   refresh() {
     this.preparing.refresh();
-    for (const entry of this.entries) { try { if (!this.native.isLive(entry.lease)) this.end(entry, false); } catch { this.end(entry, true); } }
+    for (const entry of this.entries) { try { if (!this.handoffPending(entry) && !this.native.isLive(entry.lease)) this.end(entry, false); } catch { this.end(entry, true); } }
     this.publish();
   }
   enqueue(token: string, destinationsFromTrustedConfig: unknown, expectedOrigin?: ApprovalOrigin): boolean {
@@ -117,9 +121,9 @@ export class ApprovalService {
     }
   }
   focus(sessionId: string | null) { for (const entry of this.entries) if (entry.controller && entry.origin.sessionId === this.focusedSessionId && sessionId !== this.focusedSessionId) this.end(entry, true); this.focusedSessionId = sessionId; this.publish(); }
-  foreground() { this.foregrounded = true; this.publish(); }
+  foreground() { this.foregroundState.setActive(true); this.publish(); }
   resume() {
-    if (this.foregrounded && this.focusedSessionId !== null) {
+    if (this.foregroundState.active && this.focusedSessionId !== null) {
       try { this.native.resume(); this.reviewPaused = false; } catch { /* Native review stays unavailable. */ }
     }
     this.publish();
@@ -139,21 +143,31 @@ export class ApprovalService {
     this.end(entry, true); this.reviewPaused = true; this.publish();
   }
   background() {
-    this.foregrounded = false;
+    this.foregroundState.setActive(false);
     this.preparing.cancel(()=>true);
     this.reviewPaused = true;
-    for (const entry of this.entries) if (entry.controller !== null) this.end(entry, true);
+    for (const entry of this.entries) if (entry.controller !== null && !this.handoffPending(entry)) this.end(entry, true);
     this.publish();
   }
   close(sessionId: string) { this.preparing.cancel(origin=>origin.sessionId===sessionId); for (const entry of this.entries) if (entry.origin.sessionId === sessionId) this.end(entry, true); this.closeRisks.delete(sessionId); this.publish(); }
   revisionChanged(epoch: number) { this.preparing.cancel(origin=>origin.epoch!==epoch); for (const entry of this.entries) if (entry.origin.epoch !== epoch) this.end(entry, true); for (const [id, value] of this.closeRisks) if (value !== epoch) this.closeRisks.delete(id); this.publish(); }
+  private handoffState(entry: Entry) {
+    try { return signingHandoffState(this.effects, this.native.signingSource?.(entry.lease)); } catch { return null; }
+  }
+  private handoffPending(entry: Entry): boolean {
+    return entry.signingPending === true && !entry.publicationStarted && this.handoffState(entry) === 'pending';
+  }
+  private awaitForeground(entry: Entry): Promise<void> {
+    if (!this.foregroundState.active && this.handoffState(entry) !== 'resumed') denied();
+    return this.foregroundState.wait(entry.controller!.signal);
+  }
   private authority(entry: Entry): EffectAuthority {
     const assertActive = () => {
-      if (!this.foregrounded || this.reviewPaused || this.focusedSessionId !== entry.origin.sessionId || entry.controller?.signal.aborted || !this.entries.includes(entry)) denied();
+      if (!this.foregroundState.active || (this.reviewPaused && this.handoffState(entry) !== 'resumed') || this.focusedSessionId !== entry.origin.sessionId || entry.controller?.signal.aborted || !this.entries.includes(entry)) denied();
       try { if (!this.native.isLive(entry.lease) || !this.native.isApproved(entry.lease)) denied(); } catch { denied(); }
       this.owner.assertActive(entry.origin,entry.outbox?'outbox':undefined);
     };
-    return Object.freeze({ assertActive, signal: entry.controller!.signal });
+    return Object.freeze({ assertActive, awaitForeground: () => this.awaitForeground(entry), signal: entry.controller!.signal, nativeSource: this.native.signingSource?.(entry.lease) });
   }
   private async publishOutbox(entry:Entry,verified:VerifiedSignedEvent,execution:EffectAuthority):Promise<OutboxPublicationReceipt>{
     if(!entry.outbox||!this.native.publishOutbox)denied();
@@ -178,11 +192,14 @@ export class ApprovalService {
     let publicationStarted = false;
     try {
       this.owner.assertActive(entry.origin,entry.outbox?'outbox':undefined);
+      if (this.native.prepareSigning && !this.native.prepareSigning(entry.lease, entry.event)) denied();
       if (!this.native.mayReview(entry.lease) || !this.native.approveOnce(entry.lease)) denied();
       entry.controller = new AbortController(); this.publish();
       const execution = this.authority(entry);
       execution.assertActive();
+      entry.signingPending = true;
       const signed = await this.effects.sign(entry.event, execution);
+      await execution.awaitForeground?.(); entry.signingPending = false;
       execution.assertActive();
       const verified = validateSignedEvent(entry.event, signed);
       execution.assertActive();

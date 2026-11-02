@@ -201,6 +201,7 @@ class NappletHostModule : Module() {
       PublishedArtifactTransfer.INSTANCE.revokeAllPublishedArtifacts()
     }
     Function("takeApproval") { token: String -> ApprovalTransport.leases.take(token) }
+    Function("prepareApprovalSigning") { token: String, snapshot: String -> NativeSigningSourceFacade.prepareApproval(token,snapshot) }
     Function("prepareOutboxApproval") { token: String, plan: String -> ApprovalTransport.prepareOutbox(token, plan) }
     Function("failOutboxApproval") { token: String, error: String -> ApprovalTransport.failOutbox(token, error) }
     AsyncFunction("publishOutboxApproval") Coroutine { token: String, group: String, event: String, relay: String ->

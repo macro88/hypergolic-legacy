@@ -5,6 +5,7 @@ import type { NativeApprovalLease, NativeApprovalLeasePort } from '../security/a
 
 export interface ApprovalModule {
   takeApproval(token: string): string | null;
+  prepareApprovalSigning(token: string, snapshotJSON: string): boolean;
   prepareOutboxApproval?(token:string,plan:string):boolean;
   failOutboxApproval?(token:string,error:string):void;
   publishOutboxApproval?(token:string,group:string,event:string,relay:string):Promise<string>;
@@ -55,6 +56,8 @@ export function createNativeApprovalPort(module: ApprovalModule): NativeApproval
       async function worker(index:number):Promise<void>{if(index>=destinations.length)return;execution.assertActive();const raw=await publish(token,group,wire,destinations[index]!);execution.assertActive();rows[index]=JSON.parse(raw);return worker(index+4);}
       await Promise.all([worker(0),worker(1),worker(2),worker(3)]);execution.assertActive();return Object.freeze(rows) as Awaited<ReturnType<NonNullable<NativeApprovalLeasePort['publishOutbox']>>>;
     },
+    prepareSigning: (lease, snapshot) => module.prepareApprovalSigning(tokenFor(lease), JSON.stringify(snapshot)),
+    signingSource: lease => Object.freeze({ kind: 'approval', token: tokenFor(lease) }),
     isLive: lease => module.isApprovalLive(tokenFor(lease)),
     mayReview: lease => module.mayReviewApproval(tokenFor(lease)),
     approveOnce: lease => module.approveApproval(tokenFor(lease)),

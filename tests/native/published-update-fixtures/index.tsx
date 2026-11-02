@@ -1,3 +1,4 @@
+import { publicFixtureSigningMethods } from '../public-signing-methods';
 import { registerRootComponent } from 'expo';
 import * as SQLite from 'expo-sqlite';
 import { useEffect, useState, useSyncExternalStore } from 'react';
@@ -11,7 +12,7 @@ import { loadNativeCapabilityPort } from '../../../src/runtime/native-capability
 import { createRuntimeOwner, type RuntimeOwner } from '../../../src/runtime/runtime-owner';
 import { ApprovalService } from '../../../src/security/approval-service';
 import { createApprovalOwner } from '../../../src/security/approval-owner';
-import { formatNpub, publicKeyFromNsec } from '../../../src/security/identity-crypto';
+import { formatNpub } from '../../../src/security/public-identity';
 import { IdentityTransition } from '../../../src/security/identity-transition';
 import { VaultError, type VaultSnapshot } from '../../../src/security/identity-vault';
 import type { TrustedIdentityOwner } from '../../../src/security/trusted-identity-owner';
@@ -33,11 +34,11 @@ const identity: VaultSnapshot = Object.freeze({ vaultId: 'public_published_updat
 async function openPublicFixture(): Promise<TrustedIdentityOwner> {
   if (Platform.OS !== 'ios' && Platform.OS !== 'android') throw new Error('PUBLIC_FIXTURE_UNAVAILABLE');
   const database = await openShellDatabase(SQLite, Platform.OS);
-  const vault = Object.freeze({ getSnapshot: () => identity,
+  const vault = Object.freeze({ ...publicFixtureSigningMethods(() => identity), getSnapshot: () => identity,
     select: async (_pubkey: string): Promise<VaultSnapshot> => { throw new VaultError('NOT_FOUND'); },
-    importNsec: async (_input: string): Promise<VaultSnapshot> => { throw new VaultError('INVALID_NSEC'); },
+    prepareImport: async () => null, cancelImport: () => {}, commitImport: async (): Promise<VaultSnapshot> => { throw new VaultError('AUTHORIZATION_DENIED'); },
   });
-  const transition = await IdentityTransition.open({ vault, database, publicKeyFromNsec,
+  const transition = await IdentityTransition.open({ vault, database,
     seed: emptyWorkspace, assertAvailable: assertWorkspaceAvailability });
   let runtime: RuntimeOwner | null = null;
   const approvals = new ApprovalService(loadNativeApprovalPort(), createApprovalOwner(transition, origin => {

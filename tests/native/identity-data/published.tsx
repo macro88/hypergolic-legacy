@@ -1,3 +1,4 @@
+import { publicFixtureSigningMethods } from '../public-signing-methods';
 /** Isolated QA of normal signed admission with public disposable identities and diagnostic frames. */
 import {registerRootComponent} from 'expo';
 import * as SQLite from 'expo-sqlite';
@@ -6,7 +7,7 @@ import {Platform,Pressable,StyleSheet,Text,View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import {initializeNativeRandom} from '../../../src/security/crypto-bootstrap';
-import {formatNpub,publicKeyFromNsec} from '../../../src/security/identity-crypto';
+import {formatNpub} from '../../../src/security/public-identity';
 import {IdentityTransition} from '../../../src/security/identity-transition';
 import {VaultError,type VaultSnapshot} from '../../../src/security/identity-vault';
 import type {TrustedIdentityOwner} from '../../../src/security/trusted-identity-owner';
@@ -39,11 +40,11 @@ async function openFixture(notify:(value:Observation)=>void):Promise<{owner:Trus
  const makeSnapshot=(selectedPubkey:string,revision:number):VaultSnapshot=>Object.freeze({vaultId:'public_identity_admission_fixture',revision,selectedPubkey,
   identities:Object.freeze([fixture.user,fixture.other].map(pubkey=>Object.freeze({pubkey,addedAt:1,origin:'generated' as const,status:'active' as const}))),pendingDeletion:null});
  let snapshot=makeSnapshot(row.selected,row.revision);
- const vault={getSnapshot:()=>snapshot,async select(pubkey:string){if(![fixture.user,fixture.other].includes(pubkey))throw new VaultError('NOT_FOUND');
+ const vault={...publicFixtureSigningMethods(()=>snapshot),getSnapshot:()=>snapshot,async select(pubkey:string){if(![fixture.user,fixture.other].includes(pubkey))throw new VaultError('NOT_FOUND');
   const next=makeSnapshot(pubkey,snapshot.revision+1);await qa.runAsync('UPDATE qa SET selected=?,revision=? WHERE id=1',pubkey,next.revision);snapshot=next;return next;},
-  async importNsec():Promise<VaultSnapshot>{throw new VaultError('INVALID_NSEC');}};
+  async prepareImport(){return null;},cancelImport(){},async commitImport():Promise<VaultSnapshot>{throw new VaultError('AUTHORIZATION_DENIED');}};
  const database=await openShellDatabase(SQLite,platform),cache=await openIdentityCache(SQLite,platform);
- const transition=await IdentityTransition.open({vault,database,publicKeyFromNsec,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
+ const transition=await IdentityTransition.open({vault,database,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
  const listAccess=await openIdentityListAccess(SQLite,platform,loadIdentityListNativePolicy(),()=>{const state=transition.getSnapshot();return state.phase==='ready'?state.session.vault.selectedPubkey:'';});
  const native=loadNativeCapabilityPort(),tokens=new Map<string,{type:string;user:string}>();
  const observed={...native,take(token:string){const raw=native.take(token);if(raw){const value=JSON.parse(raw);tokens.set(token,{type:JSON.parse(value.request).type,user:value.registration.user});}return raw;},

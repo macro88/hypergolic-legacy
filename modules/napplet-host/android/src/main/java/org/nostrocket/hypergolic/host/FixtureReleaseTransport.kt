@@ -9,7 +9,7 @@ import java.util.UUID
 
 /** Packaged code only: no file picker, caller-supplied HTML or generic guest upload path. */
 internal object FixtureReleaseTransport {
-  private val owner = FixtureReleaseAuthority(SystemClock::elapsedRealtime)
+  internal val owner = FixtureReleaseAuthority(SystemClock::elapsedRealtime)
   fun synchronize(user: String, epoch: Long, available: Boolean) { require(owner.synchronize(user, epoch, available)) }
   fun foreground(active: Boolean) = owner.foreground(active)
   fun cancel() = owner.cancel()

@@ -57,6 +57,7 @@ public final class NativeApprovalAuthority {
   private final LinkedHashMap<RequestHandle, Request> requests = new LinkedHashMap<>();
   private SessionHandle focused;
   private ApprovalHandle approved;
+  private NativeSigningHold handoff;
   private boolean foreground;
   private boolean paused;
   private boolean clockFailed;
@@ -80,12 +81,17 @@ public final class NativeApprovalAuthority {
     sessions.remove(session.generation);
     if (focused == session) focused = null;
     requests.entrySet().removeIf(entry -> entry.getValue().session == session);
-    if (approved != null && !requests.containsKey(approved.request)) approved = null;
+    if (approved != null && !requests.containsKey(approved.request)) { approved = null; handoff = null; }
   }
   public synchronized void setForeground(boolean value) {
     prune();
     foreground = value;
-    if (!value) { paused = true; revokeApproved(); }
+    if (value) { if (handoff != null) handoff.foreground(); }
+    else {
+      paused = true;
+      if (handoff != null) handoff.background();
+      if (!handoffRetained()) revokeApproved();
+    }
   }
   public synchronized void setFocused(SessionHandle session) {
     prune();
@@ -135,7 +141,7 @@ public final class NativeApprovalAuthority {
   public synchronized void cancel(RequestHandle handle) {
     prune();
     requests.remove(handle);
-    if (approved != null && approved.request == handle) approved = null;
+    if (approved != null && approved.request == handle) { approved = null; handoff = null; }
   }
   public synchronized void cancel(ApprovalHandle handle) { finish(handle); }
   public synchronized boolean dismiss(RequestHandle handle) {
@@ -148,7 +154,7 @@ public final class NativeApprovalAuthority {
   }
   public synchronized boolean resumeReview() {
     prune();
-    if (clockFailed || !foreground || !registered(focused)) return false;
+    if (clockFailed || !foreground || !registered(focused) || handoffRetained()) return false;
     paused = false;
     return true;
   }
@@ -167,11 +173,37 @@ public final class NativeApprovalAuthority {
     return null;
   }
   private boolean validApproval(ApprovalHandle handle) {
-    if (handle == null || approved != handle || !mayReview()) return false;
+    if (handle == null || approved != handle || !foreground || clockFailed) return false;
+    if (handoff != null && handoff.pending(lastTime)) return false;
+    if (paused && !(handoff != null && handoff.resumed(lastTime))) return false;
     Request request = requests.get(handle.request);
     return request != null && request.session == focused && registered(request.session);
   }
+  /** Called only by the native signer after its exact review gesture and signing claim. */
+  synchronized NativeSigningHold hold(ApprovalHandle grant, long deadline) {
+    prune();
+    if (!validApproval(grant) || handoff != null || deadline <= lastTime) return null;
+    handoff = new NativeSigningHold(Math.min(deadline, requests.get(grant.request).expires));
+    return handoff;
+  }
+  synchronized boolean held(ApprovalHandle grant, NativeSigningHold expected) {
+    prune();
+    return expected != null && handoff == expected && approved == grant && handoffRetained();
+  }
+  synchronized boolean resume(ApprovalHandle grant, NativeSigningHold expected) {
+    return held(grant, expected) && foreground && expected.resume(lastTime);
+  }
+  synchronized boolean pending(ApprovalHandle grant) {
+    prune();
+    return grant != null && approved == grant && handoff != null && handoff.pending(lastTime);
+  }
+  private boolean handoffRetained() {
+    if (handoff == null || !handoff.active(lastTime) || approved == null) return false;
+    Request row = requests.get(approved.request);
+    return row != null && row.session == focused && registered(row.session);
+  }
   private void revokeApproved() {
+    handoff = null;
     if (approved != null) requests.remove(approved.request);
     approved = null;
   }
@@ -191,6 +223,7 @@ public final class NativeApprovalAuthority {
         iterator.remove();
       }
     }
+    if (handoff != null && !handoffRetained()) revokeApproved();
     return expired;
   }
 }

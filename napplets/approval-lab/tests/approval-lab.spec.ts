@@ -81,6 +81,7 @@ async function fixtureState<T>(frame: FrameLocator, operation: string, value?: u
     if (input.operation === 'resolve-all') { state.resolveAll(); return null; }
     if (input.operation === 'summary') return { calls: state.calls, delays: state.delays };
     if (input.operation === 'frozen') return state.frozen;
+    if (input.operation === 'identity-change') { state.pushIdentity(input.value); return null; }
     if (input.operation === 'late-identity') {
       state.pushIdentity('b'.repeat(64)); state.identity('a'.repeat(64)); return null;
     }
@@ -103,6 +104,26 @@ async function fixtureState<T>(frame: FrameLocator, operation: string, value?: u
     throw new Error(`Unknown fixture operation: ${input.operation}`);
   }, { operation, value });
 }
+
+test('accessible name includes the current validated public identity', async ({ page }) => {
+  const frame = await mount(page);
+  await expect(frame.getByRole('status', { name: `Selected public identity: ${first}`, exact: true })).toHaveText(first);
+});
+
+test('accessible identity follows a push instead of the stale startup result', async ({ page }) => {
+  const frame = await mount(page, 'delayIdentity');
+  await fixtureState(frame, 'late-identity');
+  await expect(frame.getByRole('status', { name: `Selected public identity: ${second}`, exact: true })).toHaveText(second);
+  await expect(frame.getByRole('status', { name: `Selected public identity: ${first}`, exact: true })).toHaveCount(0);
+});
+
+for (const [reason, unavailable] of [['sign-out', ''], ['invalid identity', 'not-a-public-key'], ['trailing line break', first + '\n']]) test(`accessible identity clears the previous key on ${reason}`, async ({ page }) => {
+  const frame = await mount(page);
+  await fixtureState(frame, 'identity-change', unavailable);
+  await expect(frame.getByRole('status', { name: 'No identity selected', exact: true })).toHaveText('');
+  await expect(frame.getByRole('status', { name: `Selected public identity: ${first}`, exact: true })).toHaveCount(0);
+  await expect(frame.getByTestId('send')).toBeDisabled();
+});
 
 test('artifact is one unsigned inline file with exact identity and relay requirements', () => {
   expect(readdirSync(build).sort()).toEqual(['.nip5a-manifest.json', 'index.html']);

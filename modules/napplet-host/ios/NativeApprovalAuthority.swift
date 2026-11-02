@@ -59,6 +59,7 @@ final class NativeApprovalAuthority: @unchecked Sendable {
     let snapshot: String
     let order: UInt64
     let expires: Duration
+    var executionPaused = false
     var status: RequestStatus
     var isPending: Bool { if case .pending = status { true } else { false } }
   }
@@ -225,6 +226,22 @@ final class NativeApprovalAuthority: @unchecked Sendable {
     }
   }
 
+  /// Native-only pause, under the same authority lock as review and approval effects.
+  func pauseExecution(_ request: NativeApprovalRequestHandle, paused: Bool) -> Bool {
+    withState {
+      _ = prune(&$0)
+      guard !$0.clockFailed, $0.foreground, !$0.paused, var row = $0.requests[request],
+        $0.focused == row.session, $0.sessions[row.session] != nil, row.executionPaused != paused else { return false }
+      row.executionPaused = paused; $0.requests[request] = row; return true
+    }
+  }
+  func signingLifetime(_ request: NativeApprovalRequestHandle) -> Bool {
+    withState {
+      _ = prune(&$0)
+      guard !$0.clockFailed, let row = $0.requests[request] else { return false }
+      return $0.foreground && !$0.paused && $0.focused == row.session && $0.sessions[row.session] != nil
+    }
+  }
   func contains(_ request: NativeApprovalRequestHandle) -> Bool {
     withState {
       _ = prune(&$0)
@@ -316,8 +333,8 @@ final class NativeApprovalAuthority: @unchecked Sendable {
     guard state.foreground, !state.paused, let focused = state.focused,
       state.sessions[focused] != nil, approvedRequest(state) == nil else { return nil }
     if let current = state.current, let request = state.requests[current],
-      request.session == focused, request.isPending { return (current, request) }
-    let next = state.requests.lazy.filter { $0.value.session == focused && $0.value.isPending }
+      request.session == focused, request.isPending, !request.executionPaused { return (current, request) }
+    let next = state.requests.lazy.filter { $0.value.session == focused && $0.value.isPending && !$0.value.executionPaused }
       .min { $0.value.order < $1.value.order }
     guard let next else { state.current = nil; return nil }
     state.current = next.key
@@ -335,7 +352,7 @@ final class NativeApprovalAuthority: @unchecked Sendable {
   }
 
   private func approvalEligible(_ request: Request, state: State) -> Bool {
-    state.foreground && !state.paused && state.focused == request.session && state.sessions[request.session] != nil
+    !request.executionPaused && state.foreground && !state.paused && state.focused == request.session && state.sessions[request.session] != nil
   }
 
   private func removeRequests(session: NativeApprovalSessionHandle, state: inout State) {

@@ -11,21 +11,22 @@ const fixture = `
 export const fixture = { calls: [], available: false, availabilityFailure: null, claim: true, missingStore: false };
 export function forbidden(name) { fixture.calls.push(name); throw Error('TEST: forbidden '+name); }
 export const store = {
- isAvailableAsync: async () => { fixture.calls.push('available'); if(fixture.availabilityFailure) throw fixture.availabilityFailure; return fixture.available; },
- ...Object.fromEntries(['readInventoryAsync','writeInventoryAsync','readStageAsync','writeStageAsync','deleteStageAsync','readSecretAsync','writeSecretAsync','deleteSecretAsync'].map(name => [name, () => forbidden(name)]))
+ activateNativeVault() { fixture.calls.push('activate-vault'); return true; },
+ isNativeVaultAvailableAsync: async () => { fixture.calls.push('available'); if(fixture.availabilityFailure) throw fixture.availabilityFailure; return fixture.available; },
+ openNativeVaultAsync: async () => forbidden('open-native-vault'),
+ cancelNativeVaultAction() { fixture.calls.push('cancel-native-action'); }
 };
-export const actions = { activateIdentityActions() { fixture.calls.push('activate-actions'); } };
 `;
 const mocks = {
  'test:fixture': fixture,
- 'expo': `import {fixture,store,actions} from 'test:fixture'; export function requireNativeModule(name) { fixture.calls.push('module:'+name); if(name==='HypergolicIdentityStore'&&!fixture.missingStore) return store; if(name==='HypergolicIdentityActions') return actions; throw Error('TEST: module unavailable'); }`,
- 'react-native': `import {forbidden} from 'test:fixture'; export const Platform={OS:'ios'}; export const View='View',Text='Text',ActivityIndicator='ActivityIndicator',Modal='Modal'; export const StyleSheet={create:value=>value};`,
+ 'expo': `import {fixture,store} from 'test:fixture'; export function requireNativeModule(name) { fixture.calls.push('module:'+name); if(name==='HypergolicSignerCore'&&!fixture.missingStore) return store; throw Error('TEST: module unavailable'); }`,
+ 'react-native': `import {forbidden} from 'test:fixture'; export const Platform={OS:'ios'}; export const View='View',Text='Text',ActivityIndicator='ActivityIndicator',Modal='Modal',ScrollView='ScrollView',StatusBar='StatusBar'; export const useColorScheme=()=> 'light'; export const StyleSheet={create:value=>value};`,
  'expo-crypto': `import {forbidden} from 'test:fixture'; export const CryptoDigestAlgorithm={SHA256:'SHA-256'}; export const digest=()=>forbidden('artifact-digest'); export const digestStringAsync=()=>forbidden('config-digest');`,
  'expo-sqlite': `import {forbidden} from 'test:fixture'; export const openDatabaseAsync=()=>forbidden('open-sqlite');`,
  'expo-secure-store': `import {forbidden} from 'test:fixture'; export const WHEN_UNLOCKED_THIS_DEVICE_ONLY='when-unlocked-device-only'; export const isAvailableAsync=()=>forbidden('secure-store'); export const getItemAsync=()=>forbidden('config-read'); export const setItemAsync=()=>forbidden('config-write'); export const deleteItemAsync=()=>forbidden('config-delete');`,
  'expo-image': `export const Image='Image';`,
  'react-native-safe-area-context': `export const SafeAreaView='SafeAreaView',SafeAreaProvider='SafeAreaProvider';`,
- 'react': `export * from '${root}/node_modules/react/index.js'; export function useEffect() {} export function useSyncExternalStore(subscribe,getState) { return getState(); }`,
+ 'react': `export * from '${root}/node_modules/react/index.js'; export function useEffect() {} export function useMemo(create) { return create(); } export function useContext(context) { return context._currentValue; } export function useSyncExternalStore(subscribe,getState) { return getState(); }`,
  'native-identity-owner': `import {fixture} from 'test:fixture'; export function claimIdentityOwner(){fixture.calls.push('claim');return fixture.claim;}`,
  'crypto-bootstrap': `import {fixture} from 'test:fixture'; export function initializeNativeRandom(){fixture.calls.push('initialize-random');}`,
  'identity-crypto': `import {forbidden} from 'test:fixture'; export const identityCrypto={generateSecretKey:()=>forbidden('generate-key'),derivePublicKey:()=>forbidden('derive-key'),parseNsec:()=>forbidden('parse-nsec'),newId:()=>forbidden('random-id'),now:()=>forbidden('clock')}; export const formatNpub=()=>forbidden('format-npub'); export const publicKeyFromNsec=()=>forbidden('import-key');`,

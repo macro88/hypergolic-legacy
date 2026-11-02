@@ -22,6 +22,7 @@ SOURCES = [
     NATIVE / "PublishedRelayWebSocketFrames.swift",
     NATIVE / "PublishedRelayWebSocketClientFrames.swift",
     NATIVE / "PublishedRelayWebSocketQuery.swift",
+    NATIVE / "NativeSignerRelayPolicy.swift",
     NATIVE / "PublishedRelayEnvelope.swift",
 ]
 

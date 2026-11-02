@@ -69,26 +69,11 @@ enum PublishedRelayWebSocketQuery {
     let target: String
 
     init(_ input: String) throws {
-      guard input.utf8.count <= 2048, input == input.trimmingCharacters(in: .whitespacesAndNewlines),
-            !input.contains("\\"), !input.utf8.contains(where: { $0 <= 0x20 || $0 == 0x7f }),
-            let parts = URLComponents(string: input), parts.scheme?.lowercased() == "wss",
-            parts.user == nil, parts.password == nil, parts.query == nil, parts.fragment == nil,
-            let host = parts.host?.lowercased(), host.count <= 253, host.contains("."),
-            !host.contains(":"), !host.hasSuffix("."),
-            parts.port == nil || (1...65535).contains(parts.port!) else { throw Failure.invalidURL }
-      let labels = host.split(separator: ".", omittingEmptySubsequences: false)
-      guard labels.allSatisfy({ label in
-        !label.isEmpty && label.count <= 63 && label.first != "-" && label.last != "-" &&
-          label.utf8.allSatisfy { ($0 >= 97 && $0 <= 122) || ($0 >= 48 && $0 <= 57) || $0 == 45 }
-      }), !host.utf8.allSatisfy({ ($0 >= 48 && $0 <= 57) || $0 == 46 }),
-            !["localhost", "local", "localdomain", "internal", "home", "home.arpa", "lan", "test", "example", "invalid", "onion", "arpa"].contains(where: { host == $0 || host.hasSuffix(".\($0)") }),
-            labels.last?.utf8.allSatisfy({ $0 >= 48 && $0 <= 57 }) != true
-      else { throw Failure.invalidURL }
-      let path = parts.percentEncodedPath.isEmpty ? "/" : parts.percentEncodedPath
-      guard path.hasPrefix("/"), path.utf8.allSatisfy({ $0 >= 33 && $0 <= 126 }),
-            path.range(of: "%([01][0-9a-fA-F]|7[fF])", options: .regularExpression) == nil
-      else { throw Failure.invalidURL }
-      self.host = host; self.port = UInt16(parts.port ?? 443); self.target = path
+      let endpoint: NativeSignerRelayPolicy.Endpoint
+      do { endpoint = try NativeSignerRelayPolicy.endpoint(input) } catch { throw Failure.invalidURL }
+      host = endpoint.host; port = endpoint.port
+      let originalPath = URLComponents(string: input)?.percentEncodedPath ?? ""
+      target = originalPath.isEmpty ? "/" : originalPath // Preserve the ordinary query's exact accepted path.
     }
 
     func upgrade(nonce: Data) throws -> Data {

@@ -1,3 +1,4 @@
+import { publicFixtureSigningMethods } from '../public-signing-methods';
 /** Normal IdentityShell/signed local link admission with disposable public identities. */
 import {registerRootComponent,requireNativeModule} from 'expo';
 import * as SQLite from 'expo-sqlite';
@@ -6,7 +7,7 @@ import {Platform,StyleSheet,Text,View} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider,SafeAreaView} from 'react-native-safe-area-context';
 import {initializeNativeRandom} from '../../../src/security/crypto-bootstrap';
-import {formatNpub,publicKeyFromNsec} from '../../../src/security/identity-crypto';
+import {formatNpub} from '../../../src/security/public-identity';
 import {IdentityTransition} from '../../../src/security/identity-transition';
 import {VaultError,type VaultSnapshot} from '../../../src/security/identity-vault';
 import type {TrustedIdentityOwner} from '../../../src/security/trusted-identity-owner';
@@ -32,11 +33,11 @@ async function openFixture():Promise<TrustedIdentityOwner>{
  const makeSnapshot=(selectedPubkey:string,revision:number):VaultSnapshot=>Object.freeze({vaultId:'public_link_admission_fixture',revision,selectedPubkey,
   identities:Object.freeze(USERS.map(pubkey=>Object.freeze({pubkey,addedAt:1,origin:'generated' as const,status:'active' as const}))),pendingDeletion:null});
  let snapshot=makeSnapshot(row.selected,row.revision);
- const vault={getSnapshot:()=>snapshot,async select(pubkey:string){if(!USERS.includes(pubkey))throw new VaultError('NOT_FOUND');
+ const vault={...publicFixtureSigningMethods(()=>snapshot),getSnapshot:()=>snapshot,async select(pubkey:string){if(!USERS.includes(pubkey))throw new VaultError('NOT_FOUND');
   const next=makeSnapshot(pubkey,snapshot.revision+1);await qa.runAsync('UPDATE qa SET selected=?,revision=? WHERE id=1',pubkey,next.revision);snapshot=next;return next;},
-  async importNsec():Promise<VaultSnapshot>{throw new VaultError('INVALID_NSEC');}};
+  async prepareImport(){return null;},cancelImport(){},async commitImport():Promise<VaultSnapshot>{throw new VaultError('AUTHORIZATION_DENIED');}};
  const database=await openShellDatabase(SQLite,platform);
- const transition=await IdentityTransition.open({vault,database,publicKeyFromNsec,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
+ const transition=await IdentityTransition.open({vault,database,seed:emptyWorkspace,assertAvailable:assertWorkspaceAvailability});
  bindLinkOwner(transition,requireNativeModule<NativeLinkOwner>('HypergolicNappletHost'));
  const query={async query(){return [];}};
  const runtime=createRuntimeOwner(database,transition,loadNativeCapabilityPort(),undefined,{sqlite:SQLite,native:loadNativePublishedTransferPort(),lookupRelays:()=>['wss://relay.example.org'],

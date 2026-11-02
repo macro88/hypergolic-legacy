@@ -126,7 +126,7 @@ test('the peer fixture uses its distinct verified app identity', async ({page}) 
   expect(result.title).toContain('Peer');
 });
 
-for (const fixture of ['approval-lab', 'approval-lab-v1', 'approval-lab-v2']) test(`Approval Lab ${fixture} admits only the unsigned publish template through the native override`, async ({page}) => {
+for (const fixture of ['approval-lab', 'approval-lab-v1', 'approval-lab-v2', 'approval-lab-v3']) test(`Approval Lab ${fixture} admits only the unsigned publish template through the native override`, async ({page}) => {
   const frame = await open(page, fixture);
   const ui = page.frameLocator('#napplet');
   await ui.locator('#content').fill('approved note');

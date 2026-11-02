@@ -34,7 +34,7 @@
     "@napplet/vite-plugin": "0.14.1",
     "@playwright/test": "1.63.0",
     "typescript": "6.0.3",
-    "vite": "7.3.6"
+    "vite": "7.3.7"
   },
   "pnpm": {
     "overrides": {

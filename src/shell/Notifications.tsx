@@ -4,7 +4,7 @@ import {AppState, FlatList, Modal, ScrollView, StyleSheet, Text, View} from 'rea
 import { ShellPressable as Pressable } from './ShellPressable';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {NotifyBroker, NotificationBadge, NotificationCard, NotifyReview} from '../presentation/notify-broker';
-import {formatNpub} from '../security/identity-crypto';
+import {formatNpub} from '../security/public-identity';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 function Button({label, id, onPress}: {label: string; id: string; onPress(): void}) {
   const { styles } = useShellStyles(createStyles);return <Pressable testID={id} accessibilityRole="button" onPress={onPress} style={styles.button}><Text style={styles.action}>{label}</Text></Pressable>;}

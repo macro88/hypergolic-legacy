@@ -31,7 +31,6 @@ import { openNativeUploadSettings, type NativeUploadSettings, type UploadConfigu
 import { loadNativeResourceHost } from '../resources/native-resource-port';
 import { openNativeResourceSettings, type NativeResourceSettings } from '../resources/resource-settings-native';
 import {loadNativeRelaySubscriptions} from '../network/native-relay-subscription-port';
-import { finalizeEvent } from 'nostr-tools/pure';
 import { ApprovalService } from './approval-service';
 import { createApprovalOwner, createUploadOwner } from './approval-owner';
 import { loadNativeApprovalPort } from '../runtime/native-approval-port';
@@ -44,14 +43,12 @@ import { loadNativeCapabilityPort } from '../runtime/native-capability-port';
 import { loadNativePublishedArtifactSource } from '../napplets/native-published-source-port';
 import { loadNativePublishedTransferPort } from '../napplets/native-transfer-port';
 import * as SQLite from 'expo-sqlite';
-import * as SecureStore from 'expo-secure-store';
-import type { IdentityActions } from './identity-actions';
-import { IdentityVault, VaultError } from './identity-vault';
-import { openIdentityMetadata } from './identity-metadata';
-import { createProtectedSecrets } from './android-encrypted-secrets';
-import { loadIdentityActions } from './identity-actions-native';
-import { loadIOSIdentitySecrets } from './identity-store-native';
-import { identityCrypto, formatNpub, publicKeyFromNsec } from './identity-crypto';
+import { createNativeIdentityActions, type IdentitySettingsActions } from './native-identity-actions';
+import type { NativeVaultModule } from './native-vault-contract';
+import { VaultError } from './identity-vault-model';
+import { IdentityDeviceRequired } from './identity-device-required';
+import { NativeIdentityVault } from './native-identity-vault';
+import { formatNpub } from './public-identity';
 import { openShellDatabase } from '../storage/database';
 import { IdentityTransition } from './identity-transition';
 import { assertWorkspaceAvailability, initialTestWorkspace } from '../shell/fixtures';
@@ -64,7 +61,7 @@ export interface TrustedIdentityOwner {
   readonly routing?: Readonly<{broker: RoutingBroker; catalog: RoutingCatalog; reviews: RoutingReviewService; settings: RoutingSettingsService}>;
   readonly listAccess?: IdentityListAccess | null;
   readonly transition: IdentityTransition;
-  readonly actions?: IdentityActions;
+  readonly actions?: IdentitySettingsActions;
   readonly runtime?: RuntimeOwner;
   readonly approvals?: ApprovalService;
   readonly uploads?: UploadService;
@@ -77,7 +74,7 @@ export interface TrustedIdentityOwner {
 export class WorkspaceStartupError extends Error {
   constructor() { super('Workspace could not be opened'); this.name = 'WorkspaceStartupError'; }
 }
-async function openOwnerWorkspace(vault: IdentityVault, platform: 'android' | 'ios'): Promise<{ profileAvatar: ProfileAvatarStore; notificationSettings: NotificationSettingsService; config: ConfigBroker; notify: NotifyBroker; routing: Readonly<{broker: RoutingBroker; catalog: RoutingCatalog; reviews: RoutingReviewService; settings: RoutingSettingsService}>; listAccess: IdentityListAccess | null; transition: IdentityTransition; runtime: RuntimeOwner; approvals: ApprovalService; relaySettings: NativeRelaySettings | null; resourceSettings: NativeResourceSettings | null; uploadSettings: NativeUploadSettings | null; uploads: UploadService; fixturePublisher: FixturePublisher }> {
+async function openOwnerWorkspace(vault: NativeIdentityVault, platform: 'android' | 'ios'): Promise<{ profileAvatar: ProfileAvatarStore; notificationSettings: NotificationSettingsService; config: ConfigBroker; notify: NotifyBroker; routing: Readonly<{broker: RoutingBroker; catalog: RoutingCatalog; reviews: RoutingReviewService; settings: RoutingSettingsService}>; listAccess: IdentityListAccess | null; transition: IdentityTransition; runtime: RuntimeOwner; approvals: ApprovalService; relaySettings: NativeRelaySettings | null; resourceSettings: NativeResourceSettings | null; uploadSettings: NativeUploadSettings | null; uploads: UploadService; fixturePublisher: FixturePublisher }> {
   const database = await openShellDatabase(SQLite, platform).catch(() => { throw new WorkspaceStartupError(); });
   let relaySettings: NativeRelaySettings | null = null;
   let resourceSettings: NativeResourceSettings | null = null;
@@ -103,7 +100,7 @@ async function openOwnerWorkspace(vault: IdentityVault, platform: 'android' | 'i
     outboxCache = await openOutboxRelayListCache(SQLite, platform);
     const outbox = loadNativeOutboxReadService(outboxCache, () => relaySettings?.getSettings() ?? {networkRelays: [], lookupRelays: []});
     const queries = loadNativeRelayQuery(() => relaySettings?.getSettings().networkRelays ?? []);
-    const transition = await IdentityTransition.open({ vault, database, publicKeyFromNsec, seed: initialTestWorkspace, assertAvailable: assertWorkspaceAvailability });
+    const transition = await IdentityTransition.open({ vault, database, seed: initialTestWorkspace, assertAvailable: assertWorkspaceAvailability });
     releaseRouting = bindRoutingOwner(transition, requireNativeModule<NativeRoutingOwner>('HypergolicNappletHost'));
     releaseLinks = bindLinkOwner(transition, requireNativeModule<NativeLinkOwner>('HypergolicNappletHost'));
     try {listAccess = await openIdentityListAccess(SQLite, platform, loadIdentityListNativePolicy(), () => {const state = transition.getSnapshot(); return state.phase === 'ready' ? state.session.vault.selectedPubkey : '';});} catch {listAccess = null;}
@@ -112,24 +109,19 @@ async function openOwnerWorkspace(vault: IdentityVault, platform: 'android' | 'i
       if (!runtime) throw new Error('APPROVAL_DENIED');
       runtime.assertPublishedApproval(origin,domain);
     }), {
-      sign: (snapshot, execution) => vault.signApproved(snapshot, execution, (event, secret) => {
-        const signed = finalizeEvent(event, secret);
-        return { id: signed.id, pubkey: signed.pubkey, created_at: signed.created_at, kind: signed.kind,
-          content: signed.content, tags: signed.tags, sig: signed.sig };
-      }),
+      handoffState: source => vault.signingHandoffState(source),
+      sign: (snapshot, execution) => vault.signApproved(snapshot, execution),
       publishEvent,
     },outbox.publication);
     const uploads = new UploadService(loadNativeUploadPort(), createUploadOwner(transition, origin => {
       if (!runtime) throw new Error('APPROVAL_DENIED');
       runtime.assertPublishedUpload(origin);
     }), {
+      handoffState: source => vault.signingHandoffState(source),
       currentIdentity: () => transition.getSnapshot().phase === 'ready' ? transition.getSnapshot().session.vault.selectedPubkey : null,
       sha256: async bytes => Array.from(new Uint8Array(await digest(CryptoDigestAlgorithm.SHA256, bytes)), byte => byte.toString(16).padStart(2, '0')).join(''),
       nowSeconds: () => Math.floor(Date.now() / 1000),
-      sign: (snapshot, execution) => vault.signApprovedUpload(snapshot, execution, (event, secret) => {
-        const signed = finalizeEvent(event, secret);
-        return {id: signed.id, pubkey: signed.pubkey, created_at: signed.created_at, kind: signed.kind, content: signed.content, tags: signed.tags, sig: signed.sig};
-      }),
+      sign: (snapshot, execution) => vault.signApprovedUpload(snapshot, execution),
     });
     const capability = loadNativeCapabilityPort(), routingNative = loadRoutingNativePort();
     const reviews = new RoutingReviewService();
@@ -168,21 +160,18 @@ async function openOwnerWorkspace(vault: IdentityVault, platform: 'android' | 'i
 export async function openTrustedIdentityOwner(): Promise<TrustedIdentityOwner> {
   const platform = Platform.OS;
   if (platform !== 'android' && platform !== 'ios') throw new VaultError('STORAGE_FAILURE');
-  const actions = loadIdentityActions(platform);
-  const secrets = platform === 'ios'
-    ? await loadIOSIdentitySecrets(platform, actions.tokens)
-    : await createProtectedSecrets(SecureStore, platform, actions.androidDeletion);
-  const database = await openIdentityMetadata(SQLite, platform);
-  const vault = new IdentityVault({ ...identityCrypto, secrets, database, authorizeDeletion: async request => {
-    await actions.beginSettings({ selectedPubkey: request.selectedPubkey, revision: request.revision });
-    return actions.authorizeDeletion(request);
-  } });
+  const native = requireNativeModule<NativeVaultModule>('HypergolicSignerCore');
+  if (native.activateNativeVault() !== true) throw new VaultError('STORAGE_FAILURE');
+  const available = await native.isNativeVaultAvailableAsync();
+  if (available === false && platform === 'ios') throw new IdentityDeviceRequired();
+  if (available !== true) throw new VaultError('STORAGE_FAILURE');
+  const vault = new NativeIdentityVault(native);
+  const actions = createNativeIdentityActions(vault);
   try {
     await vault.open();
     return Object.freeze({ ...await openOwnerWorkspace(vault, platform), formatNpub, actions });
   } catch (error) {
     try { actions.dispose(); } catch { /* Native owner remains consumed. */ }
-    try { await database.close(); } catch { /* Preserve the initialization failure. */ }
     throw error;
   }
 }

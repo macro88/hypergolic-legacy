@@ -5,7 +5,7 @@ import { Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ShellPressable as Pressable } from './ShellPressable';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { UploadItem } from '../uploads/upload-service.ts';
-import { formatNpub } from '../security/identity-crypto.ts';
+import { formatNpub } from '../security/public-identity.ts';
 import { useShellStyles, type ShellPalette, type ShellFonts } from './theme';
 interface Props {item: UploadItem | null; title: string; onApprove(id: string): void; onReject(id: string): void}
 function preview(item: UploadItem): string | null {

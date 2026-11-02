@@ -14,9 +14,10 @@ HTTPS = ROOT / "tests/native/published-https"
 WSS = ROOT / "tests/native/ios-published-wss"
 SOURCES = [
     NATIVE / name for name in (
+        "NativeUploadAuthority.swift", "UploadFileProfile.swift", "UploadPngMetadata.swift", "UploadPngProfile.swift",
         "PublicAddressPolicy.swift", "PublishedHTTPResponse.swift", "PublishedPinnedHTTPS.swift",
         "PublishedRelayWebSocketHandshake.swift", "PublishedRelayWebSocketFrames.swift",
-        "PublishedRelayWebSocketClientFrames.swift", "PublishedRelayWebSocketQuery.swift",
+        "PublishedRelayWebSocketClientFrames.swift", "PublishedRelayWebSocketQuery.swift", "NativeSignerRelayPolicy.swift", "PublishedRelayEnvelope.swift",
     )
 ] + [
     HTTPS / "PublishedHTTPSTlsProof.swift", HTTPS / "tls_runner.py",
@@ -30,7 +31,7 @@ RUNNERS = [
     }),
     ("wss", WSS / "tls_runner.py", {
         "valid": 1, "failover": 1, "untrusted": 1, "wrong-host": 1,
-        "redirect": 1, "bad-accept": 1, "oversize": 1, "cancel": 1,
+        "redirect": 1, "bad-accept": 1, "oversize": 1, "cancel": 1, "auth-announcement": 1,
     }),
 ]
 

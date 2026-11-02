@@ -11,8 +11,10 @@ const origin = (sessionId: string, epoch = 1): ApprovalOrigin => Object.freeze({
 const deferred = <T>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; };
 type State = { live: boolean; approved: boolean };
 class Native implements NativeApprovalLeasePort {
+  sourceTokens = new WeakMap<NativeApprovalLease, string>();
+  signingSource(lease: NativeApprovalLease) { const token = this.sourceTokens.get(lease); assert(token); return { kind: 'approval' as const, token }; }
   states = new Map<NativeApprovalLease, State>(); tokens = new Map<string, NativeTakenApproval>(); cancelled = 0; finished = 0; responses: (string | null)[] = [];
-  issue(token: string, owner = origin(token), requestId = `wire-${token}`, request = event()) { const lease = {}; const taken = Object.freeze({ lease, origin: owner, requestId, event: request }); this.states.set(lease, { live: true, approved: false }); this.tokens.set(token, taken); return taken; }
+  issue(token: string, owner = origin(token), requestId = `wire-${token}`, request = event()) { const lease = {}; this.sourceTokens.set(lease, token); const taken = Object.freeze({ lease, origin: owner, requestId, event: request }); this.states.set(lease, { live: true, approved: false }); this.tokens.set(token, taken); return taken; }
   state(lease: NativeApprovalLease) { const value = this.states.get(lease); if (!value) throw new Error('unknown lease'); return value; }
   take(token: string) { const value = this.tokens.get(token) ?? null; this.tokens.delete(token); return value; }
   isLive(lease: NativeApprovalLease) { return this.state(lease).live; }
@@ -227,3 +229,48 @@ test('background after publication dispatch retains uncertainty after the pendin
   assert.equal(service.hasCloseRisk('one'), true);
   service.close('one'); assert.equal(service.hasCloseRisk('one'), false);
 });
+
+
+test('exact native handoff waits for foreground delivery and keeps unrelated review paused', async () => {
+  const native = new Native(), taken = native.issue('one'), gate = deferred<unknown>();
+  let status: 'pending' | 'resumed' | null = null, publication = 0, captured: any;
+  const service = make(native, {
+    handoffState(source) { assert.deepEqual(source, { kind: 'approval', token: 'one' }); return status; },
+    sign: async snapshot => { captured = snapshot; return gate.promise; },
+    publishEvent: async (event, relays, authority) => {
+      authority.assertActive(); publication++;
+      return relays.map(relay => ({ relay, eventId: event.id, status: 'accepted' as const, reason: '' }));
+    },
+  });
+  const pending = service.approve(current(service, 'one'));
+  status = 'pending'; native.state(taken.lease).live = false; service.background(); service.refresh();
+  assert.equal(service.getSnapshot().pending, 1); assert.equal(native.cancelled, 0); assert.equal(publication, 0);
+  status = 'resumed'; native.state(taken.lease).live = true; gate.resolve(sign(captured));
+  await new Promise<void>(resolve => setImmediate(resolve)); assert.equal(publication, 0);
+  service.foreground(); await pending;
+  assert.equal(publication, 1); assert.equal(service.getSnapshot().reviewPaused, true);
+  native.issue('two'); service.enqueue('two', [relay]); service.focus('two');
+  assert.equal(service.getSnapshot().current, null);
+});
+
+for (const action of ['close', 'revision', 'query-error', 'native-revoke', 'second-background'] as const) {
+  test(`handoff ${action} cannot restore publication from a late signer result`, async () => {
+    const native = new Native(), taken = native.issue('one'), gate = deferred<unknown>();
+    let status: 'pending' | 'resumed' | null = null, queryError = false, publication = 0, captured: any;
+    const service = make(native, {
+      handoffState() { if (queryError) throw new Error('Unavailable'); return status; },
+      sign: async snapshot => { captured = snapshot; return gate.promise; },
+      publishEvent: async () => { publication++; return []; },
+    });
+    const pending = service.approve(current(service, 'one')), rejected = assert.rejects(pending);
+    status = 'pending'; native.state(taken.lease).live = false; service.background(); service.refresh();
+    assert.equal(native.cancelled, 0);
+    if (action === 'close') service.close('one');
+    if (action === 'revision') service.revisionChanged(2);
+    if (action === 'query-error') { queryError = true; service.refresh(); }
+    if (action === 'native-revoke') { status = 'resumed'; service.foreground(); }
+    if (action === 'second-background') { status = 'resumed'; service.foreground(); service.background(); }
+    gate.resolve(sign(captured)); await rejected;
+    assert.equal(publication, 0); assert.equal(service.getSnapshot().pending, 0);
+  });
+}

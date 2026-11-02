@@ -6,7 +6,7 @@ const compiled = await buildPreflight();
 after(() => rm(compiled.directory, { recursive: true, force: true }));
 let next = 0;
 const fresh = () => import(`${compiled.url.href}?case=${next++}`);
-const noIdentityEffects = calls => assert(!calls.some(call => /sqlite|secure-store|Inventory|Stage|Secret|generate-key|derive-key|random-id/.test(call)), calls.join(','));
+const noIdentityEffects = calls => assert(!calls.some(call => /sqlite|secure-store|open-native-vault|Inventory|Stage|Secret|generate-key|derive-key|random-id/.test(call)), calls.join(','));
 async function settled(module) {
  const completed = new Promise(resolve => {
   const stop=module.subscribeIdentity(()=>{if(module.getIdentityState().status!=='opening'){stop();resolve();}});
@@ -23,7 +23,7 @@ function textOf(element) {
 test('actual iOS owner composition denies Simulator before SQLite open or identity persistence', async () => {
  const module=await fresh();
  await assert.rejects(module.openTrustedIdentityOwner(),module.IdentityDeviceRequired);
- assert.deepEqual(module.fixture.calls,['module:HypergolicIdentityActions','activate-actions','module:HypergolicIdentityStore','available']);
+ assert.deepEqual(module.fixture.calls,['module:HypergolicSignerCore','activate-vault','available']);
  noIdentityEffects(module.fixture.calls);
 });
 test('actual state/entry renders device-required and repeated starts never retry persistence', async () => {
@@ -67,9 +67,9 @@ test('consumed process owner remains restart-required before any module or stora
  assert.deepEqual(module.fixture.calls,['claim']);
  assert.match(textOf(module.IdentityEntry()),/Restart Hypergolic/);
 });
-test('literal supported result reaches existing metadata path, without claiming real storage success',async()=>{
+test('literal supported result reaches native persistence once without JavaScript secret storage',async()=>{
  const module=await fresh();module.fixture.available=true;
  await assert.rejects(module.openTrustedIdentityOwner());
- assert.equal(module.fixture.calls.at(-1),'open-sqlite');
- assert.equal(module.fixture.calls.filter(value=>value==='open-sqlite').length,1);
+ assert.equal(module.fixture.calls.filter(value=>value==='open-native-vault').length,1);
+ assert(!module.fixture.calls.some(value=>/sqlite|secure-store|generate-key|Secret/.test(value)));
 });

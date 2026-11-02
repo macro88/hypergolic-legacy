@@ -19,6 +19,9 @@ final class PublishedRelayWebSocketFrames {
         }
     }
 
+    private let maximumBytes: Int
+    init(maximumBytes: Int = PublishedRelayWebSocketFrames.maxBytes) { self.maximumBytes = maximumBytes }
+
     private enum State { case base, extended, payload }
     private var state = State.base
     private var base: [UInt8] = []
@@ -31,13 +34,17 @@ final class PublishedRelayWebSocketFrames {
     private var message: [UInt8]?
     private var failed = false
     private var closed = false
+    private(set) var completedFrames = 0
+    private(set) var consumedInput = 0
 
     func feed(_ input: Data) -> [Event] {
         var events: [Event] = []
+        consumedInput = 0
         guard input.count <= Self.maxRead else { fail(&events, "read-too-large"); return events }
         guard !failed && !closed else { fail(&events, "closed"); return events }
         for byte in input {
             if failed || closed { break }
+            consumedInput += 1
             switch state {
             case .base:
                 base.append(byte)
@@ -79,17 +86,17 @@ final class PublishedRelayWebSocketFrames {
         if (extNeeded == 2 && length < 126) || (extNeeded == 8 && length < 65_536) {
             fail(&events, "noncanonical-length"); return
         }
-        guard length <= UInt64(Self.maxBytes) else { fail(&events, "frame-too-large"); return }
+        guard length <= UInt64(maximumBytes) else { fail(&events, "frame-too-large"); return }
         frameLength = Int(length)
         headerSize += extNeeded
         acceptLength(&events)
     }
 
     private func acceptLength(_ events: inout [Event]) {
-        guard headerSize + frameLength <= Self.maxBytes else { fail(&events, "frame-too-large"); return }
+        guard headerSize + frameLength <= maximumBytes else { fail(&events, "frame-too-large"); return }
         if opcode < 8 {
             let prior = opcode == 1 ? 0 : (message?.count ?? 0)
-            guard frameLength <= Self.maxBytes - prior else { fail(&events, "message-too-large"); return }
+            guard frameLength <= maximumBytes - prior else { fail(&events, "message-too-large"); return }
         }
         // Reserve only after both the raw-frame and accumulated-message limits pass.
         framePayload = []
@@ -99,6 +106,7 @@ final class PublishedRelayWebSocketFrames {
     }
 
     private func finishFrame(_ events: inout [Event]) {
+        completedFrames += 1
         switch opcode {
         case 1, 0:
             if opcode == 1 { message = [] }

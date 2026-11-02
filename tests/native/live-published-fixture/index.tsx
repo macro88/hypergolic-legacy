@@ -17,7 +17,7 @@ import { createRuntimeOwner, type RuntimeOwner } from '../../../src/runtime/runt
 import { ApprovalService } from '../../../src/security/approval-service';
 import { initializeNativeRandom } from '../../../src/security/crypto-bootstrap';
 import { createApprovalOwner } from '../../../src/security/approval-owner';
-import { formatNpub, publicKeyFromNsec } from '../../../src/security/identity-crypto';
+import { formatNpub } from '../../../src/security/public-identity';
 import { IdentityTransition } from '../../../src/security/identity-transition';
 import { VaultError, type VaultSnapshot } from '../../../src/security/identity-vault';
 import type { TrustedIdentityOwner } from '../../../src/security/trusted-identity-owner';
@@ -42,9 +42,9 @@ async function openPublicFixture(): Promise<TrustedIdentityOwner> {
   const database = await openShellDatabase(SQLite, Platform.OS);
   const vault = Object.freeze({ getSnapshot: () => identity,
     select: async (_pubkey: string): Promise<VaultSnapshot> => { throw new VaultError('NOT_FOUND'); },
-    importNsec: async (_input: string): Promise<VaultSnapshot> => { throw new VaultError('INVALID_NSEC'); },
+    prepareImport: async () => null, cancelImport: () => {}, commitImport: async (): Promise<VaultSnapshot> => { throw new VaultError('AUTHORIZATION_DENIED'); },
   });
-  const transition = await IdentityTransition.open({ vault, database, publicKeyFromNsec,
+  const transition = await IdentityTransition.open({ vault, database,
     seed: emptyWorkspace, assertAvailable: assertWorkspaceAvailability });
   let runtime: RuntimeOwner | null = null;
   const approvals = new ApprovalService(loadNativeApprovalPort(), createApprovalOwner(transition, origin => {

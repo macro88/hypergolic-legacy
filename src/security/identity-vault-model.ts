@@ -3,7 +3,7 @@ export const MAX_IDENTITIES = 16;
 export type Identity = Readonly<{
   pubkey: string;
   addedAt: number;
-  origin: 'generated' | 'imported';
+  origin: 'generated' | 'imported' | 'connected';
 }>;
 
 export type Inventory = Readonly<{
@@ -51,7 +51,18 @@ export type VaultErrorCode =
   | 'LIMIT_REACHED'
   | 'DELETE_SELECTED'
   | 'AUTHORIZATION_DENIED'
-  | 'PENDING_DELETION';
+  | 'PENDING_DELETION'
+  | 'INVALID_SIGNER_CONNECTION'
+  | 'SIGNER_ALREADY_CONNECTED'
+  | 'SIGNER_UNAVAILABLE' | 'SIGNER_RELAYS_CHANGED'
+  | 'SIGNER_REJECTED'
+  | 'SIGNER_EXPIRED'
+  | 'SIGNER_RESPONSE_INVALID'
+  | 'SIGNER_UNCERTAIN'
+  | 'SIGNER_UNSUPPORTED'
+  | 'SIGNER_IDENTITY_CHANGED'
+  | 'SIGNER_APP_FAILED'
+  | 'LOCAL_KEY_UNAVAILABLE';
 
 export class VaultError extends Error {
   readonly code: VaultErrorCode;
@@ -81,7 +92,7 @@ export const sameSecret = (left: Uint8Array, right: Uint8Array) =>
 export const same = (left: unknown, right: unknown) => JSON.stringify(left) === JSON.stringify(right);
 
 export function pubkey(value: unknown): value is string {
-  return typeof value === 'string' && HEX.test(value);
+  return typeof value === 'string' && value.length === 64 && HEX.test(value);
 }
 
 export function opaqueId(value: unknown): value is string {
@@ -137,7 +148,7 @@ export function inventory(value: unknown): Inventory {
   const identities: Identity[] = candidate.identities.map(item => {
     const identity = record(item);
     fields(identity, ['pubkey', 'addedAt', 'origin']);
-    if (!pubkey(identity.pubkey) || !integer(identity.addedAt) || !['generated', 'imported'].includes(String(identity.origin))) {
+    if (!pubkey(identity.pubkey) || !integer(identity.addedAt) || !['generated', 'imported', 'connected'].includes(String(identity.origin))) {
       throw new VaultError('CORRUPT_METADATA');
     }
     return { pubkey: identity.pubkey, addedAt: identity.addedAt, origin: identity.origin as Identity['origin'] };

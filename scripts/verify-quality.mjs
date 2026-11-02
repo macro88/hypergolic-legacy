@@ -118,7 +118,7 @@ export async function inspectInputs(root) {
 }
 
 export function slopTestFiles(files) {
-  // Mirrors the applicable JS/TS/Python test selection in aislop 0.16.0 source-file-policy.ts.
+  // Mirrors test selection in pinned aislop 0.16.0 source-file-policy.ts.
   const excluded = new Set(['node_modules', 'dist', 'build', '.git', '.agents', '.tools', '.codex',
     'android', 'ios', '.pnpm-store', '.yarn', 'bower', 'bower_components', 'jspm_packages', 'schemaspy',
     'generated', '__generated__', 'auto-generated', 'vendor', 'vendors', '_vendor', 'vendored',
@@ -126,12 +126,18 @@ export function slopTestFiles(files) {
     'benchmarks', 'fixtures', 'fixture', 'stories', 'story', 'storybook', '__stories__', 'samples',
     'sample', 'tutorials', 'tutorial', 'code_samples', 'code-samples', 'notebooks', 'testdata', '.next',
     '.nuxt', '.wasp', 'coverage', '.turbo', 'test-outputs', '.bundle']);
+  const extensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.py', '.go', '.rs',
+    '.rb', '.java', '.php', '.cs', '.c', '.cc', '.cpp', '.cxx', '.h', '.hh', '.hpp', '.hxx']);
   return files.filter(file => {
-    if (!/\.(?:[cm]?jsx?|tsx?|py)$/.test(file) ||
+    if (!extensions.has(path.extname(file)) ||
       file.split('/').slice(0, -1).some(segment => excluded.has(segment.toLowerCase()))) return false;
     return /(?:^|\/).*\.(?:test|spec|story|stories)\.[^/]+$/i.test(file) ||
-      /(?:^|\/)test_[^/]+\.(?:py|js|jsx|ts|tsx)$/i.test(file) ||
-      /(?:^|\/)[^/]+_test\.(?:py|js|jsx|ts|tsx)$/i.test(file);
+      /(?:^|\/)test_[^/]+\.(?:py|rb|php|js|jsx|d\.ts|ts|tsx|java|c|cc|cpp|cxx)$/i.test(file) ||
+      /(?:^|\/)[^/]+_test\.(?:py|go|rb|php|js|jsx|d\.ts|ts|tsx|java)$/i.test(file) ||
+      /(?:^|\/)[^/]+_tests?\.(?:c|cc|cpp|cxx)$/i.test(file) ||
+      /(?:^|\/)[^/]+Tests?\.cs$/i.test(file) ||
+      /(?:^|\/)[^/]+\.Tests?\.cs$/i.test(file) ||
+      /(?:^|\/)[^/]*Tests?\/.*\.cs$/i.test(file);
   });
 }
 

@@ -23,8 +23,7 @@ async function start(t: TestContext) {
   const primary = bundledDescriptor('state-lab', 1), instance = bundledDescriptor('state-lab', 2),
     peer = bundledDescriptor('state-lab-peer', 1), publisher = bundledDescriptor('state-lab-other-publisher', 1);
   const seed = () => [primary, instance, peer, publisher].reduce(openNapplet, emptyWorkspace());
-  const transition = await IdentityTransition.open({ vault: vaultOwner.vault, database: storage.database,
-    publicKeyFromNsec: () => pubkey(2), seed, assertAvailable: assertBundledWorkspace });
+  const transition = await IdentityTransition.open({ vault: vaultOwner.vault, database: storage.database, seed, assertAvailable: assertBundledWorkspace });
   const native = new NativeLeases(), owner = createRuntimeOwner(storage.database, transition, native);
   let requests = 0;
   function admit(binding: RuntimeBinding, request: unknown, generation = 'native-generation-1') {
@@ -73,10 +72,10 @@ test('actual identity/workspace owner binds shared, instance, app and publisher 
 test('confirmed identity changes deny old views and returning identities retain their own strings', {timeout:5000}, async t => {
   const h = await start(t), old = h.owner.open(h.primary);
   await h.invoke(old,{type:'storage.set',key:'sample',value:'identity one'});
-  const pending = h.transition.prepareImport('nsec1fixture-2'); assert(pending);
+  const pending = await h.transition.prepareImport(); assert(pending);
   h.transition.cancel(pending);
   assert.equal((await h.invoke(old,{type:'storage.get',key:'sample'}) as {value:unknown}).value,'identity one');
-  const change = h.transition.prepareImport('nsec1fixture-2'); assert(change); await h.transition.confirm(change);
+  const change = await h.transition.prepareImport(); assert(change); await h.transition.confirm(change);
   const before = h.native.finishCalls;
   const stale = h.admit(old,{type:'storage.set',id:'stale',key:'sample',value:'must not write'});
   old.receive(stale.event); await new Promise(resolve => setImmediate(resolve));
@@ -173,7 +172,7 @@ test('Feed Lab reads use the normal runtime owner and a confirmed identity switc
   pending = true;
   const query = h.invoke(binding, {type:'relay.query',filters:[{kinds:[1]}]});
   await entered.promise;
-  const change = h.transition.prepareImport('nsec1fixture-2'); assert(change); await h.transition.confirm(change);
+  const change = await h.transition.prepareImport(); assert(change); await h.transition.confirm(change);
   assert.equal(await query, null);
   assert.equal(aborted, true);
   assert.equal(JSON.parse(owner.open(descriptor).configuration).user, pubkey(2));
@@ -206,7 +205,7 @@ test('normal Feed Lab owner preserves streams across focus and revokes paused in
   workspace.change(focusNapplet(workspace.getSnapshot().workspace,h.primary.id));await workspace.flush();
   assert.equal(calls[0]!.stopped,0);
   manager.setForeground(false);assert.equal(calls[0]!.stopped,1);
-  const change=h.transition.prepareImport('nsec1fixture-2');assert(change);await h.transition.confirm(change);
+  const change=await h.transition.prepareImport();assert(change);await h.transition.confirm(change);
   await new Promise(resolve=>setTimeout(resolve,40));assert.ok(closed.has('stream-token'));
   manager.setForeground(true);assert.equal(calls.length,1);frame(0);assert.equal(deliveries.length,1);
   assert.equal(JSON.parse(owner.open(descriptor).configuration).user,pubkey(2));
@@ -227,7 +226,7 @@ test('normal Resource Lab owner revokes pending work on confirmed identity chang
   const binding=owner.open(descriptor),old=h.admit(binding,{type:'resource.bytes',id:'old',url:'https://cdn.example.org/sample'});
   const completed=deferred();h.native.onFinish=token=>{if(token===old.token)completed.resolve();};
   binding.receive(old.event);await began.promise;
-  const change=h.transition.prepareImport('nsec1fixture-2');assert(change);await h.transition.confirm(change);await completed.promise;
+  const change=await h.transition.prepareImport();assert(change);await h.transition.confirm(change);await completed.promise;
   assert.equal(h.native.results.get(old.token),null);
   release(body);await new Promise(resolve=>setTimeout(resolve,0));assert.equal(h.native.results.get(old.token),null);
   const nextWorkspace=h.transition.getSnapshot().session.workspace;

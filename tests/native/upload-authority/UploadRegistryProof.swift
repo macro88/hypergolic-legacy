@@ -21,11 +21,23 @@ final class UploadRegistryClock: @unchecked Sendable { var value: Int64 = 0 }
     check(registry.take(publicId!) == nil); check(registry.take(token!) == nil); check(registry.append("a", token: token!, offset: 0, chunk: png) == png.count)
     check(registry.append("a", token: token!, offset: 0, chunk: png) == nil); check(registry.seal("a", token: token!))
     let taken = registry.take(token!); check(taken?.registration == "native origin a" && taken?.request == "immutable native request")
+    // Native upload signing must start from the approved file grant, not a sealed review alone.
+    check(registry.signingCapture(token!) == nil)
+    check(!registry.claimNativeSigning(token!, expected: taken!.review))
+    check(!registry.nativeSigningLifetime(token!))
     check(registry.take(token!) == nil); check(registry.preview(token!, offset: 0) == png); check(registry.preview(token!, offset: 1) == nil)
     check(registry.begin("a", callerId: "same realm", requestText: "request", length: png.count, destination: server) == nil)
     check(registry.begin("b", callerId: "two", requestText: "request", length: png.count, destination: server) != nil)
     let third = registry.begin("c", callerId: "third", requestText: "request", length: png.count, destination: server); check(third != nil); check(registry.cancelOwned("c", token: third!)); check(registry.drainInvalid().count == 1)
     check(registry.approve(token!)); check(!registry.approve(token!)); check(registry.preview(token!, offset: 0) == nil)
+    check(registry.signingCapture(token!)?.review === taken!.review)
+    check(registry.claimNativeSigning(token!, expected: taken!.review))
+    check(!registry.claimNativeSigning(token!, expected: taken!.review))
+    check(registry.signingCapture(token!) == nil)
+    check(registry.pauseNativeSigning(token!, paused: true))
+    check(registry.nativeSigningLifetime(token!)); check(!registry.isLive(token!)); check(!registry.isApproved(token!))
+    check(!registry.claimSigning(token!)); check(!registry.claimNativeSigning(token!, expected: taken!.review))
+    check(registry.pauseNativeSigning(token!, paused: false)); check(registry.isApproved(token!))
     check(registry.claimSigning(token!)); check(!registry.claimSigning(token!))
     registry.focus("b", active: true); registry.focus("a", active: false); check(registry.isApproved(token!))
     check(registry.transfer(token!, credential: CommandLine.arguments[3], now: 1001) == nil)
@@ -43,6 +55,22 @@ final class UploadRegistryClock: @unchecked Sendable { var value: Int64 = 0 }
     let expiry = registry.begin("a", callerId: "expired", requestText: "request", length: png.count, destination: server); check(expiry != nil)
     clock.value = NativeUploadAuthority.reviewMS; check(!registry.seal("a", token: expiry!)); check(registry.drainInvalid().count == 1)
     check(registry.wasDispatched("missing"))
+    // A previously admitted native source must lose its lifetime on each existing revocation path.
+    for ending in ["cancel", "revoke", "expiry"] {
+      let time = UploadRegistryClock(), source = UploadLeaseRegistry(clock: { time.value })
+      check(source.register("signing", identity: id, registration: "native upload source", granted: true))
+      source.foreground(true); source.focus("signing", active: true)
+      let row = source.begin("signing", callerId: ending, requestText: "request", length: png.count, destination: server)!
+      check(source.append("signing", token: row, offset: 0, chunk: png) == png.count)
+      check(source.seal("signing", token: row)); let capture = source.take(row)!
+      check(source.approve(row)); check(source.claimSigning(row))
+      check(source.claimNativeSigning(row, expected: capture.review)); check(source.nativeSigningLifetime(row))
+      if ending == "cancel" { source.cancel(row) }
+      else if ending == "revoke" { source.revoke("signing") }
+      else { time.value = NativeUploadAuthority.transferMS }
+      check(!source.nativeSigningLifetime(row)); check(source.signingCapture(row) == nil)
+      check(!source.claimNativeSigning(row, expected: capture.review)); check(!source.wasDispatched(row))
+    }
     print("{\"language\":\"Swift\",\"uploadRegistryChecks\":\(checks),\"failed\":0}")
   }
 }

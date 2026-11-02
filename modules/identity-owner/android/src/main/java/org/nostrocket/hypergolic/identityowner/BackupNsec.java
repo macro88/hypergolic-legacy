@@ -45,7 +45,7 @@ final class BackupNsec {
     }
   }
 
-  private static void requireScalar(byte[] scalar) {
+  static void requireScalar(byte[] scalar) {
     if (scalar == null || scalar.length != 32) throw new DeletionAuthority.Denied();
     boolean nonZero = false;
     for (byte value : scalar) if (value != 0) { nonZero = true; break; }
