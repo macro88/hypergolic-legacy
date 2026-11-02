@@ -22,7 +22,7 @@ and resolve each phase's material policy decisions before generating those files
 - [x] **Phase 2.8: Notifications and configuration** — selected profile accepted; final physical/full MVP acceptance remains 2.11.
 - [x] **Phase 2.9: Outbox routing** — implementation closed; remaining acceptance transferred to 2.11 on 5 October 2026.
 - [ ] **Phase 2.11: Complete published MVP acceptance** — L; All MVP fixtures (excluding Value Lab) plus selected real napplets.
-- [ ] **Phase 3: External signing** — post-MVP NIP-55 and NIP-46 integrations.
+- [ ] **Phase 3: External signing** — native signing core, then NIP-46 and NIP-55 clients; disposable native slice implemented.
 - [ ] **Phase 4: Value transfers and zaps** — post-MVP; L; Value Lab.
 
 ## Phase Details
@@ -213,9 +213,26 @@ visible. Later phase order and product scope are unchanged.
 
 ### Phase 3: External signing
 
-**Goal:** Add Android signer-app and relay-based remote signing without changing napplet authority.
+**Goal:** Establish a native signing core and add external-signer clients without expanding napplet authority. NIP-46 on Android/iOS precedes Android NIP-55.
 **Depends on:** Phase 2.11
-**Plans:** TBD
+**Requirements:** EXT-01, EXT-02, EXT-03, EXT-04, EXT-05, EXT-06, EXT-07, EXT-08, EXT-09
+**Status — 14 October 2026:** Native signing-core implementation authorized while Phase 2 acceptance remains open. The owner explicitly rescheduled the execution prerequisite for this slice. Native key creation/import/storage access/signing are included; one npub keeps one account and its data with an explicit signing-method choice. Phase 2.11 acceptance still gates final acceptance and release.
+**Code-first checkpoint — 2 November 2026:** Finish code and dependency/quality
+closeout before the combined final Android/iOS test campaign. Source audit finds
+selected integrations present; two native uncertainty fixes are applied and tested.
+Code freeze is pending the remaining dependency/quality blocker. Phase 2, CAP-14
+and EXT acceptance remain open. See [code completion](phases/03-external-signing/03-CODE-COMPLETION.md).
+
+**Plans:** Six sequential plans, with research, pinned inputs, UI contract and validation map in [phase context](phases/03-external-signing/03-CONTEXT.md).
+
+- [ ] [03-01](phases/03-external-signing/03-01-PLAN.md): Native review-to-sign slice implemented on both platforms; full quality gate open.
+- [ ] [03-02](phases/03-external-signing/03-02-PLAN.md): Fresh native vault and retirement of secret-bearing JavaScript paths.
+- [ ] [03-03](phases/03-external-signing/03-03-PLAN.md): NIP-46 connection and account signing methods.
+- [ ] [03-04](phases/03-external-signing/03-04-PLAN.md): Remote signing across publication, Outbox and upload workflows.
+- [ ] [03-05](phases/03-external-signing/03-05-PLAN.md): Android signer-app handoff and verified results.
+- [ ] [03-06](phases/03-external-signing/03-06-PLAN.md): Adversarial, platform, interoperability and quality evidence.
+
+**Future direction:** Hypergolic should also serve other apps as an external signer. The native core must support that future boundary, but incoming signer services and a security comparison with Amber are outside Phase 3 delivery. This future work has no assigned phase number.
 
 Shell notifications and outbox are required MVP capability work.
 Value/zaps and Value Lab are deferred to phase 4 and do not block MVP acceptance. Encrypted

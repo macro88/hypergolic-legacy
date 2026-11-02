@@ -1,4 +1,62 @@
-# Identity storage implementation checkpoint
+# Identity storage
+
+## Current native vault — Phase 3
+
+Production account operations now use the native signing vault. The trusted owner
+activates `HypergolicSignerCore` before opening
+[`NativeIdentityVault`](../src/security/native-identity-vault.ts); React Native
+receives public snapshots and opaque operation handles. Secret generation, import
+entry, persistence, backup presentation and signing stay in native code. See
+[the native signing contract](signing-core.md) for the exported interface and
+[external signing](external-signing.md) for explicit method selection.
+
+Android stores one AES-GCM authenticated record through
+[`NativeVaultFile`](../modules/signer-core/android/src/main/java/org/nostrocket/hypergolic/signercore/NativeVaultFile.java),
+using `AtomicFile` in the app's no-backup directory and an Android Keystore wrapping
+key. Writes require a checked file-descriptor sync before `finishWrite`, then
+checked syncs of the containing directory and its parent before decrypted readback.
+The parent sync covers creation of the native vault directory. A post-rename sync
+failure remains an uncertain error even when proposed bytes can be read; it must
+not be reported as success or automatically retried. `AtomicFile` still owns its
+stream and finish/fail lifecycle. Its internal void/log-only finalization is not
+mistaken for an observable success result. Matching vendor/filesystem and power-loss
+behavior require separate device validation.
+
+The [offline durability regression](../tests/native/signer-core/vault-durability/README.md)
+executes the actual production file orchestration with real host AES-GCM/files and
+explicit Android OS/Keystore/AtomicFile fault doubles. It covers pre-commit sync,
+post-rename directory/parent sync and readback failures; it does not prove hardware
+Keystore protection or crash/power-loss durability. Writes verify decrypted readback. Missing established state, malformed records
+and uncertain writes fail without generating a replacement identity. The wrapping
+key requires an unlocked device on API 28 and later; physical protection and older
+Android behavior still need their named acceptance checks.
+
+iOS uses [`NativeSignerVaultStorage`](../modules/identity-store/ios/NativeSignerVaultStorage.swift)
+for one AES-GCM authenticated record in its separate native namespace. Its wrapping
+key and guard receipt use `WhenUnlockedThisDeviceOnly` Keychain storage. The file
+adapter enforces complete protection, backup exclusion, permissions and atomic
+replacement with readback. Missing or inconsistent established state requires
+recovery. Simulator lacks the required file-protection behavior and is rejected;
+there is no production fallback backend.
+
+The owner waived preservation of pre-release accounts for this transition. The
+SQLite identity journal and Expo SecureStore account layout described below belong
+to the earlier implementation. Workspace and other nonsecret SQLite stores remain
+separate from the native account commit boundary. The app does not automatically
+migrate or erase the earlier account namespace.
+
+Current native and ordinary-app evidence is recorded in
+[Phase 3 validation](../.planning/phases/03-external-signing/03-VALIDATION.md).
+Earlier protected-storage, authentication and backup checks apply to their exact
+recorded builds; they do not establish acceptance of the new vault. Complete
+protected-device, backup/deletion and route acceptance remains open on both
+platforms. Phase 2 acceptance is unchanged.
+
+## Earlier implementation checkpoints
+
+The following sections preserve the pre-Phase-3 design and its dated results.
+Their references to the SQLite identity journal, Expo SecureStore account records
+and pending work are historical, not the current production vault description.
 
 The application now enters through one process-owned identity vault. Android has
 shown the same valid public identity in its header and trusted Settings after a

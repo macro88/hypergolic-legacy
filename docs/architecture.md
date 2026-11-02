@@ -33,6 +33,15 @@ historical acceptance coverage, not feature-build progress or a gate for unrelat
 implementation. Deferred tests remain unrun; final sign-off and release still require
 the agreed E2E run. Existing product, protocol and quality decisions remain in force.
 
+## Code completion and final acceptance — 2 November 2026
+
+The owner selected Phase 3 code completion before the combined Phase 2/3 final
+Android/iOS acceptance campaign. Keep focused regressions, native compilation and
+independent security review with each code change. The [code-completion checkpoint](../.planning/phases/03-external-signing/03-CODE-COMPLETION.md)
+separates implemented product scope and remaining dependency/quality closeout from
+the final device tests. Phase 2 acceptance stays open. A final-round failure still
+requires correction and affected retests; code completion is not release approval.
+
 ## MVP capability scope — 29 September 2026
 
 The MVP scope corrected on 30 September extends through Outbox: relay query/subscriptions, resources,
@@ -309,7 +318,7 @@ be completed. For iOS manual backup, warn that screenshots cannot reliably be
 prevented; hide during recording/mirroring and before app-switcher snapshots.
 This supported-API limitation was accepted on 22 September 2026. Require another saved identity before deleting the last one.
 A profile editor is only a UI example, not a required napplet.
-External signers are phase 2.
+External signer clients are Phase 3; its first disposable native signing path is described below.
 
 ## Confirmed product direction
 
@@ -665,3 +674,13 @@ large gesture targets and existing navigation behavior. The existing theme servi
 colors to participating napplets and updates them on appearance changes. See
 [shell appearance](shell-style.md) for the visual decisions, fixture boundaries
 and asset provenance.
+
+## Native signing foundation and external signers — 14 October 2026
+
+Phase 3 includes moving local key creation, import, storage access and signing from trusted React Native JavaScript into a small native authority. Plan 02 production composition now delegates account operations and signing to a public-only native contract; platform integration and runtime verification remain in progress. The boundary exposes public metadata and opaque import handles, with native-owned approval of the exact event. It must cover ordinary publication, Outbox and Blossom upload authorization. Native code in the same process does not establish OS process isolation or hardware-contained secp256k1 signing.
+
+The owner selected NIP-46 clients on Android/iOS first, then NIP-55 Android signer-app support. One npub remains one account with the same napplet data and explicit signing-method selection. Changing methods revokes pending authority; failure cannot silently select a local key or another identity. Existing per-event review and route-specific restrictions remain. Background/authentication handoffs require a bounded native state, not a general exemption from lifecycle checks.
+
+Long term, Hypergolic should serve other apps as an external signer. This phase prepares the authority boundary but does not expose incoming signer endpoints or select a provider-service phase. Matching or exceeding Amber is a security objective requiring defined threat coverage and independent evidence. Phase 2.11 acceptance remains open. The owner explicitly authorized starting the native-core slice before that acceptance closes. See [the selected context and plans](../.planning/phases/03-external-signing/03-CONTEXT.md).
+
+The first [native signing-core slice](signing-core.md) now supplies an ephemeral native key, exact native review and one-use signing on both platforms. Its four public-only Expo operations are available to the trusted shell developer check and an isolated test entry. Plan 02 now replaces the production JavaScript vault/signing composition and implements a fresh protected native store. The owner waived preservation of pre-release accounts; current-account method linking must still preserve its data. The remaining legacy native accessor, platform account journeys and durable-write fault cases are not yet verified. The native operation handle stays entirely within native code. See the Plan 01 report for the actual test evidence and remaining quality gates.

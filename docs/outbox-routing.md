@@ -24,6 +24,21 @@ Read/stream connections stay live across loaded foreground switches. Background 
 
 ## Existing proof and remaining acceptance
 
+### External Android signing — 28 October 2026
+
+One ordinary Android emulator journey now passes Outbox with an explicitly
+selected disposable NIP-55 provider. The exact primary event reaches native review
+and signer return/Resume; the previously signed own relay list is reviewed and
+sent separately without another signature. Native receipts show primary Accepted
+and existing-list Accepted with a duplicate message. Independent signatures,
+SDK payload and one exact-two-ID nos.lol readback agree. Source/package bindings,
+original deadlines and exact emulator cleanup pass independent review.
+
+See [external-signing evidence and limits](external-signing.md#ordinary-android-nip-55-outbox--28-october-2026).
+This is a test-provider happy path. Amber, NIP-46/iPhone Outbox, wider fault/lifecycle
+coverage and controlled-receiver consumption remain open. CAP-12 and Phase 2.11
+acceptance are unchanged.
+
 [Plans 01–02](../.planning/phases/02.9-outbox-routing/02.9-02-SUMMARY.md) record actual Android/iOS native read/stream journeys. [Plan 03](../.planning/phases/02.9-outbox-routing/02.9-03-SUMMARY.md) records actual native core/TLS/presentation evidence and production Android emulator protected signing, cold recovery, separate ancillary receipts, required-inbox failure, overflow and background subsets. Independent clients verified exact signed primary events; source and installed product hashes are sealed. Retained failed or inconclusive attempts remain explicitly separate.
 
 Those earlier proofs do not establish complete physical published/fault acceptance. The current [Phase2.11 checkpoint](../.planning/phases/02.11-published-mvp-acceptance/02.11-02-CHECKPOINT.md#physical-iphone-protected-publication--7-october-2026) adds ordinary bundled protected explicit-only publication on both physical hosts, with exact native review and independently verified live/stored signed events. Published Outbox admission is implemented in the [13 October checkpoint](#verified-published-admission--13-october-2026); final published journeys and the remaining fanout/lifecycle/fault rows stay open. The production iOS identity store excludes Simulator; never substitute a fixture signer. Phase 2.11 owns every open row, including ordinary exports/prebuilds/packages and physical input/accessibility. Complete source quality keeps only the two existing explicitly approved locked-patch exceptions visible; gates and findings are not suppressed.

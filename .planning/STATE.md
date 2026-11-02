@@ -1,18 +1,18 @@
 ---
 gsd_state_version: "1.0"
-current_phase: "2.11"
-current_phase_name: Complete published MVP acceptance
+current_phase: "3"
+current_phase_name: External signing
 status: executing
-stopped_at: Slim title-only shell and inset tabs implemented; loaded napplets are borderless while overview/menu frames remain. Both devices have the standalone update. Native UI and swipe checks pass; full E2E remains deferred and source push stays owner-controlled.
-last_updated: "2026-10-14"
-last_activity: 2026-10-14
-state_head: 3eab11e07f625fba5ebe249db73ccaa4df8d24cd
+stopped_at: Code-first Phase 3 audit and two native uncertainty fixes verified; dependency/quality closeout precedes the combined final acceptance campaign.
+last_updated: "2026-11-02"
+last_activity: 2026-11-02
+state_head: 050b248e2891b5be75315f9d2582cb167eec3429
 progress:
   total_phases: 14
   completed_phases: 10
-  total_plans: 40
+  total_plans: 46
   completed_plans: 30
-  percent: 75
+  percent: 65
 ---
 
 # Project State
@@ -22,7 +22,7 @@ progress:
 See: .planning/PROJECT.md (scope updated 2026-09-29)
 
 **Core value:** Shell control of identity and privileged operations.
-**Current focus:** Feature implementation with simulator/emulator validation; targeted physical-only components. Phase 2.11 full E2E is deferred until feature complete.
+**Current focus:** Finish Phase 3 code and dependency/quality closeout, then run the combined final Android/iOS acceptance campaign. Phase 2 feature implementation through Outbox is complete; Phase 2.11 acceptance remains open.
 
 ## MVP scope checkpoint — 29 September 2026
 
@@ -38,9 +38,842 @@ expansion cards are not executable PLAN files.
 
 ## Current Position
 
-Phase: 2.11 (Complete published MVP acceptance)
-Plan: Continue unfinished feature implementation and simulator/emulator checks. Run physical checks only when a required component cannot be tested there. Full Plan02/03/04 integration and final E2E acceptance are deferred to the feature-complete build checkpoint; Plan01 ordinary signed builds/first tracers retain their existing evidence. The selected optional close-check and verified published Outbox admission are implemented; final UX-07 and published Outbox E2E remain deferred.
-Status: Phase2.9 implementation closed; CAP-12 final acceptance/CAP-14 open. Historical final physical coverage is 8 of 61 complete / 53 open and does not measure feature implementation. Deferred E2E no longer blocks unrelated builds. No source push; neither deferred tests nor Phase2 acceptance are marked complete.
+Phase: 3 (External signing) — Plans 02 through 06 executing; native acceptance and full quality remain open.
+Plan: Six sequential plans are prepared in `phases/03-external-signing/`. First establish a native signing core, migrate local key handling, connect NIP-46 signers on both platforms, integrate all existing signing routes, add Android NIP-55, and validate the result.
+Status: The owner selected remote signing before Android signer apps, included the native key/signing foundation now, and selected one account per npub with explicit signing-method choice and no automatic fallback. Hypergolic serving other apps is a future goal, not current implementation. Phase 2.11/CAP-14 and all existing acceptance results stay open. The owner explicitly rescheduled its execution prerequisite for the native-core slice on 14 October; no acceptance requirement was closed. Source push stays owner-controlled.
+Plan 01 has scoped implementation evidence. Plans 02–06 are executing. Native
+persistence, NIP-46 connection and relay refresh have scoped evidence on both
+platforms; the ordinary Android connection/refresh/cold/offline-disconnect trace
+remains separate from signing or publication acceptance. A fresh isolated iOS
+Safari Close/Resume journey now has exact-event signature evidence. Broader ordinary-app routes and protected-device acceptance remain open.
+
+Code-completion checkpoint (2 November): selected Phase 3 product integrations
+are present in the audited shared, Android and iOS source. Two uncertainty-reporting
+fixes are applied with independent Sol 6.1 review, 62 Android host cases / 158
+assertions, 19 iOS host assertions, 699 shared checks and typecheck. Android
+generation/export/ordinary-entry compilation pass; the unsigned iPhoneOS Release compile also passes without device actions.
+The known dependency finding and complete quality/audit reports still block code
+freeze. Broad device/Amber/continuity/publication/security acceptance moves to the
+combined final campaign; Phase 2, CAP-14, EXT acceptance and counters stay open.
+See [code completion](phases/03-external-signing/03-CODE-COMPLETION.md).
+
+Previous checkpoint 63 (30 October): the Android authorization-failure mapping fix
+is applied with controlled native red/green proof: 30 cases/152 assertions and
+165 independent checks. Local signer/typecheck, Android generation/export and
+refreshed ordinary-entry test packaging pass. Ordinary cancellation/late response,
+State continuity, unavailable iPhone, protected-device and final quality remain
+open. Phase 2, CAP-14, full Phase 3, counters and source-push ownership are unchanged.
+
+Previous checkpoint 62: Build Properties integration, copied native generation
+and historical Android product19 packaging are verified. Earlier cancellation
+failures and separate cleanup remain preserved.
+
+Previous checkpoint 61 (30 October): the Android two-event Outbox flow is verified;
+the original automated result stays failed at verifier assumptions. A separate
+offline supplement and later exact two-event readback pass, with exact cleanup.
+No controlled receiver or new ancillary delivery is proved. An isolated Build
+Properties candidate passes normal-policy resolve/frozen install only; live
+versions and quality are unchanged. iPhone availability, protected-device/full
+acceptance, metadata/audit/Forge permissions, Phase 2/full Phase 3 and counters
+remain open. Source push stays owner-controlled.
+
+Previous checkpoint 60 (30 October): classifier01 fails setup before recorded
+account or labels; original failed automatic cleanup/uncertainty stays separate
+from verified root reconciliation. The metadata-only classifier02 passes the local
+Identity-expanded guard without a launcher tap, with seven events, both sole-relay
+checks and exact automatic/fresh cleanup. It does not reproduce remote Outbox07
+or diagnose either earlier cause. No full-route retry is cleared. Product18,
+checkpoint59, iPhone/quality limits, phase statuses and counters remain unchanged.
+
+Previous checkpoint 59 (30 October): the next reviewed ordinary Android Outbox
+attempt completes three connection RPCs with zero signatures, then stops at a
+launcher-label guard before any seed submission. Pre-peer collapse and a timely
+public Settings witness pass; the actual label subcondition/text/geometry/cause
+remain unknown. Original failure/outer uncertainty and separate exact cleanup are
+preserved. Next work is static guard analysis and a separately reviewed no-peer
+diagnostic, not a blind full-route retry. Checkpoint58/product18, phone availability,
+quality permissions, phase states and counters remain unchanged; no source push.
+
+Previous checkpoint 58 (30 October): ordinary Android NIP-46 public PNG upload
+passes exact visual/native/signature/pushed-SDK review with six RPCs and one
+signature. A separate no-peer successor closes Connections and opens Approval Lab,
+returns to Settings, then opens Feed Lab with the same public account and fully
+visible launchers. Earlier guard failures/uncertainty remain unchanged; exact
+cleanup verifies. The reviewed Outbox navigation privacy correction remains
+preparation, with no new full Outbox result. Product18/checkpoint57, iPhone
+unavailability, quality permissions, phase states and counters remain unchanged;
+no source push.
+
+Previous checkpoint 57 (30 October): no-peer navigation fails a Settings entry
+guard before any lab tap. The separate upload attempt completes connection and
+one public file request, then refuses clipped MIME/size pixels and stops before
+approval. It has three RPCs and zero signatures/PUTs. Exact cleanup verifies;
+original failures remain false. Strict forms and future visual-field coverage are
+prepared only. Product18/checkpoint56, phone unavailability, quality permissions,
+Forge scope, phase states and counters stay unchanged; no source push.
+
+Previous checkpoint 56 (30 October): an ordinary Android NIP-46 seed completes
+exact native review, a verified signature and same-ID SDK publication result.
+Full Outbox stays failed before primary navigation completes. No-image public
+file mapping and own Reject pass without file approval, signing or PUT. Earlier
+failures, separate cleanup and the prerequisite-order miss remain preserved.
+Navigation diagnostics and full upload are preparation only. The iPhone owner is
+unavailable; no current phone observation or dispatch occurs. Quality permissions,
+Forge scope, Phase 2/full Phase 3 and counters stay open/unchanged; no source push.
+
+Previous checkpoint 55 (30 October): the offline Android build helper and route
+evidence reconciliation are applied; signed ordinary product18 passes review.
+Three NIP-46 attempts complete connection but stop before seed submission. A
+public-only control finds different guest and console captures; its cause remains
+unknown. The later console attempts stop at an expired visual witness and then
+during navigation. Android NIP-46 Outbox and Blossom acceptance remain open. Quality,
+iPhone continuity, protected-device and full Phase 2 and Phase 3 limits are
+unchanged; counters and Forge scope stay unchanged, with no source push.
+
+Previous checkpoint 54 (30 October): dependency updates, notices and the native
+cancellation test are applied; focused checks and both unsigned native builds pass.
+Quality remains incomplete: aislop 99 with one high node-forge finding; Expo Doctor
+20 of 21 with six recommendations; local React Doctor has no findings but no score.
+Numeric scoring and ten separate audits did not run; metadata approval is pending.
+Continue remaining dependency fixes and iPhone account continuity, restart and
+disconnect journeys. Protected-device and full Phase 2 and Phase 3 acceptance stay
+open; counters and Forge scope unchanged, checkpoint 53 immutable, no source push.
+
+Previous checkpoint 53 (30 October): three no-fallback cases pass in the isolated
+42-test/474-assertion suite; four Core/test/harness files are applied. Fresh
+70 signer contracts/typecheck/AST pass. No new phone or ordinary-app claim.
+The dependency candidate passes isolated config/typecheck/84 tests/both exports;
+notice/live integration review remains open, live dependencies unchanged.
+B-tail r2 entered no bodies/Reads: root misread an old owner acceptance as fresh
+after compaction. Preserve that false result and separate chronology correction.
+Fresh owner/current method/Read/C/D/E stay open; the bridge cannot dispatch.
+Phase/counters/quality/Forge unchanged; checkpoint 52 immutable, no source push.
+
+Previous checkpoint 52 (30 October): A2 independently passes one public
+shared/sample Write and fresh Read, exact eight/local state, Requests 1→2→3 and
+109 cleanup. Original remote-continuation failures and separate reconciliations
+remain unchanged. The later observer reaches reviewed consents/three RPCs/zero
+user-event signatures but misses current method after a Settings-remount query.
+B-tail then fails enabling XCTest automation before method entry: zero bodies,
+zero Reads, 71.635-second wrapper, exact 109 cleanup. Current method/readback is
+unproved; C/D/E stays unrun/HOLD. Owner authorization-sheet observation is pending;
+first resolve the automation gate, then fresh no-peer state/Read. Isolated Core
+passes 41 cases/434 assertions; no signed result is returned on either remote
+fault, followed by explicit-local positive signing. Core/harness remain unapplied.
+Checkpoint 51 application/private sync verify. Dated quality and unanswered Forge
+scope, phase states and counters are unchanged; EXT-09 alone complete, no source
+commit/push. This progress checkpoint does not close physical/full acceptance.
+
+Previous checkpoint 51 (30 October): corrected A1 passes explicit native public-
+fixture import and one missing shared/sample Read. Fresh seven/current-remote/
+peer/no-pending admission precedes import; eight exact IDs/local selected and
+Requests 0→1/No value saved. verify. Exact 109 ownership cleanup passes without
+uncertainty. No guest Write, peer, signature or publication occurs. Native import
+writes the vault; nonempty persistence and same-npub method/lifecycle acceptance
+remain open. Mapping-only pass and original A1/separate Cancel failures remain
+unchanged; the new first-method admission is a separate proof. Checkpoint 50
+application/private Notes sync verify. Its Doctor 100/aislop 99 and Expo 20/21 stay
+dated. Phase 2/full Phase 3, quality and Forge age admission remain open, counters
+unchanged, EXT-09 alone complete, and no source commit/push occurs.
+
+Previous checkpoint 50 (30 October): ordinary iPhone Blossom independently
+verifies 25 taps, exact public file/kind-24242 review, six RPCs/one signature
+and pushed SDK completion within the unchanged 60-second grant. Seven saved
+accounts and exact 109-record cleanup verify. A separate offset-only extractor
+passes the same results; the original failure stays false. The
+three-GET/one-HEAD chain ends in separately admitted exact 71-byte retrieval
+without automatic redirect following. Fresh status-query, new-storage/auth
+enforcement and physical vault acceptance remain open. Checkpoint 49
+normalization and private Notes sync are verified. The Android checked-barrier
+fix is applied; live 12-case/34-assertion regression, Android 36 API
+compilation, prebuild and Android export pass. The ordinary unsigned offline
+ARM64 Release build passes; independent review verifies applied source and
+packaged barriers, while overall acceptance remains false. Fresh Doctor
+100/aislop 99 has all five engines active, matching input/output hashes and only
+the known node-forge high/root-audit finding; nine other audits are clean. The
+full gate stays failed. Expo stays 20/21/eight patch mismatches; Forge age
+approval is unanswered/unapplied. No score/audit waiver, counter promotion or
+source push occurs. Phase 2/full Phase 3 stay open; State Lab mapping and same-npub continuity remain outside this checkpoint.
+
+Previous checkpoint 49 (29 October): scoped remote cold restore and explicit
+disconnect/no-method cold restore pass. R4 remains failed; its real seed is later
+retrieved and observed published, with Home unused and the 46.5-second timing
+correction retained. R5 remains failed at a receipt observer check. Its exact
+signatures/receipts, successful same-event foreground SDK tail and separate two-ID
+readback complete the observed ordinary return path, without controlled receiver
+or distinct ancillary-forwarding proof. Six accounts/remote peer/no pending and
+exact 109-record cleanup verify. The vault review is source-only; AOSP follow-up verifies an upstream durability
+failure-propagation gap under investigation, with no live fix or physical/vendor proof. Tooling checks pass 84
+regressions and both notice guards. Live quality is Doctor 100/aislop 99, Forge-only
+root finding, nine clean audits and Expo 20/21. Forge 1.4.2 awaits age approval and
+is unapplied; no score/audit waiver or suppression is proposed. Phase 2/full Phase 3,
+counters and source no-push scope remain unchanged.
+
+Previous checkpoint 48 (29 October): Ordinary physical iPhone UI control is restored for the bounded native test:
+taps, exact short typing and clearing, Done, Home/background, reactivation and
+Settings verification. The completed test takes 95.352 seconds; wrapper runtime
+is 108.782 seconds. Four native edit calls observe empty → o → ok → o → empty.
+Both Network and Lookup retain only wss://nos.lol with empty drafts. Independent
+review verifies the real result, screenshots, observed values and action logs;
+exact cleanup preserves all 109 app metadata records, removes the owned runner
+and leaves host groups absent and the lease free. The retained ordinary app
+remains installed for the ongoing batch.
+
+The original 17-character bulk URL input still fails with two missing s characters;
+its cause is unknown. The longer acknowledged attempt remains interrupted with
+an incomplete xcresult and partial log; its separate exact cleanup passes. Short
+input success proves neither a long-URL fix nor arbitrary-text reliability.
+No signer peer, signature or publication starts. Phase 2/full Phase 3, acceptance
+counters and final quality remain open: Doctor 100/aislop 97 and Expo 20/21.
+No source push occurs.
+
+Previous checkpoint 47 (29 October): the scene-lifecycle repair passes generation
+checks, TypeScript, signed compilation and independent product review. The real
+ordinary UX Lab is visible after a reviewed update, with all 108 retained app
+metadata records unchanged. The owner reports Home/reopen counter 2 without a
+crash and sole nos.lol Network/Lookup lists; these remain attributed user reports.
+The later manual transfer detour is cancelled. Startup proof does not establish
+signing or protected lifecycle behavior. Existing quality is Doctor 100/aislop 97
+and Expo 20/21, without a waiver. Phase 2/full Phase 3 and counters stay unchanged.
+
+Previous checkpoint 46 (29 October): a fresh disposable ordinary iPhone copy
+passes packaging and independent review with unchanged source/runtime payloads.
+Installation adds only the test app and preserves all 108 retained app metadata
+records. The direct-launch CLI fails during local argument parsing before launch;
+its original failed receipt and separate reconciliation remain distinct. The owner
+is guided to open the app manually. No peer, signature or publication starts.
+The app stays installed for the ongoing manual batch and requires exact cleanup
+afterward. Remaining routes, protected checks and quality stay open; Phase 2/full
+Phase 3 acceptance and all counters remain unchanged.
+
+Previous checkpoint 45 (28 October): owner readiness is confirmed, but the single
+ordinary iPhone Outbox attempt fails during XCTest automation initialization with
+zero test cases and one error. Its controlled peer records no requests or
+signatures. The corrected observer build and twenty focused host controls pass
+separately. Original runtime/cleanup uncertainty remains recorded; a separately
+reviewed cleanup removes both owned apps and restores all 108 retained metadata
+records, with owned processes absent and the lease released. No automation retry
+is scheduled. Guided manual execution awaits owner availability and a fresh
+disposable identity. Remaining routes, protected checks and final quality stay
+open. Latest complete quality remains Doctor 100/aislop 98 and Expo 20/21; no new
+scan or waiver. EXT-09 alone is complete; Phase 2/full Phase 3 acceptance, counters
+and source-publication scope are unchanged.
+
+Previous checkpoint 44 (28 October): the current ordinary iPhone Release build
+passes compilation, signing and exact before/after checks for 768 source inputs
+and 97,617 dependency entries. Independent product review verifies the 153-file
+app, native signing composition and current notice bytes; bundled JavaScript is
+unchanged from the prior product. No phone is contacted or runtime test executed. Existing
+iPhone readiness, pending-signature source revocation, remaining routes, protected
+checks and final quality stay open. Latest complete quality remains Doctor
+100/aislop 98 and Expo 20/21; no new scan or waiver occurs. EXT-09 alone is complete;
+Phase 2/full Phase 3 acceptance, counters and source-publication scope are unchanged.
+
+Previous checkpoint 43 (28 October): one Android native client/JNI/production-WSS
+run against pinned nak passes six correlated RPCs, one exact signing request and
+independent ID/signature verification. Native execution takes 6.548 seconds; the
+complete run and exact cleanup take 11.349 seconds. All 253 baseline package
+records and emulator lease release verify. Ordinary build 17 passes packaging
+review with only its notice asset changed. The fresh upload-review Home test stops
+at initial UI capture exit 137 before connection or upload actions; its failure
+and exact cleanup remain recorded. iPhone readiness, ordinary routes, lifecycle,
+protected-device and full quality remain open. Latest complete scores remain
+Doctor 100/aislop 98; no new scan or waiver occurs. EXT-09 alone is complete;
+Phase 2/full Phase 3 acceptance, counters and source-publication scope are unchanged.
+
+Previous checkpoint 42 (28 October): exact Expo CLI Zod 4.6.6 override passes
+independent compatibility/lock review, frozen installation, 386 offline and 330
+corrected installed-consumer controls. TypeScript, 75 dependency regressions,
+both production export/composition checks, notice guards and 16 notice tests pass.
+The ordinary Android upload-review Home scenario remains unrun after connection
+observer errors consume the original deadline. Its failed result is retained;
+exact cleanup restores all 253 records/settings and releases the lease. No native
+package is rebuilt or relabelled and neither physical phone is contacted. iPhone
+readiness, remaining runtime routes, full quality and Phase 2/3 acceptance stay
+open. EXT-09 alone is complete; counters and source-publication scope are unchanged.
+
+Previous checkpoint 41 (28 October): four Android external-result authority-loss
+boundaries pass 70 cases/189 checks. The unchanged iOS final delivery guard passes
+95 host checks, including delayed dismissal; disabling that guard produces four
+expected failures. Pre-send certainty, live-correlation and peer failures remain
+distinct. Local paths and the completion mapper preserve actionable storage errors;
+post-send final guard failures remain uncertain. TypeScript, security
+(432 plus 13 preflight), Outbox (106) and uploads (73) pass. Android prebuild exits
+zero with selected generated inputs unchanged. Production export and build16
+native compilation pass; independent review verifies its exact 721 source inputs,
+existing certificate and nondebuggable package. No device is contacted. Explicit
+host ports and packaging do not prove ordinary lifecycle or protected-device
+acceptance. Latest full quality remains Doctor 100/aislop 97, five advisories open
+and Expo 20/21. iPhone readiness and Phase 2/full Phase 3 acceptance remain open;
+EXT-09 alone is complete and counters are unchanged.
+
+Previous checkpoint 40 (28 October): one ordinary Android emulator NIP-55
+upload reaches exact native review, one signature, explicit Resume, server
+confirmation and matching SDK/status completion within its original 60-second
+grant. Exact cleanup restores all 253 records/settings. The initial requester-hash
+mismatch is a preserved test error; the fresh run uses the packaged aggregate
+version. Its returned account subdomain requires a separate literal-host readback
+supplement; the original fixed-host verifier failure stays recorded. One auth-free
+normal-TLS readback follows one redirect and returns the exact 71-byte PNG and
+hash. Current iPhone app and observer packaging pass separate
+review. The app wrapper stays false for 12 fully classified generated additions;
+whole-tree equality remains false. No physical device, product code, acceptance
+counter or quality waiver changes. Owner readiness, other methods/routes, final
+quality and Phase 2/full Phase 3 acceptance stay open; EXT-09 alone is complete.
+
+Previous checkpoint 39 (28 October): one ordinary Android emulator NIP-55
+Outbox journey passes with a fresh native-memory test-provider key. Exact shell
+and native reviews, three Intent requests/returns, two signatures and explicit
+Resume produce the reviewed relay-list seed and primary note. Separate native
+receipts, independent signature/SDK checks and public-relay readback pass.
+Independent review verifies original deadlines and exact cleanup to all 253
+records and selected settings. The full SDK envelope and reviewed payload
+projection remain separate. Current build15 contains the qs notice metadata;
+only that APK member changes from build14. Product code and counters are unchanged.
+Amber, NIP-46/iPhone Outbox, Blossom, wider faults and physical protection remain
+open. Phase 2 and full Phase 3 acceptance remain open; EXT-09 alone is complete.
+
+Previous checkpoint 38 (28 October): upload progress now separates pending
+native authorization from transfer, and an undispatched native denial reports
+user cancellation. Strict false dispatch evidence is required; uncertain outcomes
+and earlier terminal results are preserved. All 73 upload tests, TypeScript,
+both production JavaScript exports and fresh ordinary Android packaging pass.
+Independent code/package/runtime review verifies corrected messages, exact event
+review, cancelled SDK/status results and cleanup to all 253 emulator records.
+Neither physical phone is contacted. Exact qs 6.16.1 is installed in both tooling
+closures under unchanged age/trust rules. Independent review, frozen installs,
+TypeScript, 75 dependency/quality regressions and both production composition
+checks pass. Original notices are preserved with four metadata hashes updated.
+Final quality, iPhone readiness and broader acceptance remain open.
+
+Previous checkpoint 37 (28 October): ordinary Android public Identity controls,
+scrolling shell/native review and one native Reject pass at system font scale 2.0.
+The native event matches the shell; the visible SDK result is approval denied,
+one request created and none pending. Independent review verifies layout and exact
+cleanup to all 253 package records and original font/accessibility settings.
+TalkBack speech/focus, other method states and iOS accessibility remain open.
+No product code, quality report or acceptance counter changes.
+
+Previous checkpoint 36 (28 October): fresh ordinary Android packaging and its
+721 source/archive inputs pass independent review. A disposable fresh RAM-key
+NIP-55 provider reaches final connection consent through the normal picker,
+public-key return and native Resume. The observer's connection-phase deadline
+expires before the final commit tap; no seed, primary event or signature occurs.
+The original runtime receipt stays failed. Separate supported quiescence checks
+and exact cleanup restore all 253 emulator package records. The unsupported
+instrumentation query's derived absence claim is withdrawn and must fail closed
+before future reuse. Product code, capture protection and acceptance counters stay
+unchanged; no automatic retry follows.
+
+The complete checkpoint 38 scan after qs remediation reports Doctor 100 and
+aislop 97, with eight clean audits and two failed audits. The qs advisory is gone;
+five distinct advisories remain across Forge, Zod 3, body-parser and Fallow.
+The earlier required check remains Expo 20/21; no suppression is added.
+iPhone execution awaits owner screen readiness. NIP-46/iPhone Outbox, Blossom,
+remaining interoperability and protected-device gates remain open; only EXT-09 is complete.
+Phase 2 acceptance remains open and the physical Android remains released.
+No application-source commit or push occurs.
+
+Previous checkpoint 35 (28 October): six compatible security dependency updates
+are applied after independent review, with no unrelated closure changes. All ten
+frozen installs, TypeScript, installed-patch regressions, both production JavaScript
+exports and signing-composition checks pass. Runtime browser tests pass 298 cases;
+four napplet browser suites pass 168, and all seven napplet type/build/conformance
+checks pass. Existing Zod 3, patches, age/trust rules and acceptance counters remain.
+
+Zod 3 compatibility and other dependency release-age/trust constraints remain
+open. Continue ordinary Outbox/Blossom and targeted protected-device work; iPhone
+execution still awaits owner screen readiness. Android interoperability remains
+unverified, and repeated speculative observer repair stays stopped. EXT-09 alone
+is complete. Phase 2 and full Phase 3 acceptance stay open. The physical Android
+remains released; no application-source commit or push occurs.
+
+Previous checkpoint 34 (28 October): the unchanged Android native client/JNI and
+production transport compile, but runtime interoperability remains unverified.
+Three attempts stop before Activity launch; the fourth launches once and fails
+on its first result JSON read. Input transport is corrected after a public stdin
+and remote-status probe; native completion and signing activity remain unknown.
+Independent review verifies all original failures and exact cleanup to the 253
+record emulator baseline. No physical Android or new iPhone action occurs.
+
+A fresh complete scan now reports Doctor 100, aislop 96 and all ten dependency
+audits failing; TypeScript passes and Expo remains 20/21. Twenty distinct advisory
+IDs span nine build/development dependency modules. Read-only triage identifies
+six compatible age-eligible update targets, while Zod 3 compatibility and other
+age gates remain unresolved. No dependencies, patches or policies change in this
+checkpoint. Prioritize reviewed minimal dependency remediation before more
+observer repair; existing ordinary NIP-55 paths can support later route work.
+EXT-09 alone is complete. iPhone readiness, remaining Phase 3/quality gates and
+Phase 2 acceptance stay open; no source commit or push occurs.
+
+Previous checkpoint 33 (27 October): the unchanged Swift NIP-46 client/protocol,
+crypto and production WSS transport pass one macOS host run against the official
+nak v0.21.2 signer. Six correlated RPCs produce one exact returned event; native
+and independent verification confirm its fields, hash and signature. No user-event
+publisher is invoked. Independent review verifies current inputs and exact owned
+process/socket cleanup. This adds real-signer interoperability only: no ordinary
+app, Android, review, storage, handoff or remaining-route acceptance follows.
+EXT-09 alone remains complete. The iPhone still awaits owner screen readiness;
+Phase 2, remaining Phase 3 gates and final quality remain open.
+
+Current checkpoint 32 (27 October): EXT-09 is complete after source-bound package
+inspection and independent review on both platforms. No incoming signer endpoint
+is present; future caller, permission and revocation decisions stay unimplemented.
+This closes only the architectural boundary, not runtime extraction or security
+parity. EXT-01–08 and Phase 2 acceptance remain open. The Forge proposal is rebased
+onto the current JSI-patched inputs but is unapplied until the existing release-age
+gate; SDK57 patch candidates also fail the unchanged trust policy. No full current
+quality pass is claimed. The iPhone retry awaits the owner's screen-readiness reply.
+
+Current checkpoint 31 (27 October): the ordinary iPhone Release app now compiles
+and passes normal-host signature verification after the reviewed Expo JSI repair.
+The original wrapper failure remains unchanged: its final dependency comparison
+finds 18 generated cache transitions. Separate independent product verification
+accounts for all 18 and binds the 153 app files without claiming whole-tree equality.
+
+The selected iPhone Outbox test never starts; XCTest times out enabling automation
+before opening the app. The peer records no requests or signatures. Fresh full-path
+reconciliation verifies both disposable IDs/processes absent and all 108 baseline
+app records restored. The retained app is untouched. A reviewed cleanup ownership
+correction is staged separately; it does not resolve automation. Another attempt
+awaits the owner's screen-readiness response.
+
+Android Outbox attempts05 and06 connect to the disposable signer, but root stops
+before event submission because the required public screenshot is black. Each
+records three connection requests and no signatures; fresh cleanup restores all
+253 baseline package records. Attempt06 starts with a readable public Settings
+image and records Awake/ON/nonsecure app-window metadata after the black frame.
+Those sequential observations do not establish a compositor cause.
+
+An empty-dialog Cancel check stays readable; focusing the empty protected field
+before Cancel reproduces the black public capture without typing or connecting.
+Later initial captures alternate between black and readable, so the conditional
+Home/resume checks do not exercise their lifecycle branch. A separate fresh API36
+ARM64 emulator with SwiftShader/swangle reproduces the same after-Cancel failure
+using the unchanged APK. Independent review verifies these bounded results; exact
+cleanup restores its 245-record baseline and preserves the original 253 records.
+App/keyboard window metadata returns to normal, but the cause remains unknown.
+A minimal plain-Android dialog control also reproduces the black public capture
+after empty-field focus and Cancel. Its first cleanup reconciles the exact 245
+records after the original deadline; that timing failure remains recorded. A single
+cold restart with the documented Vulkan-disable override reproduces the same black
+frame; its immediate cleanup finishes within the deadline. The override is accepted,
+but Vulkan features remain advertised, so no isolated cause or workaround is proven.
+This diagnostic line stops. The temporary emulator and its disposable signing key
+are removed after verified shutdown; the original emulator remains unchanged.
+Capture protection and product code are unchanged. Full Outbox and iPhone runtime
+acceptance remain open.
+
+Physical Android remains released. No new full quality pass, acceptance-counter
+change, source commit or push is claimed. Phase 2 and full Phase 3 stay open.
+
+Previous checkpoint 30 (27 October): the owner approved Xcode setup and licence
+acceptance; setup completed successfully. First-launch status passes, CoreDevice
+matches Xcode 27.1, and the exact paired iPhone reports connected developer
+services on iOS 27.0.1. Host setup is no longer an approval blocker. Two current
+ordinary iPhone builds remain failed: first signing configuration, then an Expo
+JSI generated-interface incompatibility with Swift 6.4. The independently reviewed
+one-line dependency sanitizer patch is installed through normal offline pnpm with
+unchanged versions and age/trust policy. The packaged-notice hashes are refreshed
+after verifying unchanged originals, component membership and 61 package metadata
+inputs. Fresh iPhone compilation and runtime remain open.
+
+Android auth09 passes the ordinary account journey on the API 36 emulator. Its
+159 named checks include 23 explicit account/security properties, three system
+credential-screen observations, one expiry marker and 132 navigation observations.
+Independent review verifies import/cancel/denial, selection, duplicate import,
+backup, inactive-account deletion, cold persistence and candidate expiry within
+that scope. Root verifies temporary credential/app removal and all 253 baseline
+metadata records. A separate exact Amber 6.6.9 startup/cleanup inspection does not
+exercise accounts or signing. Physical Android stays released.
+
+Two fresh ordinary Android Outbox observers remain failed before signing. The
+first stopped in relay navigation; separate reconciliation clears its uncertain
+effects. The second passed relay settings but stopped in a public-key conversion
+helper; its peer reports zero incoming events and signatures. Cleanup and root's
+fresh baseline check pass. Corrected observers still need a successful journey.
+
+Forge 1.4.1 is published; the existing seven-day age policy permits it no earlier
+than 3 November at 04:44 UTC. The braces advisory was withdrawn on 23 October;
+its existing depth patch and regressions remain. The update candidate is unapplied.
+The last full quality scores remain historical 100/98, not a fresh passed gate.
+All Phase 2/3 acceptance counters remain unchanged; source push stays owner-controlled.
+
+Previous checkpoint 29 (16 October): the fresh Android all02 aggregate passes all
+five defined native fixture invocations after the cancellation repair. Reported
+native/independent checks are core 52/7, persistence 381/7, NIP-46 92/142,
+NIP-55 validators 67 native, and controller 71/14. Counts remain per child.
+Independent review verifies all five receipts, exact 253-package metadata
+restoration, owned app/XML/reverse absence and peer/process cleanup. Test
+ownership is released; the preexisting emulator remains running. Prior lease
+release did not prove shutdown. Physical Android is released. The applied EXT09 reference inventories outgoing Expo interfaces and
+leaves future-provider identity, permissions/storage and lifetime unresolved.
+This adds no incoming signer service or new runtime acceptance. Current official
+advisory/registry checks still find no published fixed Forge/braces release;
+the last full quality scan reports 100/98 with its gate false. Xcode setup/license
+approval remains unanswered; iPhone builds/device runs and full Phase 2/3 acceptance stay open.
+
+Checkpoint 28 (16 October): the focused same-account disconnect/SQLite
+race regression passes 46 tests; root TypeScript exits zero and independent review
+accepts its scope. A real tentative write rolls back after authority withdrawal;
+the same public account retains prior data in a new epoch with empty method
+metadata and no fallback. Native method mutation remains a port double.
+
+The independently reviewed iOS authorization repair now preserves one absolute
+60-second monotonic deadline through authentication, backup and deletion. Scoped
+cleanup preserves a replacement attempt. The direct-CLT host regression compiles
+on both sides: red fails 34 of 77 assertions; green passes all 77, including the
+original 24 timer assertions. Actual Session methods and the mutation gate run
+with explicit host ports, not UIKit/LAContext or a protected device. Seven guarded
+source/test/doc paths are applied and diff-check passes. The portable runner keeps
+machine-specific execution pins outside the repository. Prior signed iPhone
+products remain historical exact artifacts, not products of the new Session source.
+CLT testing does not establish Xcode setup, iPhone build or device readiness.
+That host prerequisite was subsequently resolved on 27 October; Android remains
+released. Phase 2/3 acceptance and final quality remain open.
+
+An earlier ordinary iPhone journey passes remote
+connection, two Safari Close/native Resume handoffs, exact native event review,
+one signature and one published SDK request. Independent verification binds the
+native canonical event, signature and SDK event ID. The native aggregate reports
+3/3; separate exact-ID readback finds the event on nos.lol, receives EOSE without
+it from bucket.coracle.social and times out on Damus. These are distinct results.
+All 105 retained app metadata records match after temporary-app cleanup. Earlier
+account/restart receipts with unproven cross-clock comparisons remain false.
+
+One ordinary iPhone async configuration Save/read/cold-read now has separate
+independent evidence. XCTest completed the journey; its original wrapper remains
+false because it searched a full marker inside a truncated activity title. Exact
+raw typing/taps and complete typed SDK snapshots support the retained-only
+reconciliation. Both temporary apps were removed and all 105 retained records
+match. Sync, deletion, other namespaces and protected-storage acceptance remain open.
+
+The owner confirmed Amber connection and the same account/method after an Android
+cold restart. A supplied Request 2 event has the expected disposable author,
+kind and sequence tags, independently verified canonical hash/Schnorr signature,
+and exact-ID retrieval from nos.lol. Its content omits the requested final full stop.
+The original single-submit contract and both exact-text readbacks remain failed;
+manual review contents and total signing/publication counts are not independently
+established. The owner confirms disconnect and cold no-method persistence with
+nothing pending. The temporary proof app is removed and the exact 441-package
+baseline is restored, with retained binaries unchanged.
+
+At the owner's request, the latest ordinary Android build is installed over the
+retained app and launched. The package and signing certificate match; one
+`install -r` preserves its container without uninstall or data clear. The installed
+APK hash and unchanged inventory/Amber binary verify. All Android operations are
+finished and the owner can unplug. Account-data equality and new runtime acceptance
+were not tested. Independent iOS fixes continue without the Android device.
+
+Independent iOS review found and repaired three request-lifetime issues. Unrelated
+import cleanup preserves the authentication timer; remote/signing callbacks are
+bound to native operation IDs; upload signing capture/claim requires prior file
+approval. Canonical host regressions pass 24 timer checks, 47 operation-ownership
+checks and the full upload suite including 104 Swift registry checks. Real Swift
+tasks drive the session races, while UI/auth/key/network/core ports are doubles.
+These results do not establish physical authentication or a controlled upload.
+The Android upload registry now has corresponding native-signing bridge regression
+coverage: one focused Java host run passes 241 assertions, including prior approval,
+request-marker binding, one-use claims and hold cancellation/revocation/expiry.
+Production inputs and the installed Android app are unchanged.
+
+Earlier ordinary unsigned and signed iPhoneOS Release builds compiled and linked
+the prior repaired sources. The separately identified upload app and its focused
+XCTest runner passed packaging and signature checks. These exact products remain
+historical after the authorization-deadline source change. The original sandbox signing failure
+and test-runner compile failure remain recorded separately. Remaining routes,
+signed runtime checks and final quality stay open.
+
+The ordinary iPhone Outbox attempt stopped at XCTest animation-idle waits before
+any signing or publication. Its peer observed zero signing requests, and cleanup
+restored all 105 retained records. The product cause is unknown. An independently
+reviewed owner-operated Outbox run is prepared; current host readiness and owner
+availability still block dispatch. The controlled Blossom receiver, bounded launcher
+and mobile evidence/privacy rules pass preparation review. No public endpoint or
+upload has occurred; new-service approval and mobile/proxy acceptance remain open.
+
+The historical 16 October host check found Xcode 27.1 replacing the toolchain
+used for the retained signed products, with mismatched CoreDevice components and
+failed first-launch status. The owner subsequently approved setup and licence
+acceptance on 27 October. Setup and targeted device connectivity now pass, as
+recorded in checkpoint 30. Earlier wrapper side effects remain unknown; that
+uncertainty is not evidence against the later completed setup. Current builds and
+runtime still require their own results.
+
+The earlier central iOS native run passes all three applicable groups: 15 core cases,
+39 persistence cases and 20 NIP-46 cases. Its fixture storage and loopback network
+limits remain explicit. Historical Android all01 stopped at four of five passing
+groups; the controller notified a handoff twice when cancelled. A per-request atomic guard
+repairs this defect, and all six focused controller modes pass 71 native and 14
+independent checks. The original aggregate remains false; fresh all02 now passes
+all five child invocations with the limited scope above. Earlier source maps are not relabelled
+as current. Independent all02 cleanup restores retained inventory and removes
+owned effects without signalling the preexisting emulator.
+
+The last full quality reports show Doctor 100/aislop 98 and Expo 20/21; existing
+findings remain open. The Java proof and iOS authorization repair have focused
+host validation; neither establishes full native or quality acceptance.
+An isolated Expo patch update attempt fails the existing publisher-trust policy for
+SQLite 57.0.4. A separate candidate retaining SQLite 57.0.2 fails the seven-day
+release-age policy for newer packages. Neither resolves a new lockfile or changes
+installed dependencies. Both protections remain intact; final quality stays open.
+Complete Amber interoperability, other publication/upload routes, protected storage and
+account-security checks, full accessibility and final Phase 3 acceptance remain
+open. Phase 2 acceptance and all acceptance counters are unchanged.
+
+On 15 October the owner explicitly approved Android browser handoff, including
+token-bearing authorization URLs, and signer-storage changes. Both earlier
+approval blockers are resolved. The native Android bridge now wires bounded
+browser/app continuation, native Resume, exact source revocation and encrypted
+NIP-55 method storage. HGV4 storage passes 367 native + eight fresh-state + seven
+independent checks with 263 sealed inputs and restored disposable-app inventory.
+The integrated Kotlin/Java module and manifest compile with 125 unchanged inputs;
+an ordinary-entry release APK builds from 721 sealed inputs. The integrated
+Android owning proof passes 84 assertions from 326 unchanged inputs, with native
+owner/browser/consent and loopback trust doubles. A separate host-JVM fixture-stage
+proof passes 20 assertions. The ordinary account trace now passes 150 checks, including
+actual provider returns/native Resume, same-account connection, external cold
+restoration, explicit method changes, offline disconnect with persistent NO_METHOD,
+and explicit local recovery/cold restoration. It proves UI/public account metadata.
+A separate 215-check State Lab journey verifies one shared string across method changes, disconnect and cold recovery;
+event signing, publication, other data namespaces and Amber remain separate.
+Both account and data journeys preserve exact observers, source/product seals and restored package inventories. These checks do not close production
+browser, Amber, physical-device or final-quality gates. Plans 02–06
+remain unaccepted and all existing acceptance counters are unchanged.
+
+Resumption checkpoint (15 October): the owner resumed execution after the usage
+reset, initially verified at 0% consumed. Sol 6.1 agents completed scoped account,
+data-continuity and isolated iOS Resume checks with independent security review.
+Ordinary Android browser Resume and production signing routes remain open. The earlier failed runs remain failed. Phase 2 and
+Phase 3 acceptance stay open, and the approximately 98% usage ceiling remains.
+No source push, quality suppression or acceptance promotion is authorized.
+
+## Resumed browser and account checks — 15 October 2026
+
+The Android secret-entry panels close a prepared native resource if coroutine
+cancellation discards it before delivery. The repair uses the resolved coroutines
+1.8.1 API. Its durable host regression passes 36 assertions and two removed-cleanup
+negative controls with real coroutine dispatch and close-counter resources. It
+does not prove Android dialog or JNI teardown. Ordinary build04 compiles from 721
+sealed inputs; failed build03 remains recorded separately as an API mismatch.
+
+Account07 passes 150 ordinary account checks, including picker/candidate
+cancellation, two provider returns/native Resume, same-account connection, cold
+restoration, explicit method changes, offline disconnect with persistent NO_METHOD,
+and explicit local recovery/cold restoration. It proves UI/public account metadata.
+The provider receives two public-key requests and no signing request.
+
+State Lab02 separately passes 215 checks. One public string written through the
+bundled napplet's actual SDK remains readable after signer connection, explicit
+local/NIP-55 changes, offline disconnect, cold NO_METHOD before recovery, and final
+cold local recovery. The native npub stays unchanged. Each read requires a fresh
+request-count increment, terminal status and exact original value; no later read
+reseeds it. The provider receives one public-key request and no signing request.
+Failed01 remains a failed observer-navigation run. The reviewed optional
+`--state-data` mode retains this journey while preserving the default account
+cancellation checks. Integration guards are separate from the original runtime.
+Other storage namespaces, NIP-46 data parity, usable-key signing, Amber and physical
+protection remain open.
+
+Independent review found and repaired an iOS response-ordering defect. A changed
+relay list in signing preflight is now rejected before it can authenticate the
+handoff or release the paused source. The durable actual-client/crypto host test
+passes 24 assertions; the old source reproduces four forbidden-release failures.
+Early and late Resume, unchanged-list signing, explicit refresh and handshake
+proposals are covered. Exchange, pause and transport support remain test doubles.
+
+A fresh isolated iOS build from 261 sealed inputs includes the repaired client.
+One actual native review, Safari Close and Resume journey returns one independently
+verified signature for the exact canonical event and account captured before
+approval. Its peer records six distinct requests and six raw incoming EVENT frames:
+one connect, two public-key queries, two relay queries and one signing request.
+There is one authentication completion, no observed resend and no pending
+authentication in this run.
+Real matched-controller delegate and dismissal callbacks are retained. The initial
+offline verifier failed because the signature library added a non-JSON cache
+symbol to its comparison object; a separately reviewed clone correction verifies
+the same retained evidence. The original failed receipt is preserved; no second
+live run occurred. The earlier minimal center-input check also passes, without
+establishing the cause of prior failed Close inputs. This evidence uses a controlled
+loopback relay, ephemeral key and isolated native source. Ordinary Expo/vault,
+public-relay, publication and physical acceptance remain separate.
+
+Android browser04 reaches Chrome FirstRunActivity and returns, but its peer rejects
+a mismatched connection token before ACK. Browser05 stops before submission at
+152 masked characters for a 171-character link, with zero peer requests. A reviewed
+paced-entry observer retains strict length/token checks and passes 45 host checks.
+Browser06 remains unexecuted. The later approved browser07 check below verifies
+ordinary preparation/Resume; the earlier failures remain historical.
+Earlier failed synthetic input probes remain stopped and preserved.
+
+Android runs restore the exact 253-package inventory. The iOS runs restore all
+56 original app entries. Owned test apps are removed; independent review verifies
+source/product/observer seals and cleanup. Private input and peer credentials are
+excluded from public receipts. Protected black captures are not readable UI proof.
+
+The recorded full-quality baseline is Doctor 100/100 and aislop 98/100, with all
+five engines, matching supported-file coverage and the existing node-forge/braces
+advisories. Each changed source snapshot requires its own complete report. The
+normal 100/100 gate remains open; no finding or file is suppressed. Phase 2 and
+Phase 3 acceptance remain open.
+
+The next SDK publication slice needs separate peer-signature and receiver counts.
+Existing third-party relays can provide scoped observation; the repository has no
+configured controlled public WSS receiver with OS-trusted TLS. Do not substitute
+the legacy scalar-2 loopback/local-key fixture for ordinary external-signing proof.
+
+
+
+## Browser Resume, publication boundary and iPhone automation — 15 October 2026
+
+The owner's destination-specific approval covers the disposable encrypted NIP-46
+browser test through `wss://nos.lol` and its fixed example.org authorization URL.
+The owner selected existing public relays for the later publication check and
+reported that the iPhone's Enable UI Automation setting is on. The earlier pending
+questions are resolved; no new relay policy or release approval follows.
+
+Android browser07 passes 11 checks in the ordinary app. Native origin consent
+opens the selected installed Chrome package, the peer completes the original
+challenged connect request while Chrome is foreground, and Back reaches native
+Resume. The public candidate is then cancelled, preserving the original selected
+account. Three distinct peer requests, one authentication completion and zero
+signatures are recorded. Resume and candidate screenshots are readable; the
+origin screenshot is black. Chrome remained on FirstRunActivity, so destination
+page loading, website login and token-bearing URL behavior are not proven.
+The earlier browser04/05 failures and unexecuted browser06 remain preserved.
+
+The first ordinary SDK publication attempt commits a fresh disposable remote
+account and prepares harmless public content, but its screenshot is black at the
+required readable-key witness. The attempt stops before SDK submission: zero
+requests, zero signatures, zero publication and no receiver readback. The original
+FAILED40 receipt remains unchanged. Source review found that connection/import
+capture protection targets native dialog windows and found no justified activity
+flag change. The black image alone does not establish a flag leak or its cause.
+The reviewed script corrections affect only RPC accounting and strict input/error
+handling; they do not relax native deadlines or event verification.
+
+The ordinary Android NIP-55 cancellation evidence from checkpoint16 also remains:
+one exact reviewed signature, native Resume cancellation, and a subsequent missing
+provider failure without local fallback. This is not a successful publication.
+Both current Android attempts restore all 253 original package records and retire
+their private peer scratch. No retained account or credential is used.
+
+A fresh iPhone app identity is derived from the previously built ordinary product.
+The original derivation58 guard failure is preserved. Separate offline61 allows
+only the exact Info.plist resource hash change and verifies the existing signed
+153-file product; no application rebuild or signing retry occurred. Observer63
+builds once with the previously successful destination-artifact orchestration.
+Physical65 then installs both fresh IDs and again times out enabling UI automation
+before any test body: tests0/error1 and no attachments. Account, Cancel and cold
+launch remain unverified. Cleanup restores all 105 app records exactly, removes
+both temporary apps and stops their processes. Retire these IDs and Keychain
+groups; uninstall is not proof of Keychain purge. No further settings guess or
+device retry is justified by the retained evidence.
+
+
+Approval Lab now includes its current public key in the output's accessible name.
+The same identity-update path clears both text and name for unavailable or invalid
+values, including a trailing newline after an otherwise valid key. The previous
+bundled artifact is retained byte-for-byte as v3 for saved views; both native hosts
+admit that exact archive and continue to reject unknown variants. Archived
+versions remain excluded from new opens and fixture publication. Browser computed
+names and native admission tests do not establish TalkBack or visual acceptance.
+
+Independent Sol 6.1 review19 checks the original results, sealed inputs, portable
+products and exact cleanup. It does not establish a production capture defect,
+controlled-receiver observation, Amber parity or a formal security audit. Ordinary
+iOS protected-store, successful SDK publication and final quality/acceptance stay
+open. Phase 2 and Phase 3 acceptance counters are unchanged. No application-source
+commit or push occurred.
+
+
+## Android artifact and signing handoff boundary — 15 October 2026
+
+Both production exports and Android prebuild complete successfully. The ordinary
+Android APK then builds from 721 recorded inputs. Every step preserves those
+inputs, all 52 native configuration files and the 28 integration pins. Actual APK
+runtime assets match the reviewed generated files; signature verification passes.
+No device result is inferred from packaging.
+
+The fresh ordinary publication02 run passes connection authorization through
+Chrome, the original connect acknowledgment, native Resume and exact remote-account
+commitment. Android's exported accessible name contains the full current key. Root
+and independent review also read the full key and selected Note type in the fresh
+screenshot. The actual SDK submits one request. Native review then binds the exact
+canonical event, account, signer peer and three publication destinations before
+approval.
+
+The run stops after the signing-origin consent gesture because Chrome foreground
+cannot be verified. Its original FAILED72 receipt is preserved. The peer records
+six valid distinct requests, one completed connection authorization, one pending
+signing authorization and zero signatures. No signing Resume, successful SDK
+result, publication or receiver readback is claimed. The observer records only
+successful foreground parses; its generic error does not distinguish a parse or
+command failure from failure to observe Chrome over the full wait. No native
+cause or production repair is established. Follow-up observation is staged without
+extending deadlines, adding gestures or weakening the visual/signature checks.
+No further device attempt is part of this batch.
+
+Cleanup restores all 253 original packages and independently verifies the proof
+app, temporary XML, peer process and private scratch are absent. Source/product
+pins remain exact. Reviews19–21 preserve their separate scopes. The full quality
+report preceded this final documentation-only reconciliation; its application and
+build inputs are unchanged. Its strict red gate, ordinary iPhone automation gap,
+successful SDK signing/publication and Phase 2/3 acceptance remain open.
+
+
+## Android signing Resume and public relay observation — 16 October 2026
+
+Publication04 passes 90 checks in the ordinary Android app using the unchanged
+build05. A fresh disposable account passes connection authorization, readable
+key/Note review, exact native event/account/peer/destination approval, Chrome
+handoff and explicit native signing Resume. The peer returns one verified
+signature for the original request. It records six distinct RPC IDs, six valid
+deliveries, two authorization completions and no pending authorization.
+
+The SDK reports one published request and no pending work. The screenshot shows
+the exact harmless content and full event ID, plus the native aggregate
+“Published to 3 of 3 relays.” A text-selection toolbar partially covers the result
+row heading; this is not an unobscured image of every label. Separate exact-ID
+retrieval verifies the event on nos.lol and bucket.coracle.social. Damus times out
+after 20 seconds; that does not prove absence. There is one readback request per
+relay, without resending the event. Aggregate acknowledgments, retrieval and
+controlled receiver consumption remain distinct evidence.
+
+Publication03 remains FAILED81. It verified one signature and the signing Resume
+gesture, then its observer read the guest counter while the native sheet still
+said “Signing and publishing…”. Publication may have started; its outcome remains
+unknown. The retained tree reproduces the premature read. The reviewed observer
+correction waits for the exact busy sheet to settle and the same-account guest to
+return within the original total 35-second budget. It preserves native deadlines,
+event checks and approval count. Its 44 focused guards and 81 inherited checks are
+host evidence. No application-code or capture-protection change was needed.
+
+Both runs restore all 253 original package records. Independent closeout verifies
+owned apps, temporary XML, peer processes and private scratch are absent. Exact
+source/build seals remain intact. The reused quality baseline is Doctor 100/100
+and aislop 98/100 with the two existing advisories; the normal gate remains open.
+No source commit or push occurred. Chrome FirstRunActivity does not prove website
+login; controlled receivers, remaining routes, ordinary iPhone automation, Amber,
+physical protection and Phase 2/3 acceptance remain open. Counters are unchanged.
+
+
+## Phase 3 device checkpoint — 16 October 2026
+
+Amber public-key discovery, Resume and candidate cancellation retain owner-reported
+evidence. A later physical iPhone diagnostic identifies inactive native entry before
+the vault core runs. The native opener now waits up to five seconds for activation
+and rechecks the original owner, epoch and protected-data availability. All 18 host
+admission regressions pass.
+
+One ordinary physical iPhone XCTest passes the public account/local-method,
+empty native Import Cancel and cold-restart steps. Screenshots and three equal
+public snapshots support this scoped result. The original wrapper receipt remains
+false because automatic touch-sample attachments were not retained; sample-level
+input verification remains open. Temporary apps are removed and retained app
+metadata restored. React Doctor is 100/100 and aislop 98/100. Ordinary iPhone remote
+signing, final quality and Phase 2/3 acceptance remain open; counters are unchanged.
+See docs/external-signing.md.
 
 Previous integration: 2026-09-15 — Connected the reviewed State Lab catalogue, genuine Kehto/SDK, native transports and process-owned SQLite/identity authority. Both isolated native platforms pass all six storage/identity/restart/isolation checks in a single run each; each also passes three close/reopen checks. New openings use persisted native UUIDs, with regression coverage for display-number reuse. All 27 broker/owner, 71 storage/transition, 25 shell and 76 browser-runtime tests pass. The refreshed WK boundary suite passes all 17 methods; sealed inputs/products remain identical. Full aislop is 100/100 and local React Doctor has zero findings; numeric scoring awaits explicit approval. The observed handle/text overlap is fixed with a reserved 12-point guest margin; both rebuilt isolated apps pass the three-check close/reopen journey and their screenshots show unobscured text. Authenticated actions, signing, published loading and physical security remain open. See docs/native-capabilities.md. Progress metadata counts plans, not product completion.
 
@@ -3489,3 +4322,11 @@ an installed-executable readback claim. Owner testing can proceed. Full E2E stay
 deferred until feature complete; Phase 2.11 and all existing acceptance limits
 remain open as recorded. Source push stays owner-controlled. See the quick summary
 and docs/development.md for scope and observer corrections.
+
+## Phase 3 planning — 14 October 2026
+
+The selected [phase context](phases/03-external-signing/03-CONTEXT.md), six implementation plans, research pins, UI contract and validation map are recorded. Source inspection confirms local secrets currently enter trusted JavaScript for generation/import/signing; the planned native core covers all such paths, including upload authorization. Background revocation requires narrowly scoped signer/authentication handoffs. Native code is not itself process isolation, and comparative security with Amber remains unproven.
+
+Planning was performed inline. Structural, reference, requirement-coverage and privacy checks are recorded separately from app tests; no app code, dependency, device state, acceptance matrix or source remote was changed. No independent agent/security review or new runtime/quality pass is claimed.
+
+Native-core checkpoint (2026-10-14): shared C sanitizer 331 assertions; Android 52 native + 7 independent and 20 actual Expo checks; iOS 62 native + 6 independent and 3 actual Expo journeys pass. Shared security 368 + bootstrap 13, dependency-patch 74, TypeScript and both exports pass. React Doctor 100; complete aislop 98 with only existing Forge/braces advisories. Expo 20/21 remains pinned-version drift. Temporary apps cleaned; retained data unchanged. Native migration, external clients, comparative security and Phase 2 acceptance remain open. See phases/03-external-signing/03-01-SUMMARY.md.

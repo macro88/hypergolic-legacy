@@ -1,0 +1,83 @@
+{
+  "contract": "1.0.0",
+  "flavor": "core",
+  "milestone": null,
+  "phases": [
+    {
+      "number": "1",
+      "name": "Development baseline",
+      "status": "complete"
+    },
+    {
+      "number": "2",
+      "name": "Independent Android and iOS proof",
+      "status": "pending"
+    },
+    {
+      "number": "2.1",
+      "name": "Relay query and compatibility",
+      "status": "complete"
+    },
+    {
+      "number": "2.2",
+      "name": "Live relay subscriptions",
+      "status": "complete"
+    },
+    {
+      "number": "2.3",
+      "name": "Resource access",
+      "status": "complete"
+    },
+    {
+      "number": "2.4",
+      "name": "Uploads",
+      "status": "complete"
+    },
+    {
+      "number": "2.5",
+      "name": "Public identity data",
+      "status": "in_progress"
+    },
+    {
+      "number": "2.6",
+      "name": "External links",
+      "status": "pending"
+    },
+    {
+      "number": "2.7",
+      "name": "Intents and inter-napplet communication",
+      "status": "pending"
+    },
+    {
+      "number": "2.8",
+      "name": "Notifications and configuration",
+      "status": "pending"
+    },
+    {
+      "number": "2.9",
+      "name": "Outbox routing",
+      "status": "pending"
+    },
+    {
+      "number": "2.11",
+      "name": "Complete published MVP acceptance",
+      "status": "pending"
+    },
+    {
+      "number": "3",
+      "name": "External signing",
+      "status": "in_progress"
+    },
+    {
+      "number": "4",
+      "name": "Value transfers and zaps",
+      "status": "pending"
+    }
+  ],
+  "next": {
+    "command": "/gsd:execute-phase 3",
+    "label": "Finish Phase 3 code closeout",
+    "reason": "The owner selected code completion before one combined final Android/iOS acceptance campaign. Source audit found selected integrations present and two native uncertainty-reporting defects, now fixed and independently reviewed with focused host regressions. Finish the known dependency finding and complete quality/audit reports before code freeze. Phase 2 feature implementation through Outbox is complete; Phase 2/CAP-14/EXT acceptance and existing counters remain open. No source push or device acceptance is claimed."
+  },
+  "updated_at": "2026-11-02T10:34:34Z"
+}

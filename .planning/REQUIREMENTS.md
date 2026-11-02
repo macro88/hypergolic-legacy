@@ -129,3 +129,19 @@ A test must exercise the actual behavior its row names. Fixture success text, br
 ## Outbox acceptance ownership — 5 October 2026
 
 The owner closed Phase 2.9 implementation and transferred all remaining tests to Phase 2.11. [Open register](phases/02.11-published-mvp-acceptance/02.11-OUTBOX-HANDOFF.md). CAP-12 final acceptance and CAP-14 stay open; this scope change waives no device/security/quality requirement and marks no unrun test as passed.
+
+## Phase 3: native signing and external signer clients — 14 October 2026
+
+Implementation and acceptance remain in progress. EXT-09 is complete for its documented outgoing-only architecture and source-bound packaged boundary; EXT-01–08 remain open. Scoped core, vault and remote-protocol evidence is recorded in the signing documents. The existing MVP matrix and Phase 2 results remain unchanged. Selected decisions and technical proposals are in [Phase 3 context](phases/03-external-signing/03-CONTEXT.md).
+
+| ID | Requirement | Plans | Status |
+| --- | --- | --- | --- |
+| EXT-01 | Native-only secret creation, import, storage access and signing; native-owned, one-use approval bound to the exact event | 01, 02 | in progress |
+| EXT-02 | Native persistence/import survives restart and fails closed on corruption; pre-release account preservation waived by owner on 14 October | 02 | in progress |
+| EXT-03 | One npub account with explicit signing-method choice and no automatic fallback | 03 | in progress |
+| EXT-04 | Bounded native-owned NIP-46 connection credentials and authenticated peer/request correlation | 03, 04 | in progress |
+| EXT-05 | External signing covers existing approved publication, Outbox and Blossom authorization routes | 04 | in progress |
+| EXT-06 | Explicit Android NIP-55 signer binding and verified Activity-result handling | 05 | in progress |
+| EXT-07 | Cancellation, handoff, restart, revocation and unknown outcomes preserve exact authority | 01, 04, 05, 06 | in progress |
+| EXT-08 | Source-bound native, adversarial, interoperability and quality evidence | 01, 02, 03, 04, 05, 06 | in progress |
+| EXT-09 | Future signer-provider architecture without exposing incoming signer services in Phase 3 | 01, 06 | complete |

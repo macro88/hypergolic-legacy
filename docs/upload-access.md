@@ -45,6 +45,15 @@ the shared verifier checks the complete Schnorr signature and exact event.
 Native credential parsers independently check the captured identity, purpose,
 hash, server, event ID and time, but do not independently verify Schnorr signatures.
 
+Trusted progress distinguishes authorization from transfer. It reports waiting
+for authorization until the exact signed credential is verified, then checks
+live authority again before dispatch. A native authorization denial reports user
+cancellation only when native dispatch history is exactly false; missing, malformed
+or failed history remains uncertain. Existing terminal results are preserved.
+These are application presentation states, not new SDK protocol fields. The
+[Phase 3 rejection check](external-signing.md#upload-authorization-status-and-cancellation--28-october-2026)
+records the regression and bounded ordinary Android evidence.
+
 The genuine SDK sends Blob/ArrayBuffer data to the trusted Kehto adapter. That
 adapter copies intrinsic bytes before asynchronous work, then uses an ordered
 private begin/chunk/seal lane. Native code captures the origin, body and destination,

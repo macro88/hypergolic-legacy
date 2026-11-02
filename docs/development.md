@@ -154,6 +154,19 @@ The app enables iOS with development bundle identifier
 iOS 18.4 and uses Hermes. Keep generated `ios/` ignored; make permanent configuration changes through
 app configuration or plugins. The Android unsigned-release plugin is unchanged.
 
+The `withSceneLifecycle.cjs` plugin supplies the single-window scene manifest
+and delegate required by current UIKit. It starts React in a scene-owned window,
+retains the runtime across scene replacement, and preserves Expo lifecycle and
+link forwarding. Keep this change in the plugin; generated AppDelegate edits
+will be lost on prebuild. It rejects an unfamiliar Expo template so upgrades
+require review. On 29 October the ordinary Release app opens on the physical
+iPhone after two matching missing-scene crashes. Signing and broader lifecycle
+acceptance remain separate. Run its generation checks with:
+
+```sh
+node --test tests/native/scene-lifecycle/scene-plugin.cjs
+```
+
 Verified on 12 September 2026: Xcode 26.6 (17F113), iOS 26.5 Simulator (23F77),
 iPhone 17, and CocoaPods 1.16.2. Pod installation completed with 86 pods using
 Homebrew Ruby 4.0.5 and the pinned Node/pnpm. Native Debug compilation, installation
@@ -285,6 +298,49 @@ See [Apple's account overview](https://developer.apple.com/help/account/basics/a
 [Expo's local development guide](https://docs.expo.dev/develop/development-builds/introduction/),
 [Simulator setup](https://docs.expo.dev/workflow/ios-simulator/) and
 [EAS internal distribution](https://docs.expo.dev/build/internal-distribution/).
+
+### Physical iPhone UI automation
+
+Verify the full Xcode selection and ordinary tool lookup before a physical run:
+
+```sh
+xcode-select -p
+xcrun --find devicectl
+```
+
+Use standard Mac administrator authorization when selection needs correction.
+A runner process, usable DDI or successful runner authorization is not a passed
+UI test: require an executed method and the intended hierarchy, screenshot and
+input assertions. Preserve the existing app/data and clean up only the exact
+owned runner with retained-inventory verification.
+
+If Code 1000 stalls initialization before method entry, capture the phone once
+before authentication to check for a native XCTest authorization sheet. End the
+stalled test and all capture/recording before asking the owner to authenticate
+only on the phone. Never request, type, read or capture the passcode; never record
+during credential entry. After reported acceptance, use a fresh bounded probe and
+preserve the original failure. Foreground observation and actual touch/Home proof
+are separate checks.
+
+Verify typed text by reading the actual field value after each edit; requested
+XCTest text alone is not proof of delivery. The bounded verified strategy types
+`o`, then `k`, then deletes each character, acknowledging `o`, `ok`, `o`, and empty.
+Also verify Done, Home/background, reactivation, saved settings and empty drafts.
+A longer bulk URL lost two characters for an unknown reason; a later long
+acknowledged attempt was interrupted. Preserve both failures and do not generalize
+the short proof to arbitrary text or treat it as a product fix. Clear only an
+exactly observed, owned draft; never submit the temporary test value.
+
+Transfer only approved public test text through `devicectl device pasteboard copy`
+(using stdin or `--file`) or XCTest typing. Do not read the personal clipboard or
+transfer private signer-control material. No manual QR/LAN workaround or
+credential bypass is needed. Keep normal device security settings.
+
+Do not assume a requested log predicate was honored: the installed attached-device
+collector warns it ignores `--predicate` and has returned exit 74 without an
+archive. Require actual archive/filter evidence before claiming narrow logs.
+For observational DDI metadata queries, pass `--no-auto-mount-ddis`; its default
+can update/mount. See [the current investigation](../.planning/debug/iphone-ui-automation.md).
 
 ## iPhoneOS Release compile checkpoint
 
@@ -1286,3 +1342,28 @@ app inventories and launches are verified. iOS installation/launch receipts are
 available, but installed executable bytes were not read back. No app data was
 cleared or retained app uninstalled. These updates are ready for owner testing;
 full E2E remains deferred until feature complete. Source push stays owner-controlled.
+
+## Native signing-core development
+
+Phase 3 starts with a disposable native review-to-sign check. See [signing-core.md](signing-core.md) for the bridge contract, pinned primitive, native test commands and isolation limits. The ordinary Developer tools section contains the check; `index.signer.fixture.tsx` supplies an isolated Expo entry without opening saved-key storage. This slice does not migrate production accounts or close Phase 2 acceptance.
+
+
+The iOS request-lifetime host checks run without a device: The action/authentication
+runner requires an explicit existing toolchain root (with `usr/bin` and
+`usr/lib/swift`) and macOS SDK; `--target` is optional. It performs no automatic
+Xcode/SDK discovery or component setup. Machine-specific tool/plugin pins belong
+to the private execution receipt.
+
+```sh
+python3 tests/native/signer-core/action-timeout/run.py \
+  --toolchain-root "${HYPERGOLIC_HOST_TOOLCHAIN:?Set an existing Swift toolchain root}" \
+  --sdk "${HYPERGOLIC_HOST_SDK:?Set an existing macOS SDK}" \
+  --output /tmp/signer-action-timeout-UNIQUE
+python3 tests/native/signer-core/operation-completion/run.py --output /tmp/signer-operation-completion-UNIQUE
+pnpm run test:uploads:native
+```
+
+Use fresh output paths for the two session checks. They compile actual owning
+methods with explicit host ports; the upload suite compiles the owning registries.
+Their results remain separate from integrated native compilation, OS authentication,
+provider handoffs and controlled receiver acceptance.
